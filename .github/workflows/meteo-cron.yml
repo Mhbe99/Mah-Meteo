@@ -1,0 +1,28 @@
+name: Meteo Cron Job
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Toutes les 5 minutes
+
+jobs:
+  run-meteo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Run meteo script
+        env:
+          TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: python auto_meteo_loop.py
