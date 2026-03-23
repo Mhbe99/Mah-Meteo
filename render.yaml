@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: meteo-saas
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn meteo_saas.backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PORT
+        value: 8080
+    plan: free
+
+  - type: cron
+    name: meteo-dashboards
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python meteo_open.py
+    schedule: "*/15 * * * *"  # Run every 15 minutes
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: 1
+    plan: free

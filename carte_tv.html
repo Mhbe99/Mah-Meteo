@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>🌍 Carte Météo - Vue Affichage</title>
+  <meta http-equiv="refresh" content="3600"> <!-- Recharge auto toutes les heures -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #f0f0f0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .leaflet-popup-content-wrapper {
+      font-size: 16px;
+    }
+    .custom-camion-icon {
+      font-size: 28px;
+      text-align: center;
+    }
+    .custom-point-icon {
+      font-size: 22px;
+      text-align: center;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  
+<div class="section-title">🗺️ Carte Interactive</div>
+<div id="map" style="height: 500px; margin-top: 20px;"></div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const camionIcon = L.divIcon({
+  className: 'custom-camion-icon',
+  html: '🚚',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32]
+});
+const pointIcon = L.divIcon({
+  className: 'custom-point-icon',
+  html: '📍',
+  iconSize: [20, 20],
+  iconAnchor: [10, 20],
+  popupAnchor: [0, -20]
+});
+const map = L.map('map').setView([49.4, 2.75], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+L.marker([49.378829, 2.750393], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Le Meux 🏣</b><br>🌡️ Actuel : 15.7°C<br>💨 Vent : 8.3 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:10<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.2°C / 🔺 Tmax : 15.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.4<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4194, 2.8328], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clairoix 🏣</b><br>🌡️ Actuel : 17.2°C<br>💨 Vent : 6.8 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:10<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 3.7°C / 🔺 Tmax : 17.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.45<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4304, 2.0876], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Beauvais</b><br>🌡️ Actuel : 15.4°C<br>💨 Vent : 5.9 km/h (Nord-Ouest)<br>☁️<br>🕒 Maj : 15:04:12<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.6°C / 🔺 Tmax : 15.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 3.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4176, 2.8261], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Compiègne</b><br>🌡️ Actuel : 17.2°C<br>💨 Vent : 7.6 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:13<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 4.1°C / 🔺 Tmax : 17.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.45<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2561, 2.4834], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Creil</b><br>🌡️ Actuel : 16.0°C<br>💨 Vent : 6.9 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:14<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 4.0°C / 🔺 Tmax : 16.0°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.35<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2661, 2.4706], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Nogent-sur-Oise</b><br>🌡️ Actuel : 16.3°C<br>💨 Vent : 6.9 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:15<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 4.3°C / 🔺 Tmax : 16.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.35<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.1931, 2.4714], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chantilly</b><br>🌡️ Actuel : 16.1°C<br>💨 Vent : 7.7 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:16<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.5°C / 🔺 Tmax : 16.1°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.5<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3763, 2.4151], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clermont</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 7.2 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:17<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 3.0°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.1<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2335, 2.1293], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Méru</b><br>🌡️ Actuel : 15.6°C<br>💨 Vent : 6.6 km/h (Nord-Ouest)<br>☁️<br>🕒 Maj : 15:04:19<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.1°C / 🔺 Tmax : 15.6°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.05<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.5786, 3.0017], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Noyon</b><br>🌡️ Actuel : 16.0°C<br>💨 Vent : 6.5 km/h (Nord-Ouest)<br>☁️<br>🕒 Maj : 15:04:19<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.9°C / 🔺 Tmax : 16.0°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.15<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2079, 2.5849], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Senlis</b><br>🌡️ Actuel : 15.9°C<br>💨 Vent : 7.7 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:22<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.2°C / 🔺 Tmax : 15.9°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.45<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2641, 2.4436], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Montataire</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 6.9 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:23<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.9°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.35<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3334, 2.4573], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Liancourt</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 7.3 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:23<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.9°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.1<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2761, 1.8759], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chaumont-en-Vexin</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 6.3 km/h (Ouest)<br>☁️<br>🕒 Maj : 15:04:24<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 1.4°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 3.9<br>⚠️ Risques : ✅ RAS</div>");
+const points = [
+  { name: "Le Meux 🏣", lat: 49.378829, lon: 2.750393 },
+  { name: "Clairoix 🏣", lat: 49.4194, lon: 2.8328 },
+  { name: "Beauvais", lat: 49.4304, lon: 2.0876 },
+  { name: "Compiègne", lat: 49.4176, lon: 2.8261 },
+  { name: "Creil", lat: 49.2561, lon: 2.4834 },
+  { name: "Nogent-sur-Oise", lat: 49.2661, lon: 2.4706 },
+  { name: "Chantilly", lat: 49.1931, lon: 2.4714 },
+  { name: "Clermont", lat: 49.3763, lon: 2.4151 },
+  { name: "Méru", lat: 49.2335, lon: 2.1293 },
+  { name: "Noyon", lat: 49.5786, lon: 3.0017 },
+  { name: "Senlis", lat: 49.2079, lon: 2.5849 },
+  { name: "Montataire", lat: 49.2641, lon: 2.4436 },
+  { name: "Liancourt", lat: 49.3334, lon: 2.4573 },
+  { name: "Chaumont-en-Vexin", lat: 49.2761, lon: 1.8759 }
+];
+
+let index = 0;
+function loopZoom() {
+  const p = points[index];
+  map.setView([p.lat, p.lon], 12, { animate: true });
+  map.eachLayer(function (layer) {
+    if (layer.getPopup && layer.getPopup()) {
+      const popup = layer.getPopup();
+      const content = popup.getContent();
+      if (content && content.includes(p.name)) {
+        layer.openPopup();
+      } else {
+        layer.closePopup();
+      }
+    }
+  });
+  index = (index + 1) % points.length;
+  setTimeout(loopZoom, 12000); // 12s par ville
+}
+loopZoom();
+</script>
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+# -*- coding: utf-8 -*-
+"""
+auth.py — Authentification JWT et gestion des tokens
+"""
+
+import os
+from datetime import datetime, timedelta
+from typing import Optional
+from fastapi import Depends, HTTPException, status, Header
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from dotenv import load_dotenv
+
+# Charger variables d'environnement
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24
+
+# Context pour hacher les mots de passe
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# ============ UTILITAIRES ============
+
+def hash_password(password: str) -> str:
+    """Hash un mot de passe avec bcrypt"""
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Vérifie un mot de passe contre son hash"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+# ============ TOKENS JWT ============
+
+def create_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Crée un JWT avec les données fournies.
+    Expire dans 24h par défaut.
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def verify_token(token: str) -> dict:
+    """
+    Vérifie un token JWT et retourne les données encodées.
+    Lève une exception si le token est invalide ou expiré.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalide ou expiré",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+# ============ DÉPENDANCES ============
+
+async def get_current_client(authorization: Optional[str] = Header(None)) -> int:
+    """
+    Dépendance FastAPI pour extraire et vérifier le client depuis le token JWT dans le header Authorization.
+    Retourne le client_id.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token manquant ou format invalide",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = authorization.replace("Bearer ", "", 1)
+    payload = verify_token(token)
+    
+    client_id = payload.get("client_id")
+    if client_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Client ID non trouvé dans le token",
+        )
+    
+    return client_id

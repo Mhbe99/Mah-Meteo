@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mah Météo — Tableau de bord</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background-color: #f4f3f0;
+            color: #333;
+        }
+
+        /* ============ LOGIN SCREEN ============ */
+        #login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1c4f82 0%, #2d6fa3 100%);
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-box h1 {
+            color: #1c4f82;
+            margin-bottom: 30px;
+            font-size: 28px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .logo-mah {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-box .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #1c4f82;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            margin-left: 5px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1c4f82;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #1c4f82;
+            box-shadow: 0 0 0 3px rgba(28, 79, 130, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: #1c4f82;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .login-btn:hover {
+            background: #153a5c;
+        }
+
+        .login-error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        /* ============ DASHBOARD ============ */
+        #dashboard {
+            display: none;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        header .title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1c4f82;
+        }
+
+        header .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        header .company-badge {
+            background: #1c4f82;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        header .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        header .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        header .refresh-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        header .refresh-btn:hover {
+            background: #229954;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #ddd;
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1c4f82;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 12px;
+        }
+
+        .sidebar-card {
+            background: #f9f8f7;
+            border: 1px solid #e5e3e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .sidebar-card .zone-name {
+            font-weight: 600;
+            color: #1c4f82;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-card .zone-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            color: #666;
+        }
+
+        .sidebar-card .zone-meta span {
+            flex: 1;
+        }
+
+        .alert-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .alert-badge.warning {
+            background: #f39c12;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            gap: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: white;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #999;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #1c4f82;
+            color: #1c4f82;
+        }
+
+        .tab-btn:hover {
+            background: #fafaf8;
+            color: #1c4f82;
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* KPIs */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-box {
+            background: white;
+            border: 1px solid #e5e3e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: #999;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1c4f82;
+        }
+
+        .kpi-unit {
+            font-size: 12px;
+            color: #999;
+            font-weight: 400;
+        }
+
+        /* TABLES */
+        .table-container {
+            background: white;
+            border: 1px solid #e5e3e0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .table-title {
+            background: #f9f8f7;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e5e3e0;
+            font-weight: 600;
+            color: #1c4f82;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: #f9f8f7;
+            border-bottom: 2px solid #1c4f82;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #1c4f82;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e3e0;
+        }
+
+        tr:hover {
+            background: #fafaf8;
+        }
+
+        .severity-low {
+            background: #d5f6e6;
+            color: #27ae60;
+        }
+
+        .severity-med {
+            background: #fff3cd;
+            color: #f39c12;
+        }
+
+        .severity-high {
+            background: #f5d6d0;
+            color: #e74c3c;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #f39c12;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .risk-badge.ok {
+            background: #27ae60;
+        }
+
+        /* MAP */
+        #map {
+            height: 600px;
+            border-radius: 8px;
+            border: 1px solid #e5e3e0;
+        }
+
+        /* FORECAST GRID */
+        .forecast-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .prevision-zone {
+            background: #ffffff;
+            border: 1px solid #e4e2dc;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .zone-header {
+            padding: 12px 16px;
+            background: #f4f3f0;
+            border-bottom: 1px solid #e4e2dc;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .zone-icon {
+            font-size: 18px;
+        }
+
+        .zone-name {
+            flex: 1;
+        }
+
+        .forecast-card {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            border-top: none;
+        }
+
+        .forecast-day {
+            padding: 14px 8px;
+            text-align: center;
+            border-right: 1px solid #e4e2dc;
+            font-size: 13px;
+        }
+
+        .forecast-day:last-child {
+            border-right: none;
+        }
+
+        .day-name {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8a8785;
+            margin-bottom: 8px;
+        }
+
+        .day-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .day-temps {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .tmax {
+            color: #c0392b;
+            font-weight: 500;
+        }
+
+        .tmin {
+            color: #1c4f82;
+        }
+
+        .sep {
+            color: #ccc;
+            margin: 0 3px;
+        }
+
+        .day-rain, .day-uv {
+            font-size: 11px;
+            color: #8a8785;
+            margin-bottom: 4px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .day-risk {
+            margin-top: 8px;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .risk-ok {
+            background: #edf7f1;
+            color: #1a6b3a;
+        }
+
+        .risk-pluie {
+            background: #e8f0f8;
+            color: #1c4f82;
+        }
+
+        .risk-vent {
+            background: #fdf6ec;
+            color: #b8660a;
+        }
+
+        .risk-verglas {
+            background: #eef4fb;
+            color: #1a4a7a;
+        }
+
+        .risk-uv {
+            background: #fdf0ee;
+            color: #c0392b;
+        }
+
+        /* NO DATA MESSAGE */
+        .no-data {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+
+        /* LOADING */
+        .loading {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1c4f82;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+                max-height: 150px;
+                display: flex;
+                gap: 25px;
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab-btn {
+                flex: 1 1 50%;
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            #map {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+    <div class="login-box">
+        <h1><svg style="width:32px;height:32px;display:inline-block;margin-right:8px;vertical-align:middle;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#FFB81C;stop-opacity:1"/><stop offset="100%" style="stop-color:#FF8C00;stop-opacity:1"/></linearGradient></defs><circle cx="50" cy="40" r="28" fill="url(#sunGrad)"/><g stroke="#FFB81C" stroke-width="3" stroke-linecap="round"><line x1="50" y1="5" x2="50" y2="15"/><line x1="50" y1="65" x2="50" y2="75"/><line x1="85" y1="40" x2="75" y2="40"/><line x1="25" y1="40" x2="15" y2="40"/><line x1="72" y1="18" x2="65" y2="11"/><line x1="35" y1="69" x2="28" y2="76"/></g><path d="M 25 65 Q 20 65 20 72 Q 20 80 28 82 L 72 82 Q 80 80 80 72 Q 80 65 75 65" fill="#1c4f82" opacity="0.9"/></svg>Mah Météo<span class="dot"></span></h1>
+        <div class="login-error" id="login-error"></div>
+        <form id="login-form">
+            <div class="form-group">
+                <label>Utilisateur</label>
+                <input type="text" id="username" placeholder="geodis-lemeux" required>
+            </div>
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" id="password" placeholder="demo1234" required>
+            </div>
+            <button type="submit" class="login-btn">Connexion</button>
+        </form>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+    <header>
+        <div class="title">🌡️ Mah Météo</div>
+        <div class="controls">
+            <div class="company-badge" id="company-name">---</div>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Actualiser</button>
+            <button class="logout-btn" onclick="logout()">Déconnexion</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-title">📍 Zone</div>
+            <div id="sidebar-zones"></div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Alertes Actives</div>
+                <div id="sidebar-alerts"></div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab(0)">☀️ Temps réel</button>
+                <button class="tab-btn" onclick="switchTab(1)">🗺️ Carte</button>
+                <button class="tab-btn" onclick="switchTab(2)">🔮 Prévisions</button>
+                <button class="tab-btn" onclick="switchTab(3)">🚗 Trafic</button>
+                <button class="tab-btn" onclick="switchTab(4)">📋 Alertes</button>
+            </div>
+
+            <!-- TAB 1: TEMPS RÉEL -->
+            <div class="tab-content active">
+                <div class="kpi-grid">
+                    <div class="kpi-box">
+                        <div class="kpi-label">Température Max</div>
+                        <div class="kpi-value" id="kpi-temp">--</div>
+                        <div class="kpi-unit">°C</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Vent Max</div>
+                        <div class="kpi-value" id="kpi-wind">--</div>
+                        <div class="kpi-unit">km/h</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Précipitations</div>
+                        <div class="kpi-value" id="kpi-rain">--</div>
+                        <div class="kpi-unit">mm</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Alertes Actives</div>
+                        <div class="kpi-value" id="kpi-alerts">0</div>
+                        <div class="kpi-unit">détectées</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-title">📍 Sites GEODIS</div>
+                    <table id="sites-table">
+                        <thead>
+                            <th>Zone</th>
+                            <th>🌤️ Ciel</th>
+                            <th>🌡️ Temp</th>
+                            <th>💨 Vent</th>
+                            <th>↻ Direction</th>
+                            <th>🌧️ Pluie</th>
+                            <th>☀️ UV</th>
+                            <th>⚠️ Risques</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-title">🌍 Zones Voisines</div>
+                    <table id="voisins-table">
+                        <thead>
+                            <th>Zone</th>
+                            <th>🌤️ Ciel</th>
+                            <th>🌡️ Temp</th>
+                            <th>💨 Vent</th>
+                            <th>↻ Direction</th>
+                            <th>🌧️ Pluie</th>
+                            <th>☀️ UV</th>
+                            <th>⚠️ Risques</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: CARTE -->
+            <div class="tab-content">
+                <div id="map"></div>
+            </div>
+
+            <!-- TAB 3: PRÉVISIONS -->
+            <div class="tab-content">
+                <div class="forecast-grid" id="forecast-grid"></div>
+            </div>
+
+            <!-- TAB 4: TRAFIC -->
+            <div class="tab-content">
+                <div id="alerte-combinee" style="display:none;margin-bottom:16px;"></div>
+                
+                <div class="kpi-grid">
+                    <div class="kpi-box">
+                        <div class="kpi-label">Incidents Actifs</div>
+                        <div class="kpi-value" id="kpi-incidents">0</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Retard Max</div>
+                        <div class="kpi-value" id="kpi-delay">--</div>
+                        <div class="kpi-unit">min</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Heure MAJ</div>
+                        <div class="kpi-value" id="kpi-trafic-time">--</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-title">🚗 Incidents Trafic</div>
+                    <table id="trafic-table">
+                        <thead>
+                            <th>Route</th>
+                            <th>Description</th>
+                            <th>Sévérité</th>
+                            <th>Retard</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 5: ALERTES -->
+            <div class="tab-content">
+                <div class="table-container">
+                    <div class="table-title">📢 Historique des Alertes (30 dernières)</div>
+                    <table id="alertes-table">
+                        <thead>
+                            <th>Date/Heure</th>
+                            <th>Zone</th>
+                            <th>Type</th>
+                            <th>Valeur</th>
+                            <th>Message</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============ CONFIG ============
+    const API_URL = "http://localhost:8080";
+    let TOKEN = null;
+    let CLIENT_ID = null;
+    let COMPANY_NAME = null;
+    let map = null;
+    let markers = [];
+
+    // ============ LOGIN ============
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Erreur connexion");
+
+            TOKEN = data.access_token;
+            CLIENT_ID = data.client_id;
+            COMPANY_NAME = data.company_name;
+
+            localStorage.setItem("token", TOKEN);
+            localStorage.setItem("client_id", CLIENT_ID);
+            localStorage.setItem("company_name", COMPANY_NAME);
+
+            showDashboard();
+        } catch (error) {
+            document.getElementById("login-error").textContent = error.message;
+            document.getElementById("login-error").style.display = "block";
+        }
+    });
+
+    function showDashboard() {
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("dashboard").style.display = "flex";
+        document.getElementById("company-name").textContent = COMPANY_NAME;
+        refreshData();
+        setInterval(refreshData, 15 * 60 * 1000);  // Refresh tous les 15 min
+    }
+
+    function logout() {
+        localStorage.removeItem("token");
+        localStorage.removeItem("client_id");
+        localStorage.removeItem("company_name");
+        location.reload();
+    }
+
+    // ============ DATA FETCHING ============
+    async function fetchData(endpoint) {
+        if (!TOKEN) return null;
+
+        try {
+            const response = await fetch(`${API_URL}/api/${endpoint}/${CLIENT_ID}`, {
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) logout();
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`Erreur fetch ${endpoint}:`, error);
+            return null;
+        }
+    }
+
+    async function refreshData() {
+        const meteo = await fetchData("meteo");
+        const previsions = await fetchData("previsions");
+        const alertes = await fetchData("alertes");
+        const trafic = await fetchData("trafic");
+        const zones = await fetchData("zones");
+
+        updateMeteoTab(meteo);
+        updateSidebar(meteo, alertes);
+        updateMapTab(meteo, previsions);
+        updatePrevisionTab(previsions);
+        updateTraficTab(trafic);
+        updateAlertesTab(alertes);
+    }
+
+    // ============ UI UPDATES ============
+    function updateMeteoTab(meteo) {
+        if (!meteo) return;
+
+        let maxTemp = -Infinity;
+        let maxWind = 0;
+        let maxRain = 0;
+        let alertCount = 0;
+
+        const sites = [], voisins = [];
+        
+        meteo.forEach(zone => {
+            if (zone.temp) maxTemp = Math.max(maxTemp, zone.temp);
+            if (zone.wind) maxWind = Math.max(maxWind, zone.wind);
+            maxRain = Math.max(maxRain, parseFloat(zone.ciel) || 0);
+            if (zone.risques && !zone.risques.includes("✅")) alertCount++;
+
+            const row = `
+                <tr>
+                    <td >${zone.name}</td>
+                    <td>${zone.ciel || "?"}</td>
+                    <td>${zone.temp ? zone.temp + "°" : "?"}</td>
+                    <td>${zone.wind ? zone.wind + " km/h" : "?"}</td>
+                    <td>${zone.direction || "?"}</td>
+                    <td>0 mm</td>
+                    <td>-</td>
+                    <td><span class="risk-badge ${zone.risques?.includes("✅") ? "ok" : ""}">${zone.risques || "RAS"}</span></td>
+                </tr>
+            `;
+
+            if (zone.type === "site") sites.push(row);
+            else voisins.push(row);
+        });
+
+        document.getElementById("sites-table").querySelector("tbody").innerHTML = sites.join("");
+        document.getElementById("voisins-table").querySelector("tbody").innerHTML = voisins.join("");
+
+        document.getElementById("kpi-temp").textContent = maxTemp !== -Infinity ? maxTemp.toFixed(1) : "--";
+        document.getElementById("kpi-wind").textContent = maxWind.toFixed(0);
+        document.getElementById("kpi-rain").textContent = maxRain.toFixed(1);
+        document.getElementById("kpi-alerts").textContent = alertCount;
+    }
+
+    function updateSidebar(meteo, alertes) {
+        if (!meteo) return;
+
+        const sites = meteo.filter(z => z.type === "site");
+        let html = "";
+        
+        sites.forEach(z => {
+            html += `
+                <div class="sidebar-card">
+                    <div class="zone-name">${z.name}</div>
+                    <div class="zone-meta">
+                        <span>🌡️ ${z.temp ? z.temp + "°" : "?"}</span>
+                        <span>💨 ${z.wind ? z.wind + " km/h" : "?"}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById("sidebar-zones").innerHTML = html;
+
+        // Alertes
+        if (alertes && alertes.length > 0) {
+            const latestAlerts = alertes.slice(0, 2);
+            let alertsHtml = "";
+            latestAlerts.forEach(a => {
+                alertsHtml += `<div class="alert-badge warning">${a.zone_name}: ${a.type_alerte}</div>`;
+            });
+            document.getElementById("sidebar-alerts").innerHTML = alertsHtml;
+        }
+    }
+
+    function updateMapTab(meteo, previsions) {
+        if (!meteo) return;
+
+        if (!map) {
+            const center = meteo.length > 0 ? [meteo[0].lat, meteo[0].lon] : [49.4, 2.75];
+            map = L.map('map').setView(center, 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+        }
+
+        // Effacer anciens marqueurs
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        // Créer map de prévisions pour les popups
+        const forecastMap = {};
+        if (previsions) {
+            previsions.forEach(p => {
+                const key = p.zone.toLowerCase();
+                if (!forecastMap[key]) {
+                    forecastMap[key] = p;
+                }
+            });
+        }
+
+        // Créer les marqueurs avec divIcon
+        meteo.forEach(zone => {
+            const isSite = zone.type === "site";
+            const icon = L.divIcon({
+                html: isSite ? '🚚' : '📍',
+                iconSize: isSite ? [32, 32] : [20, 20],
+                iconAnchor: isSite ? [16, 32] : [10, 20],
+                popupAnchor: isSite ? [0, -32] : [0, -20],
+                className: 'custom-icon'
+            });
+
+            // Récupérer les prévisions J+0
+            const key = zone.name.toLowerCase();
+            const forecast = forecastMap[key] || {};
+
+            const popupContent = `<div style='font-family:sans-serif;padding:8px;min-width:180px;font-size:12px'>
+                <b>${zone.name}</b><br>
+                🌡️ Actuel : ${zone.temp ? zone.temp + '°C' : '?'}<br>
+                💨 Vent : ${zone.wind ? zone.wind + ' km/h' : '?'} (${zone.direction || '?'})<br>
+                ${zone.ciel || '?'}<br>
+                🕒 MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}<br><br>
+                📆 Prévisions du jour :<br>
+                🔻 Tmin : ${forecast.tmin || '?'} / 🔺 Tmax : ${forecast.tmax || '?'}<br>
+                ☔ Pluie : ${forecast.pluie || '? mm'}<br>
+                🌞 UV max : ${forecast.uv !== undefined ? forecast.uv : '?'}<br>
+                ⚠️ Risques : ${forecast.risques || zone.risques || 'N/A'}
+            </div>`;
+
+            const marker = L.marker([zone.lat, zone.lon], { icon: icon }).addTo(map);
+            marker.bindPopup(popupContent);
+            marker.zoneName = zone.name;
+
+            markers.push(marker);
+        });
+
+        // Zoom automatique toutes les 12s
+        const markerPoints = meteo.map(z => ({ name: z.name, lat: z.lat, lon: z.lon }));
+        let zoomIndex = 0;
+
+        function autoZoom() {
+            if (markerPoints.length === 0) return;
+            const point = markerPoints[zoomIndex];
+            map.setView([point.lat, point.lon], 12, { animate: true });
+
+            // Ouvrir le popup du marqueur correspondant
+            markers.forEach(m => {
+                if (m.zoneName === point.name) {
+                    m.openPopup();
+                } else {
+                    m.closePopup();
+                }
+            });
+
+            zoomIndex = (zoomIndex + 1) % markerPoints.length;
+            setTimeout(autoZoom, 12000);
+        }
+
+        // Démarrer le zoom automatique
+        if (markerPoints.length > 0) {
+            autoZoom();
+        }
+    }
+
+    function getWeatherIcon(risques, pluie, uv) {
+        if (risques && risques.includes("Verglas")) return "❄️";
+        if (pluie > 5) return "🌧️";
+        if (pluie > 0) return "🌦️";
+        if (risques && risques.includes("Vent")) return "🌬️";
+        if (uv >= 6) return "☀️";
+        return "⛅";
+    }
+
+    function getRiskClass(risques) {
+        if (risques && risques.includes("✅")) return "risk-ok";
+        if (risques && risques.includes("Verglas")) return "risk-verglas";
+        if (risques && risques.includes("Vent")) return "risk-vent";
+        if (risques && risques.includes("Pluie")) return "risk-pluie";
+        if (risques && risques.includes("UV")) return "risk-uv";
+        return "risk-ok";
+    }
+
+    function updatePrevisionTab(previsions) {
+        if (!previsions || previsions.length === 0) {
+            document.getElementById("forecast-grid").innerHTML = '<div class="no-data">Données indisponibles</div>';
+            return;
+        }
+
+        // Grouper par zone
+        const grouped = {};
+        previsions.forEach(p => {
+            if (!grouped[p.zone]) grouped[p.zone] = [];
+            grouped[p.zone].push(p);
+        });
+
+        let html = "";
+
+        // Afficher d'abord les sites, puis les voisins
+        const zoneOrder = [];
+        Object.keys(grouped).forEach(zone => {
+            const isSite = zone.includes("🏣");
+            if (isSite) zoneOrder.push(zone);
+        });
+        Object.keys(grouped).forEach(zone => {
+            const isSite = zone.includes("🏣");
+            if (!isSite) zoneOrder.push(zone);
+        });
+
+        zoneOrder.forEach(zone => {
+            const days = grouped[zone].slice(0, 5);
+            const isSite = zone.includes("🏣");
+            const icon = isSite ? "🚚" : "📍";
+
+            let daysHtml = "";
+            days.forEach(d => {
+                const weatherIcon = getWeatherIcon(d.risques, parseFloat(d.pluie) || 0, d.uv || 0);
+                const riskClass = getRiskClass(d.risques);
+                const tempMin = parseFloat(d.tmin) || 0;
+                const tempMax = parseFloat(d.tmax) || 0;
+                const pluie = parseFloat(d.pluie) || 0;
+                const uv = d.uv || 0;
+
+                daysHtml += `
+                    <div class="forecast-day">
+                        <div class="day-name">${d.jour.substring(0, 3)}</div>
+                        <div class="day-icon">${weatherIcon}</div>
+                        <div class="day-temps">
+                            <span class="tmax">${tempMax.toFixed(0)}°</span>
+                            <span class="sep">/</span>
+                            <span class="tmin">${tempMin.toFixed(0)}°</span>
+                        </div>
+                        <div class="day-rain">💧 ${pluie.toFixed(1)} mm</div>
+                        <div class="day-uv">☀️ ${uv.toFixed(1)}</div>
+                        <div class="day-risk ${riskClass}">${d.risques || '✅'}</div>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="prevision-zone">
+                    <div class="zone-header">
+                        <span class="zone-icon">${icon}</span>
+                        <span class="zone-name">${zone}</span>
+                    </div>
+                    <div class="forecast-card">${daysHtml}</div>
+                </div>
+            `;
+        });
+
+        document.getElementById("forecast-grid").innerHTML = html;
+    }
+
+    function updateTraficTab(trafic) {
+        // Traiter le format ancien (array) ou nouveau (object avec incidents + alerte)
+        let incidents = trafic;
+        let alerte_combinee = null;
+        
+        if (trafic && typeof trafic === 'object' && !Array.isArray(trafic)) {
+            incidents = trafic.incidents || [];
+            alerte_combinee = trafic.alerte_combinee;
+        }
+
+        if (!incidents || incidents.length === 0) {
+            document.getElementById("kpi-incidents").textContent = "0";
+            document.getElementById("kpi-delay").textContent = "0 min";
+            document.getElementById("kpi-trafic-time").textContent = new Date().toLocaleTimeString("fr-FR");
+            const container = document.getElementById("trafic-table");
+            if (container) container.querySelector("tbody").innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:#8a8785;font-size:13px">✅ Aucun incident signalé</td></tr>';
+            
+            const alerteBox = document.getElementById("alerte-combinee");
+            if (alerteBox) alerteBox.style.display = 'none';
+            return;
+        }
+
+        let maxDelay = 0;
+        let html = "";
+
+        incidents.forEach(t => {
+            maxDelay = Math.max(maxDelay, t.delay_minutes || 0);
+            const severityClass = t.severity === "high" ? "severity-high" : t.severity === "med" ? "severity-med" : "severity-low";
+            html += `
+                <tr style="border-bottom: 1px solid #e4e2dc;">
+                    <td style="padding:10px 12px;font-size:13px;">${t.route}</td>
+                    <td style="padding:10px 12px;font-size:13px;">${t.description}</td>
+                    <td style="padding:10px 12px;text-align:center;"><span class="${severityClass}" style="padding:4px 8px;border-radius:3px;font-size:11px;font-weight:500;">${t.severity.toUpperCase()}</span></td>
+                    <td style="padding:10px 12px;text-align:right;font-weight:500;">${t.delay_minutes > 0 ? '+' + t.delay_minutes + ' min' : 'Faible'}</td>
+                </tr>
+            `;
+        });
+
+        const container = document.getElementById("trafic-table");
+        if (container) container.querySelector("tbody").innerHTML = html;
+        
+        document.getElementById("kpi-incidents").textContent = incidents.length;
+        document.getElementById("kpi-delay").textContent = maxDelay > 0 ? '+' + maxDelay + ' min' : '0 min';
+        document.getElementById("kpi-trafic-time").textContent = new Date().toLocaleTimeString("fr-FR");
+
+        // Afficher alerte combinée si présente
+        const alerteBox = document.getElementById("alerte-combinee");
+        if (alerteBox) {
+            if (alerte_combinee) {
+                alerteBox.style.display = 'block';
+                alerteBox.innerHTML = `
+                    <div style="padding:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;margin-bottom:16px;">
+                        <div style="font-weight:600;color:#856404;font-size:13px;">🔴 Alerte combinée météo + trafic</div>
+                        <div style="color:#856404;font-size:12px;margin-top:6px;">${alerte_combinee.message}</div>
+                    </div>`;
+            } else {
+                alerteBox.style.display = 'none';
+            }
+        }
+
+        // Ajouter marqueurs trafic sur la carte
+        if (window.map && incidents.length > 0) {
+            incidents.forEach(inc => {
+                if (inc.lat && inc.lon) {
+                    const icon = L.divIcon({
+                        html: '🚨',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10],
+                        popupAnchor: [0, -10]
+                    });
+                    L.marker([inc.lat, inc.lon], { icon })
+                        .addTo(window.map)
+                        .bindPopup(`<b>${inc.route}</b><br>${inc.description}<br>Retard : +${inc.delay_minutes} min`);
+                }
+            });
+        }
+    }
+
+    function updateAlertesTab(alertes) {
+        if (!alertes || alertes.length === 0) {
+            document.getElementById("alertes-table").querySelector("tbody").innerHTML = '<tr><td colspan="5" class="no-data">Aucune alerte</td></tr>';
+            return;
+        }
+
+        let html = "";
+        alertes.forEach(a => {
+            const time = new Date(a.timestamp).toLocaleString("fr-FR");
+            html += `
+                <tr>
+                    <td>${time}</td>
+                    <td>${a.zone_name}</td>
+                    <td>${a.type_alerte}</td>
+                    <td>${a.valeur}</td>
+                    <td>${a.message}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById("alertes-table").querySelector("tbody").innerHTML = html;
+    }
+
+    // ============ TAB SWITCHING ============
+    function switchTab(index) {
+        document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+            btn.classList.toggle("active", i === index);
+        });
+        document.querySelectorAll(".tab-content").forEach((content, i) => {
+            content.classList.toggle("active", i === index);
+        });
+
+        if (index === 1 && map) {
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+    }
+
+    // ============ INIT ============
+    if (localStorage.getItem("token")) {
+        TOKEN = localStorage.getItem("token");
+        CLIENT_ID = parseInt(localStorage.getItem("client_id"));
+        COMPANY_NAME = localStorage.getItem("company_name");
+        showDashboard();
+    }
+</script>
+
+</body>
+</html>

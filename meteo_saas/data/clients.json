@@ -1,0 +1,31 @@
+{
+  "clients": [
+    {
+      "username": "geodis-lemeux",
+      "password": "demo1234",
+      "company_name": "GEODIS — Le Meux",
+      "email": "mahame.toure@geodis.com",
+      "plan": "pro",
+      "zones": {
+        "sites": [
+          {"name": "Le Meux 🏣", "lat": 49.378829, "lon": 2.750393},
+          {"name": "Clairoix 🏣", "lat": 49.4194, "lon": 2.8328}
+        ],
+        "voisins": [
+          {"name": "Compiègne", "lat": 49.4176, "lon": 2.8261},
+          {"name": "Creil", "lat": 49.2561, "lon": 2.4834},
+          {"name": "Beauvais", "lat": 49.4304, "lon": 2.0876},
+          {"name": "Chantilly", "lat": 49.1931, "lon": 2.4714},
+          {"name": "Noyon", "lat": 49.5786, "lon": 3.0017},
+          {"name": "Senlis", "lat": 49.2079, "lon": 2.5849},
+          {"name": "Méru", "lat": 49.2335, "lon": 2.1293},
+          {"name": "Nogent-sur-Oise", "lat": 49.2661, "lon": 2.4706},
+          {"name": "Clermont", "lat": 49.3763, "lon": 2.4151},
+          {"name": "Montataire", "lat": 49.2641, "lon": 2.4436},
+          {"name": "Liancourt", "lat": 49.3334, "lon": 2.4573},
+          {"name": "Chaumont-en-Vexin", "lat": 49.2761, "lon": 1.8759}
+        ]
+      }
+    }
+  ]
+}

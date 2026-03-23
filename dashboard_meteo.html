@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 Suivi Météo Logistique 🏭 Le Meux & Clairoix</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f9fa; color: #333; }
+    h1 { font-size: 28px; margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border: 1px solid #999; padding: 8px; text-align: center; }
+    th { background-color: #333; color: #fff; }
+    .section-title { font-weight: bold; font-size: 20px; background: #ddd; padding: 10px; margin-top: 40px; }
+    .emoji { font-size: 20px; }
+    .ok { color: green; }
+    .warn { color: orange; font-weight: bold; }
+    .alert { color: red; font-weight: bold; }
+
+    /* Carte Leaflet */
+    #map { height: 500px; margin-top: 40px; border: 1px solid #ccc; }
+
+    /* Icônes personnalisées Leaflet avec emoji */
+    .custom-camion-icon {
+      font-size: 28px;
+      color: #000;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .custom-point-icon {
+      font-size: 24px;
+      color: #007bff;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .leaflet-popup-content-wrapper {
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Suivi Météo Logistique 🏭 Le Meux & Clairoix</h1>
+
+  <div class="section-title">🅰️ Conditions Actuelles (Sites)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>🌡️ Temp</th>
+      <th>💨 Vent</th>
+      <th>🧭 Direction</th>
+      <th>🌤️ Ciel</th>
+      <th>⚠️ Risque</th>
+      <th>⏰ Maj</th>
+    </tr>
+    <tr><td>Le Meux 🏣</td><td>15.7°C</td><td>8.3 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:10</td></tr><tr><td>Clairoix 🏣</td><td>17.2°C</td><td>6.8 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:10</td></tr>
+  </table>
+
+  <div class="section-title">🏘️ Villes Voisines (Actuel)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>🌡️ Temp</th>
+      <th>💨 Vent</th>
+      <th>🧭 Direction</th>
+      <th>🌤️ Ciel</th>
+      <th>⚠️ Risque</th>
+      <th>⏰ Maj</th>
+    </tr>
+    <tr><td>Beauvais</td><td>15.4°C</td><td>5.9 km/h</td><td>Nord-Ouest</td><td>☁️</td><td>✅ RAS</td><td>15:04:12</td></tr><tr><td>Compiègne</td><td>17.2°C</td><td>7.6 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:13</td></tr><tr><td>Creil</td><td>16.0°C</td><td>6.9 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:14</td></tr><tr><td>Nogent-sur-Oise</td><td>16.3°C</td><td>6.9 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:15</td></tr><tr><td>Chantilly</td><td>16.1°C</td><td>7.7 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:16</td></tr><tr><td>Clermont</td><td>15.8°C</td><td>7.2 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:17</td></tr><tr><td>Méru</td><td>15.6°C</td><td>6.6 km/h</td><td>Nord-Ouest</td><td>☁️</td><td>✅ RAS</td><td>15:04:19</td></tr><tr><td>Noyon</td><td>16.0°C</td><td>6.5 km/h</td><td>Nord-Ouest</td><td>☁️</td><td>✅ RAS</td><td>15:04:19</td></tr><tr><td>Senlis</td><td>15.9°C</td><td>7.7 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:22</td></tr><tr><td>Montataire</td><td>15.8°C</td><td>6.9 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:23</td></tr><tr><td>Liancourt</td><td>15.8°C</td><td>7.3 km/h</td><td>Nord</td><td>☁️</td><td>✅ RAS</td><td>15:04:23</td></tr><tr><td>Chaumont-en-Vexin</td><td>15.8°C</td><td>6.3 km/h</td><td>Ouest</td><td>☁️</td><td>✅ RAS</td><td>15:04:24</td></tr>
+  </table>
+
+  <div class="section-title">📅 Prévisions à 5 jours (Sites)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>📅 Jour</th>
+      <th>🌡️ Min</th>
+      <th>🌡️ Max</th>
+      <th>🌧️ Pluie</th>
+      <th>☀️ UV</th>
+      <th>⚠️ Risque</th>
+    </tr>
+    <tr><td>Le Meux 🏣</td><td>Mon 23/03</td><td>2.2°C</td><td>15.7°C</td><td>0.0 mm</td><td>4.4</td><td>✅ RAS</td></tr><tr><td>Le Meux 🏣</td><td>Tue 24/03</td><td>4.2°C</td><td>16.4°C</td><td>0.0 mm</td><td>3.95</td><td>✅ RAS</td></tr><tr><td>Le Meux 🏣</td><td>Wed 25/03</td><td>2.4°C</td><td>10.8°C</td><td>8.4 mm</td><td>3.7</td><td>🌧️ Alerte pluie</td></tr><tr><td>Le Meux 🏣</td><td>Thu 26/03</td><td>1.6°C</td><td>7.8°C</td><td>1.3 mm</td><td>4.6</td><td>✅ RAS</td></tr><tr><td>Le Meux 🏣</td><td>Fri 27/03</td><td>-1.0°C</td><td>10.1°C</td><td>0.9 mm</td><td>4.4</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Mon 23/03</td><td>3.7°C</td><td>17.2°C</td><td>0.0 mm</td><td>4.45</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Tue 24/03</td><td>5.8°C</td><td>17.5°C</td><td>0.0 mm</td><td>3.8</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Wed 25/03</td><td>3.0°C</td><td>11.6°C</td><td>3.0 mm</td><td>3.85</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Thu 26/03</td><td>0.4°C</td><td>7.7°C</td><td>1.5 mm</td><td>4.55</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Fri 27/03</td><td>-2.2°C</td><td>9.9°C</td><td>0.9 mm</td><td>4.35</td><td>✅ RAS</td></tr>
+  </table>
+
+  <div class="section-title">🚗 Incidents Trafic (TomTom)</div>
+  
+  <!-- KPIs trafic -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Incidents actifs
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#c0392b">
+        0
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Retard maximum
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#b8660a">
+        0 min
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Derniere MAJ
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#1c4f82">
+        15:04
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerte combinee meteor + trafic -->
+  
+
+  <!-- Tableau incidents -->
+  <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #e0dbd2;border-radius:4px">
+    <thead>
+      <tr style="background:#f4f3f0;border-bottom:1px solid #e0dbd2">
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Route
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Description
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Severite
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Retard
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Zone
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      
+    <tr>
+      <td colspan="5" style="text-align:center;color:#888;padding:20px">
+        [OK] Aucun incident signalee dans votre zone
+      </td>
+    </tr>
+    </tbody>
+  </table>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  
+<div class="section-title">🗺️ Carte Interactive</div>
+<div id="map" style="height: 500px; margin-top: 20px;"></div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const camionIcon = L.divIcon({
+  className: 'custom-camion-icon',
+  html: '🚚',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32]
+});
+const pointIcon = L.divIcon({
+  className: 'custom-point-icon',
+  html: '📍',
+  iconSize: [20, 20],
+  iconAnchor: [10, 20],
+  popupAnchor: [0, -20]
+});
+const map = L.map('map').setView([49.4, 2.75], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+L.marker([49.378829, 2.750393], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Le Meux 🏣</b><br>🌡️ Actuel : 15.7°C<br>💨 Vent : 8.3 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:10<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.2°C / 🔺 Tmax : 15.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.4<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4194, 2.8328], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clairoix 🏣</b><br>🌡️ Actuel : 17.2°C<br>💨 Vent : 6.8 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:10<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 3.7°C / 🔺 Tmax : 17.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.45<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4304, 2.0876], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Beauvais</b><br>🌡️ Actuel : 15.4°C<br>💨 Vent : 5.9 km/h (Nord-Ouest)<br>☁️<br>🕒 Maj : 15:04:12<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.6°C / 🔺 Tmax : 15.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 3.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4176, 2.8261], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Compiègne</b><br>🌡️ Actuel : 17.2°C<br>💨 Vent : 7.6 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:13<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 4.1°C / 🔺 Tmax : 17.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.45<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2561, 2.4834], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Creil</b><br>🌡️ Actuel : 16.0°C<br>💨 Vent : 6.9 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:14<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 4.0°C / 🔺 Tmax : 16.0°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.35<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2661, 2.4706], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Nogent-sur-Oise</b><br>🌡️ Actuel : 16.3°C<br>💨 Vent : 6.9 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:15<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 4.3°C / 🔺 Tmax : 16.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.35<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.1931, 2.4714], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chantilly</b><br>🌡️ Actuel : 16.1°C<br>💨 Vent : 7.7 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:16<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.5°C / 🔺 Tmax : 16.1°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.5<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3763, 2.4151], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clermont</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 7.2 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:17<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 3.0°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.1<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2335, 2.1293], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Méru</b><br>🌡️ Actuel : 15.6°C<br>💨 Vent : 6.6 km/h (Nord-Ouest)<br>☁️<br>🕒 Maj : 15:04:19<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.1°C / 🔺 Tmax : 15.6°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.05<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.5786, 3.0017], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Noyon</b><br>🌡️ Actuel : 16.0°C<br>💨 Vent : 6.5 km/h (Nord-Ouest)<br>☁️<br>🕒 Maj : 15:04:19<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.9°C / 🔺 Tmax : 16.0°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.15<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2079, 2.5849], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Senlis</b><br>🌡️ Actuel : 15.9°C<br>💨 Vent : 7.7 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:22<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.2°C / 🔺 Tmax : 15.9°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.45<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2641, 2.4436], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Montataire</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 6.9 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:23<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.9°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.35<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3334, 2.4573], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Liancourt</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 7.3 km/h (Nord)<br>☁️<br>🕒 Maj : 15:04:23<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 2.9°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 4.1<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2761, 1.8759], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chaumont-en-Vexin</b><br>🌡️ Actuel : 15.8°C<br>💨 Vent : 6.3 km/h (Ouest)<br>☁️<br>🕒 Maj : 15:04:24<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 1.4°C / 🔺 Tmax : 15.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 3.9<br>⚠️ Risques : ✅ RAS</div>");
+const points = [
+  { name: "Le Meux 🏣", lat: 49.378829, lon: 2.750393 },
+  { name: "Clairoix 🏣", lat: 49.4194, lon: 2.8328 },
+  { name: "Beauvais", lat: 49.4304, lon: 2.0876 },
+  { name: "Compiègne", lat: 49.4176, lon: 2.8261 },
+  { name: "Creil", lat: 49.2561, lon: 2.4834 },
+  { name: "Nogent-sur-Oise", lat: 49.2661, lon: 2.4706 },
+  { name: "Chantilly", lat: 49.1931, lon: 2.4714 },
+  { name: "Clermont", lat: 49.3763, lon: 2.4151 },
+  { name: "Méru", lat: 49.2335, lon: 2.1293 },
+  { name: "Noyon", lat: 49.5786, lon: 3.0017 },
+  { name: "Senlis", lat: 49.2079, lon: 2.5849 },
+  { name: "Montataire", lat: 49.2641, lon: 2.4436 },
+  { name: "Liancourt", lat: 49.3334, lon: 2.4573 },
+  { name: "Chaumont-en-Vexin", lat: 49.2761, lon: 1.8759 }
+];
+
+let index = 0;
+function loopZoom() {
+  const p = points[index];
+  map.setView([p.lat, p.lon], 12, { animate: true });
+  map.eachLayer(function (layer) {
+    if (layer.getPopup && layer.getPopup()) {
+      const popup = layer.getPopup();
+      const content = popup.getContent();
+      if (content && content.includes(p.name)) {
+        layer.openPopup();
+      } else {
+        layer.closePopup();
+      }
+    }
+  });
+  index = (index + 1) % points.length;
+  setTimeout(loopZoom, 12000); // 12s par ville
+}
+loopZoom();
+</script>
+</script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 Suivi Météo Logistique 🏭 Le Meux & Clairoix</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f9fa; color: #333; }
+    h1 { font-size: 28px; margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border: 1px solid #999; padding: 8px; text-align: center; }
+    th { background-color: #333; color: #fff; }
+    .section-title { font-weight: bold; font-size: 20px; background: #ddd; padding: 10px; margin-top: 40px; }
+    .emoji { font-size: 20px; }
+    .ok { color: green; }
+    .warn { color: orange; font-weight: bold; }
+    .alert { color: red; font-weight: bold; }
+
+    /* Carte Leaflet */
+    #map { height: 500px; margin-top: 40px; border: 1px solid #ccc; }
+
+    /* Icônes personnalisées Leaflet avec emoji */
+    .custom-camion-icon {
+      font-size: 28px;
+      color: #000;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .custom-point-icon {
+      font-size: 24px;
+      color: #007bff;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .leaflet-popup-content-wrapper {
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Suivi Météo Logistique 🏭 Le Meux & Clairoix</h1>
+
+  <div class="section-title">🅰️ Conditions Actuelles (Sites)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>🌡️ Temp</th>
+      <th>💨 Vent</th>
+      <th>🧭 Direction</th>
+      <th>🌤️ Ciel</th>
+      <th>⚠️ Risque</th>
+      <th>⏰ Maj</th>
+    </tr>
+    <!--DONNEES_ACTUELLES-->
+  </table>
+
+  <div class="section-title">🏘️ Villes Voisines (Actuel)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>🌡️ Temp</th>
+      <th>💨 Vent</th>
+      <th>🧭 Direction</th>
+      <th>🌤️ Ciel</th>
+      <th>⚠️ Risque</th>
+      <th>⏰ Maj</th>
+    </tr>
+    <!--DONNEES_VOISINES-->
+  </table>
+
+  <div class="section-title">📅 Prévisions à 5 jours (Sites)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>📅 Jour</th>
+      <th>🌡️ Min</th>
+      <th>🌡️ Max</th>
+      <th>🌧️ Pluie</th>
+      <th>☀️ UV</th>
+      <th>⚠️ Risque</th>
+    </tr>
+    <!--DONNEES_PREVISIONS-->
+  </table>
+
+  <div class="section-title">🚗 Incidents Trafic (TomTom)</div>
+  
+  <!-- KPIs trafic -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Incidents actifs
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#c0392b">
+        <!--TRAFIC_TOTAL-->
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Retard maximum
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#b8660a">
+        <!--TRAFIC_RETARD_MAX-->
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Derniere MAJ
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#1c4f82">
+        <!--TRAFIC_MAJ-->
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerte combinee meteor + trafic -->
+  <!--ALERTE_COMBINEE-->
+
+  <!-- Tableau incidents -->
+  <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #e0dbd2;border-radius:4px">
+    <thead>
+      <tr style="background:#f4f3f0;border-bottom:1px solid #e0dbd2">
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Route
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Description
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Severite
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Retard
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Zone
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <!--DONNEES_TRAFIC-->
+    </tbody>
+  </table>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!--CARTE_INTERACTIVE-->
+</body>
+</html>
