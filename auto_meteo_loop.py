@@ -34,7 +34,7 @@ if __name__ == "__main__":
             run_rapport_hebdo()
             rapport_envoye_semaine = semaine_courante
         
-        # Lancer la mise à jour météo toutes les 15 minutes
+        # Lancer la mise à jour météo toutes les 23 minutes
         run_script()
-        print("[INFO] Attente 5 minutes avant la prochaine execution...\n")
-        time.sleep(300)  # 300 secondes = 5 minutes
+        print("[INFO] Attente 23 minutes avant la prochaine execution...\n")
+        time.sleep(1380)  # 1380 secondes = 23 minutes
