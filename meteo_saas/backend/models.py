@@ -35,6 +35,9 @@ class ZoneMeteo(BaseModel):
     direction: Optional[str] = None
     ciel: Optional[str] = None
     risques: Optional[str] = None
+    precipitation: Optional[float] = None
+    cloudcover: Optional[float] = None
+    uv_index: Optional[float] = None
     lat: float
     lon: float
     updated_at: Optional[datetime] = None
