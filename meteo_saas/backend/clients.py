@@ -16,39 +16,28 @@ from .models import ZoneMeteo, PrevisionJour, Alerte, ZoneInfo
 def get_meteo_actuelle(client_id: int, db: Session) -> List[ZoneMeteo]:
     """
     Récupère les données météo actuelles pour les zones du client.
-    Retourne le dernier snapshot de chaque zone.
+    Utilise les données du dernier snapshot OU les données de la Zone elle-même.
     """
     zones = db.query(Zone).filter(Zone.client_id == client_id).all()
     result = []
 
     for zone in zones:
-        # Récupérer le dernier snapshot
-        snapshot = db.query(MeteoSnapshot).filter(
-            MeteoSnapshot.zone_id == zone.id
-        ).order_by(MeteoSnapshot.timestamp.desc()).first()
-
-        if snapshot:
-            zone_meteo = ZoneMeteo(
-                name=zone.name,
-                type=zone.type,
-                temp=snapshot.temperature,
-                wind=snapshot.windspeed,
-                direction=snapshot.wind_direction,
-                ciel=snapshot.ciel,
-                risques=snapshot.risques,
-                lat=zone.lat,
-                lon=zone.lon,
-                updated_at=snapshot.timestamp
-            )
-        else:
-            # Pas de snapshot → données vides mais zone visible
-            zone_meteo = ZoneMeteo(
-                name=zone.name,
-                type=zone.type,
-                lat=zone.lat,
-                lon=zone.lon,
-                updated_at=None
-            )
+        # Option 1: Utiliser les données de la Zone (mise à jour quand snapshot ajouté)
+        zone_meteo = ZoneMeteo(
+            name=zone.name,
+            type=zone.type,
+            temp=zone.temperature,
+            wind=zone.windspeed,
+            direction=zone.wind_direction,
+            ciel=zone.ciel,
+            risques=zone.risques,
+            precipitation=zone.precipitation,
+            cloudcover=zone.cloudcover,
+            uv_index=zone.uv_index,
+            lat=zone.lat,
+            lon=zone.lon,
+            updated_at=zone.updated_at
+        )
 
         result.append(zone_meteo)
 
