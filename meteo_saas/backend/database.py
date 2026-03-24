@@ -121,9 +121,35 @@ class AlerteLog(Base):
 # ============ FONCTIONS D'INITIALISATION ============
 
 def init_db():
-    """Crée les tables dans la base de données"""
+    """Crée les tables et applique les migrations"""
     Base.metadata.create_all(bind=engine)
     print("✅ Bases de données initialisées")
+    
+    # Migration: ajouter les colonnes météo manquantes à la table zones
+    try:
+        from sqlalchemy import text
+        db = SessionLocal()
+        
+        # Vérifier si les colonnes manquent et les ajouter
+        columns_to_add = [
+            ("precipitation", "REAL"),
+            ("cloudcover", "REAL"),
+            ("uv_index", "REAL")
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            try:
+                # Essayer d'ajouter la colonne
+                db.execute(text(f"ALTER TABLE zones ADD COLUMN {col_name} {col_type}"))
+                db.commit()
+                print(f"  ✅ Colonne {col_name} ajoutée")
+            except Exception as e:
+                # La colonne existe déjà, c'est normal
+                pass
+        
+        db.close()
+    except Exception as e:
+        print(f"  ⚠️ Migration: {e}")
 
 
 def init_clients_from_json(json_path):
