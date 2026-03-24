@@ -329,6 +329,19 @@ for zone, coord in TOUTES_ZONES.items():
             risques=risque_clean,
             ciel=ciel
         )
+        
+        # 📤 TOUJOURS envoyer à Render même si sauvegarde DB locale échoue
+        post_to_render(
+            zone_name=zone,
+            temp=current.get("temperature", 0),
+            wind=current.get("windspeed", 0),
+            direction=direction,
+            precip=precip_now,
+            cloudcover=cloud_now,
+            uv=uv_today,
+            risques=risque_clean,
+            ciel=ciel
+        )
     except requests.RequestException as e:
         print(f"Error fetching data for {zone}: {e}")
         continue
