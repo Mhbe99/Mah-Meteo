@@ -44,6 +44,7 @@ class ZoneMeteo(BaseModel):
 
     class Config:
         from_attributes = True
+        exclude_none = False  # ✅ INCLURE les None values
 
 
 class PrevisionJour(BaseModel):
