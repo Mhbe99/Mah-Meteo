@@ -23,7 +23,72 @@ except ImportError:
 load_dotenv()
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
-RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS").split(",")
+RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS").split(",") if os.getenv("RECEIVER_EMAILS") else []
+
+# Variables pour GitHub Actions → Render sync
+RENDER_API_URL = "https://mah-meteo.onrender.com/api/meteo/snapshot/add"
+GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
+JWT_SECRET = os.getenv("JWT_SECRET", "geodis-secret-key-2024")
+CLIENT_ID = 1  # Par défaut GEODIS-LEMEUX
+
+def get_jwt_token():
+    """🔐 Génère un JWT token pour l'authentification Render"""
+    try:
+        from jose import jwt
+    except ImportError:
+        print("⚠️ python-jose pas installé — pas de token généré")
+        return None
+    
+    payload = {
+        "client_id": CLIENT_ID,
+        "username": "geodis-lemeux"
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return token
+
+
+def post_to_render(zone_name: str, temp, wind, direction, precip, cloudcover, uv, risques, ciel):
+    """📤 Envoie les données à Render API si on est sur GitHub Actions"""
+    if not GITHUB_ACTIONS:
+        return  # On est en local, pas besoin d'envoyer
+    
+    try:
+        token = get_jwt_token()
+        if not token:
+            return
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "zone_name": zone_name,
+            "temperature": float(temp) if temp else None,
+            "windspeed": float(wind) if wind else None,
+            "wind_direction": direction,
+            "precipitation": float(precip) if precip else None,
+            "cloudcover": float(cloudcover) if cloudcover else None,
+            "uv_index": float(uv) if uv else None,
+            "risques": risques,
+            "ciel": ciel
+        }
+        
+        response = requests.post(
+            f"{RENDER_API_URL}?client_id={CLIENT_ID}",
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            print(f"✅ Snapshot envoyé à Render pour {zone_name}")
+        else:
+            print(f"⚠️ Erreur Render {response.status_code}: {response.text[:100]}")
+    
+    except Exception as e:
+        print(f"⚠️ Erreur POST vers Render: {str(e)}")
+
 
 def send_email_alerte(zone, message):
     global SENDER_EMAIL, RECEIVER_EMAILS, GMAIL_PASSWORD
@@ -162,6 +227,10 @@ def save_to_saas_db(zone_name, temp, wind, direction, precip, cloudcover, uv, ri
         )
         db.add(snapshot)
         db.commit()
+        
+        # 📤 Envoyer aussi à Render si on est sur GitHub Actions
+        post_to_render(zone_name, temp, wind, direction, precip, cloudcover, uv, risques, ciel)
+        
         db.close()
     except Exception as e:
         print(f"⚠️ Erreur sauvegarde DB {zone_name}: {e}")

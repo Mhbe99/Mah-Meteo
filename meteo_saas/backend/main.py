@@ -12,13 +12,30 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone
+from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot
 from .auth import create_token, verify_password, get_current_client
 from .models import LoginRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
+from pydantic import BaseModel
+from typing import Optional
 from .clients import get_meteo_actuelle, get_previsions, get_alertes, get_zones
 from .trafic import get_incidents
 
 load_dotenv()
+
+
+# ============ MODÈLES PYDANTIC ============
+
+class MeteoSnapshotCreate(BaseModel):
+    """Modèle pour créer un snapshot météo via API"""
+    zone_name: str
+    temperature: Optional[float] = None
+    windspeed: Optional[float] = None
+    wind_direction: Optional[str] = None
+    precipitation: Optional[float] = None
+    cloudcover: Optional[float] = None
+    uv_index: Optional[float] = None
+    risques: Optional[str] = None
+    ciel: Optional[str] = None
 
 
 # ============ LIFESPAN (Initialisation au démarrage) ============
@@ -141,6 +158,50 @@ def get_zones_route(client_id: int, current_client: int = Depends(get_current_cl
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
     return get_zones(client_id, db)
+
+
+@app.post("/api/meteo/snapshot/add")
+def add_meteo_snapshot(
+    client_id: int,
+    data: MeteoSnapshotCreate,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """
+    ➕ Ajoute un snapshot météo pour une zone.
+    Endpoint utilisé par auto_meteo_loop.py quand ça tourne sur GitHub Actions.
+    Authentification par JWT token (Bearer).
+    """
+    if client_id != current_client:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    # Trouver la zone
+    zone = db.query(Zone).filter(
+        Zone.client_id == client_id,
+        Zone.name.ilike(f"%{data.zone_name}%")
+    ).first()
+
+    if not zone:
+        raise HTTPException(status_code=404, detail=f"Zone '{data.zone_name}' not found")
+
+    # Créer et sauvegarder le snapshot
+    snapshot = MeteoSnapshot(
+        zone_id=zone.id,
+        temperature=data.temperature,
+        windspeed=data.windspeed,
+        wind_direction=data.wind_direction,
+        precipitation=data.precipitation,
+        cloudcover=data.cloudcover,
+        uv_index=data.uv_index,
+        risques=data.risques,
+        ciel=data.ciel
+    )
+
+    db.add(snapshot)
+    db.commit()
+    db.refresh(snapshot)
+
+    return {"status": "success", "zone_id": zone.id, "snapshot_id": snapshot.id, "timestamp": snapshot.timestamp}
 
 
 # ============ ROUTES API — TRAFIC ============
