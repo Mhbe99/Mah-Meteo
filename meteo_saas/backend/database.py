@@ -47,6 +47,17 @@ class Zone(Base):
     lat = Column(Float)
     lon = Column(Float)
     type = Column(String)  # "site" ou "voisin"
+    
+    # Données météo actuelles (dernière mise à jour)
+    temperature = Column(Float, nullable=True)
+    windspeed = Column(Float, nullable=True)
+    wind_direction = Column(String, nullable=True)
+    precipitation = Column(Float, nullable=True)
+    cloudcover = Column(Float, nullable=True)
+    uv_index = Column(Float, nullable=True)
+    risques = Column(Text, nullable=True)
+    ciel = Column(String, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
 
     # Relations
     client = relationship("Client", back_populates="zones")

@@ -5,6 +5,7 @@ main.py — Application FastAPI principale
 
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
@@ -207,6 +208,20 @@ def add_meteo_snapshot(
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
+    
+    # ✅ METTRE À JOUR LA ZONE avec les dernières données
+    zone.temperature = data.temperature
+    zone.windspeed = data.windspeed
+    zone.wind_direction = data.wind_direction
+    zone.precipitation = data.precipitation
+    zone.cloudcover = data.cloudcover
+    zone.uv_index = data.uv_index
+    zone.risques = data.risques
+    zone.ciel = data.ciel
+    zone.updated_at = datetime.utcnow()
+    
+    db.add(zone)
+    db.commit()
 
     return {"status": "success", "zone_id": zone.id, "snapshot_id": snapshot.id, "timestamp": snapshot.timestamp}
 
