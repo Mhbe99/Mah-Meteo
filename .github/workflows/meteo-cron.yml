@@ -2,7 +2,7 @@ name: Meteo Cron Job
 
 on:
   schedule:
-    - cron: '*/23 * * * *'  # Toutes les 23 minutes
+    - cron: '*/22 * * * *'  # Toutes les 22 minutes
 
 jobs:
   run-meteo:

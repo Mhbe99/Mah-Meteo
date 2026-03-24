@@ -36,5 +36,5 @@ if __name__ == "__main__":
         
         # Lancer la mise à jour météo toutes les 23 minutes
         run_script()
-        print("[INFO] Attente 23 minutes avant la prochaine execution...\n")
-        time.sleep(1380)  # 1380 secondes = 23 minutes
+print("[INFO] Attente 22 minutes avant la prochaine execution...\n")
+time.sleep(1320)  # 1320 secondes = 22 minutes
