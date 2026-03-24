@@ -26,17 +26,29 @@ GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS").split(",") if os.getenv("RECEIVER_EMAILS") else []
 
 # Variables pour GitHub Actions → Render sync
-RENDER_API_URL = "https://mah-meteo.onrender.com/api/meteo/snapshot/add"
+RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
+RENDER_API_URL = f"{RENDER_URL}/api/meteo/snapshot/add"
+RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
 GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
 JWT_SECRET = os.getenv("JWT_SECRET", "geodis-secret-key-2024")
 CLIENT_ID = 1  # Par défaut GEODIS-LEMEUX
 
 def get_jwt_token():
-    """🔐 Génère un JWT token pour l'authentification Render"""
+    """🔐 Récupère le JWT token pour l'authentification Render
+    
+    Priorité :
+    1. RENDER_API_TOKEN (depuis env ou config Render)
+    2. Génération via JWT_SECRET (fallback pour local/test)
+    """
+    # Priorité 1: Token pré-générée depuis /api/service/token
+    if RENDER_API_TOKEN:
+        return RENDER_API_TOKEN
+    
+    # Priorité 2: Générer un token localement (dev/fallback)
     try:
         from jose import jwt
     except ImportError:
-        print("⚠️ python-jose pas installé — pas de token généré")
+        print("[JWT] python-jose pas installé — pas de token généré")
         return None
     
     payload = {

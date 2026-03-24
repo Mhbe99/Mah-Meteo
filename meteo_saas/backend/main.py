@@ -251,6 +251,21 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
     }
 
 
+# ============ ROUTES SERVICE (pour meteo_open.py) ============
+
+@app.post("/api/service/token")
+def get_service_token(db: Session = Depends(get_db)):
+    """
+    🔐 Génère un token JWT pour le service meteo_open.py
+    Pour générer le token initial : curl -X POST https://mah-meteo.onrender.com/api/service/token
+    """
+    # Créer un token avec client_id=1 (GEODIS) pour le service
+    token = create_token(
+        data={"client_id": 1, "username": "service-meteo"}
+    )
+    return {"token": token, "client_id": 1, "type": "bearer"}
+
+
 # ============ ROUTES FRONTEND ============
 
 @app.get("/", response_class=HTMLResponse)

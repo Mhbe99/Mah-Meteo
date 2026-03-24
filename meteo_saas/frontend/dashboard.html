@@ -886,18 +886,30 @@
     }
 
     async function refreshData() {
-        const meteo = await fetchData("meteo");
-        const previsions = await fetchData("previsions");
-        const alertes = await fetchData("alertes");
-        const trafic = await fetchData("trafic");
-        const zones = await fetchData("zones");
+        try {
+            showNotif("🔄 Actualisation en cours...");
+            const meteo = await fetchData("meteo");
+            const previsions = await fetchData("previsions");
+            const alertes = await fetchData("alertes");
+            const trafic = await fetchData("trafic");
+            const zones = await fetchData("zones");
 
-        updateMeteoTab(meteo);
-        updateSidebar(meteo, alertes);
-        updateMapTab(meteo, previsions);
-        updatePrevisionTab(previsions);
-        updateTraficTab(trafic);
-        updateAlertesTab(alertes);
+            updateMeteoTab(meteo);
+            updateSidebar(meteo, alertes);
+            updateMapTab(meteo, previsions);
+            updatePrevisionTab(previsions);
+            updateTraficTab(trafic);
+            updateAlertesTab(alertes);
+            
+            showNotif("✅ Données actualisées");
+            const lastUpdateEl = document.getElementById("lastUpdate");
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR");
+            }
+        } catch(e) {
+            showNotif("❌ Erreur lors de l'actualisation");
+            console.error("refreshData error:", e);
+        }
     }
 
     // ============ UI UPDATES ============
