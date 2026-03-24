@@ -37,14 +37,30 @@ def get_jwt_token():
     """🔐 Récupère le JWT token pour l'authentification Render
     
     Priorité :
-    1. RENDER_API_TOKEN (depuis env ou config Render)
-    2. Génération via JWT_SECRET (fallback pour local/test)
+    1. Appel /api/service/token sur Render (toujours frais)
+    2. RENDER_API_TOKEN (env fallback)
+    3. Génération via JWT_SECRET (local dev)
     """
-    # Priorité 1: Token pré-générée depuis /api/service/token
+    # Priorité 1: Token frais depuis Render
+    try:
+        response = requests.get(
+            f"{RENDER_URL}/api/service/token",
+            timeout=5
+        )
+        if response.status_code == 200:
+            token = response.json().get("token")
+            if token:
+                print("[✅ Token généré par Render]")
+                return token
+    except Exception as e:
+        print(f"[⚠️ Erreur récupération token Render: {e}]")
+    
+    # Priorité 2: Token pré-configuré depuis env
     if RENDER_API_TOKEN:
+        print("[✅ Token depuis env (RENDER_API_TOKEN)]")
         return RENDER_API_TOKEN
     
-    # Priorité 2: Générer un token localement (dev/fallback)
+    # Priorité 3: Générer un token localement (dev/fallback)
     try:
         from jose import jwt
     except ImportError:
@@ -56,6 +72,7 @@ def get_jwt_token():
         "username": "geodis-lemeux"
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    print("[✅ Token généré localement]")
     return token
 
 
