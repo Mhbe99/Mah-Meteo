@@ -809,7 +809,8 @@
 
 <script>
     // ============ CONFIG ============
-    const API_URL = "http://localhost:8080";
+    // Use relative URLs - works on both localhost and Render
+    const API_URL = "";
     let TOKEN = null;
     let CLIENT_ID = null;
     let COMPANY_NAME = null;
@@ -824,7 +825,7 @@
         const password = document.getElementById("password").value;
 
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
+            const response = await fetch(`/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
@@ -868,7 +869,7 @@
         if (!TOKEN) return null;
 
         try {
-            const response = await fetch(`${API_URL}/api/${endpoint}/${CLIENT_ID}`, {
+            const response = await fetch(`/api/${endpoint}/${CLIENT_ID}`, {
                 headers: { "Authorization": `Bearer ${TOKEN}` }
             });
 
