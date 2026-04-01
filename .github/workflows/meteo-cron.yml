@@ -18,6 +18,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
+      - name: Wake up Render API
+        run: |
+          echo "🔄 Réveillage du service Render..."
+          curl -s https://mah-meteo.onrender.com/health || true
+          sleep 3
+      
       - name: Run meteo script
         env:
           TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
@@ -25,4 +31,20 @@ jobs:
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
           RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: python auto_meteo_loop.py
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+          GITHUB_ACTIONS: 'true'
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        run: python meteo_open.py
+
+      - name: Deploy to GitHub Pages
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan gh-pages
+          git reset
+          git add dashboard_meteo.html carte_tv.html exports/risques_meteo.xlsx -f
+          git commit -m "Update météo data"
+          git push origin gh-pages -f
