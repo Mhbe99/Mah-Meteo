@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
@@ -268,11 +268,15 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
 
 # ============ ROUTES SERVICE (pour meteo_open.py) ============
 
-@app.post("/api/service/token")
-def get_service_token(db: Session = Depends(get_db)):
+# CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
+@app.api_route("/api/service/token", methods=["GET", "POST"])
+def get_service_token():
     """
     🔐 Génère un token JWT pour le service meteo_open.py
-    Pour générer le token initial : curl -X POST https://mah-meteo.onrender.com/api/service/token
+    Accepte GET et POST pour compatibilité avec GitHub Actions et meteo_open.py
+    
+    GET  : curl https://mah-meteo.onrender.com/api/service/token
+    POST : curl -X POST https://mah-meteo.onrender.com/api/service/token
     """
     # Créer un token avec client_id=1 (GEODIS) pour le service
     token = create_token(
@@ -295,10 +299,22 @@ def get_dashboard():
         return HTMLResponse("<h1>Dashboard introuvable</h1>", status_code=404)
 
 
+@app.head("/")
+async def head_root():
+    """FIX: Répond aux HEAD requests pour health checks UptimeRobot/Render"""
+    return Response(status_code=200)
+
+
 @app.get("/health")
 def health():
     """Vérification de l'état de l'application"""
     return {"status": "ok"}
+
+
+@app.head("/health")
+async def head_health():
+    """FIX: Répond aux HEAD requests health check"""
+    return Response(status_code=200)
 
 
 # ============ LANCEMENT ============
