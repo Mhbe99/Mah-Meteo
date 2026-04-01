@@ -102,6 +102,23 @@ class TrafficIncident(Base):
     client = relationship("Client", back_populates="trafic_incidents")
 
 
+class PrevisionCache(Base):
+    """Table previsions_cache : prévisions J+5 envoyées par GitHub Actions"""
+    __tablename__ = "previsions_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    zone_id = Column(Integer, ForeignKey("zones.id"), index=True)
+    jour = Column(String)        # "Mar 01/04"
+    tmin = Column(String)        # "5.2°C"
+    tmax = Column(String)        # "12.1°C"
+    pluie = Column(String)       # "2.3 mm"
+    uv = Column(Float)
+    risques = Column(String)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    zone = relationship("Zone")
+
+
 class AlerteLog(Base):
     """Table alertes_log : historique des alertes"""
     __tablename__ = "alertes_log"

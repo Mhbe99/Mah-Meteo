@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot
+from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache
 from .auth import create_token, verify_password, get_current_client
 from .models import LoginRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
 from pydantic import BaseModel
@@ -247,6 +247,55 @@ def add_meteo_snapshot(
     db.commit()
 
     return {"status": "success", "zone_id": zone.id, "snapshot_id": snapshot.id, "timestamp": snapshot.timestamp}
+
+
+class PrevisionAdd(BaseModel):
+    zone_name: str
+    jour: str
+    tmin: Optional[str] = None
+    tmax: Optional[str] = None
+    pluie: Optional[str] = None
+    uv: Optional[float] = None
+    risques: Optional[str] = None
+
+
+@app.post("/api/previsions/add")
+def add_previsions(
+    client_id: int,
+    data: list[PrevisionAdd],
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Reçoit les prévisions depuis GitHub Actions et les stocke en cache DB."""
+    if client_id != current_client:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    # Supprimer l'ancien cache pour ce client
+    zone_ids = [z.id for z in db.query(Zone).filter(Zone.client_id == client_id).all()]
+    if zone_ids:
+        db.query(PrevisionCache).filter(PrevisionCache.zone_id.in_(zone_ids)).delete(synchronize_session=False)
+
+    added = 0
+    for prev in data:
+        zone = db.query(Zone).filter(
+            Zone.client_id == client_id,
+            Zone.name.ilike(f"%{prev.zone_name}%")
+        ).first()
+        if not zone:
+            continue
+        db.add(PrevisionCache(
+            zone_id=zone.id,
+            jour=prev.jour,
+            tmin=prev.tmin,
+            tmax=prev.tmax,
+            pluie=prev.pluie,
+            uv=prev.uv,
+            risques=prev.risques
+        ))
+        added += 1
+
+    db.commit()
+    return {"status": "success", "previsions_added": added}
 
 
 # ============ ROUTES API — TRAFIC ============

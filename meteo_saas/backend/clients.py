@@ -46,64 +46,31 @@ def get_meteo_actuelle(client_id: int, db: Session) -> List[ZoneMeteo]:
 
 def get_previsions(client_id: int, db: Session) -> List[PrevisionJour]:
     """
-    Récupère les prévisions 5 jours pour les zones du client.
-    Appelle directement l'API Open-Meteo (même logique que meteo_open.py).
+    Récupère les prévisions 5 jours depuis le cache DB (alimenté par GitHub Actions).
     """
+    from .database import PrevisionCache
     zones = db.query(Zone).filter(Zone.client_id == client_id).all()
+    zone_ids = [z.id for z in zones]
+    zone_map = {z.id: z.name for z in zones}
+
+    if not zone_ids:
+        return []
+
+    caches = db.query(PrevisionCache).filter(
+        PrevisionCache.zone_id.in_(zone_ids)
+    ).order_by(PrevisionCache.zone_id, PrevisionCache.id).all()
+
     result = []
-
-    for zone in zones:
-        try:
-            url = (
-                f"https://api.open-meteo.com/v1/forecast?"
-                f"latitude={zone.lat}&longitude={zone.lon}"
-                f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max"
-                f"&timezone=auto"
-            )
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-
-            days = data.get("daily", {})
-            times = days.get("time", [])
-
-            for i in range(min(len(times), 5)):  # 5 jours max
-                date_str = times[i]
-                date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d")
-                jour = date_obj.strftime("%a %d/%m")
-
-                tmin = days.get("temperature_2m_min", [None])[i]
-                tmax = days.get("temperature_2m_max", [None])[i]
-                pluie = days.get("precipitation_sum", [0])[i]
-                uv = days.get("uv_index_max", [0])[i]
-
-                # Déterminer les risques (simplifié)
-                risques = ""
-                try:
-                    if tmin is not None and tmin < 1 and pluie > 0 and datetime.datetime.now().month in [11, 12, 1, 2]:
-                        risques += "❄️ Verglas "
-                except:
-                    pass
-                if pluie > 5:
-                    risques += "🌧️ Pluie "
-                if uv >= 8:
-                    risques += "🔥 UV "
-                if not risques:
-                    risques = "✅ RAS"
-
-                prevision = PrevisionJour(
-                    zone=zone.name,
-                    jour=jour,
-                    tmin=f"{tmin}°C" if tmin is not None else "N/A",
-                    tmax=f"{tmax}°C" if tmax is not None else "N/A",
-                    pluie=f"{pluie} mm",
-                    uv=uv,
-                    risques=risques.strip()
-                )
-                result.append(prevision)
-
-        except Exception as e:
-            print(f"❌ Erreur récupération prévisions pour {zone.name}: {e}")
+    for c in caches:
+        result.append(PrevisionJour(
+            zone=zone_map.get(c.zone_id, "?"),
+            jour=c.jour,
+            tmin=c.tmin,
+            tmax=c.tmax,
+            pluie=c.pluie,
+            uv=c.uv,
+            risques=c.risques
+        ))
 
     return result
 

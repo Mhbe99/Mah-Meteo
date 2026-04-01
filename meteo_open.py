@@ -414,6 +414,42 @@ for zone, coord in TOUTES_ZONES.items():
                 "risk": risque
             })
 
+# 📤 ENVOYER LES PRÉVISIONS À RENDER
+def post_previsions_to_render():
+    """Envoie toutes les prévisions en un seul appel POST."""
+    try:
+        token = get_jwt_token()
+        if not token:
+            return
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        payload = []
+        for zone_name, jours in forecast_data.items():
+            for j in jours[:5]:
+                payload.append({
+                    "zone_name": zone_name,
+                    "jour": j["jour"],
+                    "tmin": j["tmin"],
+                    "tmax": j["tmax"],
+                    "pluie": j["pluie"],
+                    "uv": j["uv"],
+                    "risques": j["risk"]
+                })
+        if payload:
+            r = requests.post(
+                f"{RENDER_URL}/api/previsions/add?client_id={CLIENT_ID}",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            if r.status_code == 200:
+                print(f"✅ {len(payload)} prévisions envoyées à Render")
+            else:
+                print(f"⚠️ Erreur envoi prévisions: {r.status_code} {r.text[:100]}")
+    except Exception as e:
+        print(f"⚠️ Erreur POST prévisions: {e}")
+
+post_previsions_to_render()
+
 from openpyxl import Workbook
 import os
 
