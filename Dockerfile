@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # Install Python dependencies
+# Cache bust: 2026-04-01 (force Render to not use Docker cache)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app code

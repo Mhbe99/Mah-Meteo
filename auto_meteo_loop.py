@@ -23,6 +23,14 @@ def run_rapport_hebdo():
         print("❌ Erreur pendant l'exécution du rapport.")
 
 if __name__ == "__main__":
+    # ⛔ ARRÊT AUTOMATIQUE — Tout tourne sur GitHub Actions / Render depuis le 1er avril 2026
+    DATE_ARRET = datetime.datetime(2026, 4, 1)
+    if datetime.datetime.now() >= DATE_ARRET:
+        print("⛔ ARRÊT: Depuis le 1er avril 2026, la boucle locale est désactivée.")
+        print("   → Tout tourne désormais via GitHub Actions (meteo-cron.yml) toutes les 22 min.")
+        print("   → Render héberge l'API et le dashboard.")
+        exit(0)
+
     rapport_envoye_semaine = None  # Flag pour éviter dupliquant le rapport
 
     while True:
@@ -34,7 +42,7 @@ if __name__ == "__main__":
             run_rapport_hebdo()
             rapport_envoye_semaine = semaine_courante
         
-        # Lancer la mise à jour météo toutes les 23 minutes
+        # Lancer la mise à jour météo toutes les 22 minutes
         run_script()
-print("[INFO] Attente 22 minutes avant la prochaine execution...\n")
-time.sleep(1320)  # 1320 secondes = 22 minutes
+        print("[INFO] Attente 22 minutes avant la prochaine execution...\n")
+        time.sleep(1320)  # 1320 secondes = 22 minutes

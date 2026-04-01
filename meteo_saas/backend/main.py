@@ -190,7 +190,30 @@ def add_meteo_snapshot(
     ).first()
 
     if not zone:
-        raise HTTPException(status_code=404, detail=f"Zone '{data.zone_name}' not found")
+        # Auto-créer la zone si elle existe dans clients.json
+        import json as _json
+        _json_path = os.path.join(os.path.dirname(__file__), "..", "data", "clients.json")
+        _coords = None
+        _zone_type = "voisin"
+        try:
+            with open(_json_path, "r", encoding="utf-8") as _f:
+                _clients = _json.load(_f)
+            for _c in _clients.get("clients", []):
+                for _st, _key in [("site", "sites"), ("voisin", "voisins")]:
+                    for _z in _c.get("zones", {}).get(_key, []):
+                        if _z["name"].lower() == data.zone_name.lower():
+                            _coords = (_z["lat"], _z["lon"])
+                            _zone_type = _st
+                            break
+        except Exception:
+            pass
+        if not _coords:
+            raise HTTPException(status_code=404, detail=f"Zone '{data.zone_name}' not found")
+        zone = Zone(client_id=client_id, name=data.zone_name, lat=_coords[0], lon=_coords[1], type=_zone_type)
+        db.add(zone)
+        db.commit()
+        db.refresh(zone)
+        print(f"[AUTO] Zone '{data.zone_name}' créée automatiquement")
 
     # Créer et sauvegarder le snapshot
     snapshot = MeteoSnapshot(

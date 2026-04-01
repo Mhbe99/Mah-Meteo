@@ -17,6 +17,58 @@ from dotenv import load_dotenv
 load_dotenv()
 TOMTOM_API_KEY = os.getenv("TOMTOM_API_KEY")
 
+# Cache local pour incidents TomTom (30min de TTL)
+TRAFIC_CACHE_FILE = "exports/trafic_cache.json"
+TRAFIC_CACHE_TTL = 30 * 60  # 30 minutes en secondes
+
+
+# ============ CACHE MANAGEMENT ============
+
+def load_trafic_cache():
+    """
+    Charge le cache des incidents TomTom s'il existe et n'est pas expiré.
+    Retourne (incidents_list, is_valid) où is_valid=True si cache < 30min.
+    """
+    try:
+        if not os.path.exists(TRAFIC_CACHE_FILE):
+            return None, False
+        
+        with open(TRAFIC_CACHE_FILE, "r", encoding="utf-8") as f:
+            cache_data = json.load(f)
+        
+        timestamp = cache_data.get("timestamp", 0)
+        age_sec = time.time() - timestamp
+        is_valid = age_sec < TRAFIC_CACHE_TTL
+        
+        incidents = cache_data.get("incidents", [])
+        
+        if is_valid:
+            print(f"[CACHE] ✅ Cache valide ({int(age_sec)}s / {TRAFIC_CACHE_TTL}s)")
+        else:
+            print(f"[CACHE] ⏰ Cache expiré ({int(age_sec)}s / {TRAFIC_CACHE_TTL}s) - sera utilisé en fallback")
+        
+        return incidents, is_valid
+    except Exception as e:
+        print(f"[CACHE] Erreur lecture cache: {e}")
+        return None, False
+
+
+def save_trafic_cache(incidents: list):
+    """
+    Sauvegarde les incidents TomTom dans le cache local.
+    """
+    try:
+        cache_data = {
+            "timestamp": time.time(),
+            "incidents": incidents
+        }
+        os.makedirs(os.path.dirname(TRAFIC_CACHE_FILE), exist_ok=True)
+        with open(TRAFIC_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+        print(f"[CACHE] 💾 Sauvegarde {len(incidents)} incident(s)")
+    except Exception as e:
+        print(f"[CACHE] Erreur sauvegarde cache: {e}")
+
 
 def get_icon(category: int) -> str:
     """
@@ -191,6 +243,20 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
         print("[WARNING] TOMTOM_API_KEY manquante dans .env")
         return {"incidents": [], "total": 0, "retard_max": 0, "zones_verifiees": 0}
 
+    # ============ VÉRIFIER LE CACHE D'ABORD ============
+    cached_incidents, cache_valid = load_trafic_cache()
+    if cache_valid and cached_incidents is not None:
+        # Cache valide (< 30min) — retourner sans appeler TomTom
+        retard_max = max([inc["delay_minutes"] for inc in cached_incidents], default=0) if cached_incidents else 0
+        return {
+            "incidents": cached_incidents,
+            "total": len(cached_incidents),
+            "retard_max": retard_max,
+            "zones_verifiees": 0  # 0 = données en cache
+        }
+
+    # ============ CACHE EXPIRÉ OU ABSENT — ESSAYER TOMTOM ============
+
     # MODE TEST — Retourne des incidents fictifs pour démo
     if test_mode:
         test_incidents = [
@@ -255,21 +321,16 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
                 lon_min = zone_lon - 0.39
                 lon_max = zone_lon + 0.39
 
-                # Appel TomTom API
-                url = (
-                    f"https://api.tomtom.com/traffic/services/5/incidentDetails"
-                    f"?key={TOMTOM_API_KEY}"
-                    f"&bbox={lon_min},{lat_min},{lon_max},{lat_max}"
-                    f"&fields={{incidents{{type,geometry{{coordinates}},"
-                    f"properties{{id,iconCategory,magnitudeOfDelay,"
-                    f"events{{description,code}},startTime,endTime,"
-                    f"from,to,length,delay,roadNumbers,timeValidity}}}}}}"
-                    f"&language=fr-FR"
-                    f"&categoryFilter=0,1,2,3,4,5,6,7,8,9,10,11,13,14"
-                    f"&timeValidityFilter=present"
-                )
+                # Appel TomTom API — Utiliser dict params pour bien encoder l'URL
+                url = "https://api.tomtom.com/traffic/services/5/incidentDetails"
+                params = {
+                    "key": TOMTOM_API_KEY,
+                    "bbox": f"{lon_min},{lat_min},{lon_max},{lat_max}",
+                    "language": "fr-FR",
+                    "timeValidity": "present"
+                }
 
-                r = requests.get(url, timeout=10)
+                r = requests.get(url, params=params, timeout=10)
                 r.raise_for_status()
                 data = r.json()
 
@@ -335,8 +396,14 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
                     }
 
             except requests.RequestException as e:
-                print(f"[TRAFIC] Erreur API zone {zone_name}: {e}")
-                continue
+                # Gestion spéciale pour erreur 403 (quota atteint)
+                if "403" in str(e):
+                    print(f"[TRAFIC] ⚠️ Quota TomTom atteint (Forbidden 403) - ARRÊT (fallback au cache)")
+                    # ARRÊTER complètement la boucle pour ne pas épuiser le quota
+                    break
+                else:
+                    print(f"[TRAFIC] Erreur API zone {zone_name}: {e}")
+                    continue
             except Exception as e:
                 print(f"[TRAFIC] Erreur parsing zone {zone_name}: {e}")
                 continue
@@ -362,6 +429,11 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
 
         print(f"[TRAFIC] {len(incidents_list)} incident(s) detecte(s) sur {len(zones)} zone(s)")
 
+        # ============ SAUVEGARDER TOUJOURS EN CACHE (même si vide) ============
+        save_trafic_cache(incidents_list)
+        
+        # Retourner les incidents (peut être vide)
+        retard_max = max((i["delay_minutes"] for i in incidents_list), default=0)
         return {
             "incidents": incidents_list,
             "total": len(incidents_list),
@@ -371,6 +443,11 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
 
     except Exception as e:
         print(f"[TRAFIC] Erreur critique: {e}")
+        # En case de crash total, essayer le cache
+        cached, _ = load_trafic_cache()
+        if cached:
+            print(f"[FALLBACK] 🆘 Erreur critique - utilisation du cache en dernier recours")
+            return {"incidents": cached, "total": len(cached), "retard_max": 0, "zones_verifiees": 0}
         return {"incidents": [], "total": 0, "retard_max": 0, "zones_verifiees": 0}
 
 

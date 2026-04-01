@@ -168,7 +168,29 @@ def init_clients_from_json(json_path):
             # Vérifier si le client existe déjà
             existing = db.query(Client).filter(Client.username == client_dict["username"]).first()
             if existing:
-                print(f"⚠️ Client {client_dict['username']} existe déjà")
+                # Sync zones manquantes pour le client existant
+                zones_data = client_dict.get("zones", {})
+                added = 0
+                for zone_type, zone_key in [("site", "sites"), ("voisin", "voisins")]:
+                    for z in zones_data.get(zone_key, []):
+                        zone_exists = db.query(Zone).filter(
+                            Zone.client_id == existing.id,
+                            Zone.name == z["name"]
+                        ).first()
+                        if not zone_exists:
+                            db.add(Zone(
+                                client_id=existing.id,
+                                name=z["name"],
+                                lat=z["lat"],
+                                lon=z["lon"],
+                                type=zone_type
+                            ))
+                            added += 1
+                if added:
+                    db.commit()
+                    print(f"✅ {added} zone(s) ajoutée(s) pour {client_dict['username']}")
+                else:
+                    print(f"⚠️ Client {client_dict['username']} existe déjà (zones à jour)")
                 continue
 
             # Créer le client
@@ -191,25 +213,39 @@ def init_clients_from_json(json_path):
             
             # Sites
             for site in zones_data.get("sites", []):
-                zone = Zone(
-                    client_id=client.id,
-                    name=site["name"],
-                    lat=site["lat"],
-                    lon=site["lon"],
-                    type="site"
-                )
-                db.add(zone)
+                # CORRECTION: Vérifier si la zone existe déjà pour éviter les doublons
+                zone_existante = db.query(Zone).filter(
+                    Zone.client_id == client.id,
+                    Zone.name == site["name"]
+                ).first()
+                
+                if not zone_existante:
+                    zone = Zone(
+                        client_id=client.id,
+                        name=site["name"],
+                        lat=site["lat"],
+                        lon=site["lon"],
+                        type="site"
+                    )
+                    db.add(zone)
 
             # Voisins
             for voisin in zones_data.get("voisins", []):
-                zone = Zone(
-                    client_id=client.id,
-                    name=voisin["name"],
-                    lat=voisin["lat"],
-                    lon=voisin["lon"],
-                    type="voisin"
-                )
-                db.add(zone)
+                # CORRECTION: Vérifier si la zone existe déjà pour éviter les doublons
+                zone_existante = db.query(Zone).filter(
+                    Zone.client_id == client.id,
+                    Zone.name == voisin["name"]
+                ).first()
+                
+                if not zone_existante:
+                    zone = Zone(
+                        client_id=client.id,
+                        name=voisin["name"],
+                        lat=voisin["lat"],
+                        lon=voisin["lon"],
+                        type="voisin"
+                    )
+                    db.add(zone)
 
             db.commit()
             print(f"✅ Client {client_dict['username']} créé avec {len(zones_data.get('sites', []))} sites + {len(zones_data.get('voisins', []))} voisins")

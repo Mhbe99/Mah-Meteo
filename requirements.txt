@@ -8,4 +8,6 @@ openpyxl==3.1.5
 pydantic==1.10.12
 passlib==1.7.4
 python-multipart==0.0.6
-bcrypt==4.1.1
+# FIX: Downgrader bcrypt de 4.1.1 → 4.0.1 pour éviter l'erreur 'bcrypt' has no attribute '__about__'
+# passlib 1.7.4 essaie de lire __about__ qui n'existe plus en 4.1.1+
+bcrypt==4.0.1

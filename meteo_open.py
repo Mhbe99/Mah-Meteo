@@ -1,9 +1,13 @@
+import sys
+import io
+# Fix encodage Windows (emojis dans les print)
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 import requests
 import datetime
 
 from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import smtplib
 import os
 import json
 import time
@@ -37,18 +41,20 @@ def get_jwt_token():
     """🔐 Récupère le JWT token pour l'authentification Render
     
     Priorité :
-    1. Appel /api/service/token sur Render (toujours frais)
+    1. Appel GET /api/service/token sur Render (toujours frais) ← FIX: GET au lieu de POST
     2. RENDER_API_TOKEN (env fallback)
     3. Génération via JWT_SECRET (local dev)
     """
-    # Priorité 1: Token frais depuis Render
+    # Priorité 1: Token frais depuis Render — FIX: Utiliser GET
     try:
         response = requests.get(
             f"{RENDER_URL}/api/service/token",
             timeout=5
         )
         if response.status_code == 200:
-            token = response.json().get("token")
+            # FIX: Extraire le token correctement (accepter "token" ou "access_token")
+            data = response.json()
+            token = data.get("token") or data.get("access_token")
             if token:
                 print("[✅ Token généré par Render]")
                 return token
@@ -77,9 +83,9 @@ def get_jwt_token():
 
 
 def post_to_render(zone_name: str, temp, wind, direction, precip, cloudcover, uv, risques, ciel):
-    """📤 Envoie les données à Render API si on est sur GitHub Actions"""
-    if not GITHUB_ACTIONS:
-        return  # On est en local, pas besoin d'envoyer
+    """📤 Envoie les données à Render API (s'exécute en local et sur GitHub Actions)"""
+    # CORRECTION 1er avril: Suppression condition GITHUB_ACTIONS
+    # La fonction doit s'exécuter toujours, pas seulement en CI/CD
     
     try:
         token = get_jwt_token()
@@ -200,7 +206,8 @@ VOISINS = {
     "Senlis": {"lat": 49.2079, "lon": 2.5849},
     "Montataire": {"lat": 49.2641, "lon": 2.4436},
     "Liancourt": {"lat": 49.3334, "lon": 2.4573},
-    "Chaumont-en-Vexin": {"lat": 49.2761, "lon": 1.8759}
+    "Chaumont-en-Vexin": {"lat": 49.2761, "lon": 1.8759},
+    "Formerie": {"lat": 49.65, "lon": 1.73}
 }
 
 TOUTES_ZONES = {**SITES, **VOISINS}
@@ -257,8 +264,7 @@ def save_to_saas_db(zone_name, temp, wind, direction, precip, cloudcover, uv, ri
         db.add(snapshot)
         db.commit()
         
-        # 📤 Envoyer aussi à Render si on est sur GitHub Actions
-        post_to_render(zone_name, temp, wind, direction, precip, cloudcover, uv, risques, ciel)
+        # 📤 Envoi à Render géré dans la boucle principale (plus de doublon ici)
         
         db.close()
     except Exception as e:

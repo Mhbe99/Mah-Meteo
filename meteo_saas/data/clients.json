@@ -23,7 +23,8 @@
           {"name": "Clermont", "lat": 49.3763, "lon": 2.4151},
           {"name": "Montataire", "lat": 49.2641, "lon": 2.4436},
           {"name": "Liancourt", "lat": 49.3334, "lon": 2.4573},
-          {"name": "Chaumont-en-Vexin", "lat": 49.2761, "lon": 1.8759}
+          {"name": "Chaumont-en-Vexin", "lat": 49.2761, "lon": 1.8759},
+          {"name": "Formerie", "lat": 49.65, "lon": 1.73}
         ]
       }
     }
