@@ -273,6 +273,39 @@
             background: #f39c12;
         }
 
+        /* AMÉLIORATION: Spinner de chargement */
+        .loading-spinner {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+
+        .spinner {
+            display: inline-block;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1c4f82;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* AMÉLIORATION: Heure de dernière MAJ */
+        .last-update {
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+            padding: 8px 16px;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 8px;
+        }
+
         /* MAIN CONTENT */
         .main-content {
             flex: 1;
@@ -592,6 +625,17 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes slideIn {
+            0% { 
+                transform: translateX(100%); 
+                opacity: 0;
+            }
+            100% { 
+                transform: translateX(0); 
+                opacity: 1;
+            }
+        }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .container {
@@ -817,6 +861,28 @@
     let map = null;
     let markers = [];
 
+    // ============ NOTIFICATIONS ============
+    function showNotif(message) {
+        console.log("📢 Notif:", message);
+        // Optionnel: Afficher une toast/notification visuelle
+        const notifEl = document.createElement("div");
+        notifEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1c4f82;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        `;
+        notifEl.textContent = message;
+        document.body.appendChild(notifEl);
+        setTimeout(() => notifEl.remove(), 3000);
+    }
+
     // ============ LOGIN ============
     document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -888,6 +954,13 @@
     async function refreshData() {
         try {
             showNotif("🔄 Actualisation en cours...");
+            
+            // AMÉLIORATION: Montrer les spinners de chargement
+            const sitesTableBody = document.getElementById("sites-table").querySelector("tbody");
+            const voisinsTableBody = document.getElementById("voisins-table").querySelector("tbody");
+            sitesTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>⏳ Chargement des données...</p></div></td></tr>`;
+            voisinsTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>⏳ Chargement des données...</p></div></td></tr>`;
+            
             const meteo = await fetchData("meteo");
             const previsions = await fetchData("previsions");
             const alertes = await fetchData("alertes");
@@ -902,6 +975,8 @@
             updateAlertesTab(alertes);
             
             showNotif("✅ Données actualisées");
+            
+            // AMÉLIORATION: Mettre à jour l'heure de dernière MAJ
             const lastUpdateEl = document.getElementById("lastUpdate");
             if (lastUpdateEl) {
                 lastUpdateEl.textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR");
@@ -914,7 +989,22 @@
 
     // ============ UI UPDATES ============
     function updateMeteoTab(meteo) {
-        if (!meteo) return;
+        // AMÉLIORATION: Fallback si données vides
+        if (!meteo || meteo.length === 0) {
+            document.getElementById("sites-table").querySelector("tbody").innerHTML = `
+                <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">
+                    ⚠️ Données en cours de collecte...
+                    Prochaine mise à jour dans quelques minutes.
+                </td></tr>
+            `;
+            document.getElementById("voisins-table").querySelector("tbody").innerHTML = `
+                <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">
+                    ⚠️ Données en cours de collecte...
+                    Prochaine mise à jour dans quelques minutes.
+                </td></tr>
+            `;
+            return;
+        }
 
         let maxTemp = -Infinity;
         let maxWind = 0;
@@ -923,21 +1013,35 @@
 
         const sites = [], voisins = [];
         
+        // DEBUG: Afficher la première zone pour vérifier les noms de champs de l'API
+        if (meteo.length > 0) {
+            console.log('[DEBUG] Première zone reçue:', JSON.stringify(meteo[0], null, 2));
+        }
+        
         meteo.forEach(zone => {
-            if (zone.temp) maxTemp = Math.max(maxTemp, zone.temp);
-            if (zone.wind) maxWind = Math.max(maxWind, zone.wind);
-            maxRain = Math.max(maxRain, parseFloat(zone.ciel) || 0);
+            // Utilise les bons noms de champs de l'API (avec fallback si ancien format)
+            const temp = zone.temp ?? zone.temperature;
+            const wind = zone.wind ?? zone.windspeed;
+            const direction = zone.direction ?? zone.wind_direction;
+            const ciel = zone.ciel || "☁️";
+            const rain = zone.precipitation ?? zone.rain ?? 0;
+            
+            // CORRECTION: Utiliser ?? et vérifier que la valeur n'est pas null/undefined (pas falsy)
+            // Cela évite les problèmes avec temp=0, wind=0, etc.
+            if (temp != null) maxTemp = Math.max(maxTemp, parseFloat(temp) || 0);
+            if (wind != null) maxWind = Math.max(maxWind, parseFloat(wind) || 0);
+            if (rain != null) maxRain = Math.max(maxRain, parseFloat(rain) || 0);
             if (zone.risques && !zone.risques.includes("✅")) alertCount++;
 
             const row = `
                 <tr>
-                    <td >${zone.name}</td>
-                    <td>${zone.ciel || "?"}</td>
-                    <td>${zone.temp ? zone.temp + "°" : "?"}</td>
-                    <td>${zone.wind ? zone.wind + " km/h" : "?"}</td>
-                    <td>${zone.direction || "?"}</td>
-                    <td>0 mm</td>
-                    <td>-</td>
+                    <td>${zone.name}</td>
+                    <td>${ciel}</td>
+                    <td>${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</td>
+                    <td>${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</td>
+                    <td>${direction || "?"}</td>
+                    <td>${rain != null ? parseFloat(rain).toFixed(1) + " mm" : "? mm"}</td>
+                    <td>${(zone.uv_index ?? zone.uv) != null ? parseFloat(zone.uv_index ?? zone.uv).toFixed(1) : "-"}</td>
                     <td><span class="risk-badge ${zone.risques?.includes("✅") ? "ok" : ""}">${zone.risques || "RAS"}</span></td>
                 </tr>
             `;
@@ -946,12 +1050,19 @@
             else voisins.push(row);
         });
 
-        document.getElementById("sites-table").querySelector("tbody").innerHTML = sites.join("");
-        document.getElementById("voisins-table").querySelector("tbody").innerHTML = voisins.join("");
+        // AMÉLIORATION: Ajouter l'heure de dernière MAJ sous chaque tableau
+        const lastUpdateTime = new Date().toLocaleTimeString("fr-FR", {hour: '2-digit', minute: '2-digit'});
+        
+        const sitesContent = sites.join("") + `<tr><td colspan="8"><div class="last-update">🕒 Dernière mise à jour: ${lastUpdateTime}</div></td></tr>`;
+        const voisinsContent = voisins.join("") + `<tr><td colspan="8"><div class="last-update">🕒 Dernière mise à jour: ${lastUpdateTime}</div></td></tr>`;
 
-        document.getElementById("kpi-temp").textContent = maxTemp !== -Infinity ? maxTemp.toFixed(1) : "--";
-        document.getElementById("kpi-wind").textContent = maxWind.toFixed(0);
-        document.getElementById("kpi-rain").textContent = maxRain.toFixed(1);
+        document.getElementById("sites-table").querySelector("tbody").innerHTML = sitesContent;
+        document.getElementById("voisins-table").querySelector("tbody").innerHTML = voisinsContent;
+
+        // CORRECTION: Afficher les KPIs avec les bonnes valeurs (utiliser ?? pour éviter -Infinity)
+        document.getElementById("kpi-temp").textContent = isFinite(maxTemp) ? maxTemp.toFixed(1) + ' °C' : '--';
+        document.getElementById("kpi-wind").textContent = maxWind !== 0 ? maxWind.toFixed(0) + ' km/h' : '-- km/h';
+        document.getElementById("kpi-rain").textContent = maxRain !== 0 ? maxRain.toFixed(1) + ' mm' : '-- mm';
         document.getElementById("kpi-alerts").textContent = alertCount;
     }
 
@@ -962,12 +1073,18 @@
         let html = "";
         
         sites.forEach(z => {
+            // CORRECTION: Utiliser les bons noms de champs API avec ?? pour fallback
+            const temp = z.temp ?? z.temperature;
+            const wind = z.wind ?? z.windspeed;
+            const precip = z.precipitation ?? z.rain ?? 0;
+            
             html += `
                 <div class="sidebar-card">
                     <div class="zone-name">${z.name}</div>
                     <div class="zone-meta">
-                        <span>🌡️ ${z.temp ? z.temp + "°" : "?"}</span>
-                        <span>💨 ${z.wind ? z.wind + " km/h" : "?"}</span>
+                        <span>🌡️ ${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</span>
+                        <span>💨 ${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</span>
+                        <span>☔ ${precip != null ? parseFloat(precip).toFixed(1) + " mm" : "? mm"}</span>
                     </div>
                 </div>
             `;
@@ -1027,10 +1144,11 @@
             const key = zone.name.toLowerCase();
             const forecast = forecastMap[key] || {};
 
+            // CORRECTION: Utiliser les bons noms de champs API (temp, wind, direction)
             const popupContent = `<div style='font-family:sans-serif;padding:8px;min-width:180px;font-size:12px'>
                 <b>${zone.name}</b><br>
-                🌡️ Actuel : ${zone.temp ? zone.temp + '°C' : '?'}<br>
-                💨 Vent : ${zone.wind ? zone.wind + ' km/h' : '?'} (${zone.direction || '?'})<br>
+                🌡️ Actuel : ${zone.temp ? zone.temp.toFixed(1) + '°C' : '?'}<br>
+                💨 Vent : ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} (${zone.direction || '?'})<br>
                 ${zone.ciel || '?'}<br>
                 🕒 MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}<br><br>
                 📆 Prévisions du jour :<br>
@@ -1126,12 +1244,15 @@
 
             let daysHtml = "";
             days.forEach(d => {
-                const weatherIcon = getWeatherIcon(d.risques, parseFloat(d.pluie) || 0, d.uv || 0);
+                // CORRECTION: Utiliser ?? pour les prévisions et vérifier que les valeurs ne sont pas null
+                const pluie = d.precipitation ?? d.rain ?? d.pluie ?? 0;
+                const uv = d.uv_index ?? d.uv ?? 0;
+                const weatherIcon = getWeatherIcon(d.risques, parseFloat(pluie) || 0, uv || 0);
                 const riskClass = getRiskClass(d.risques);
                 const tempMin = parseFloat(d.tmin) || 0;
                 const tempMax = parseFloat(d.tmax) || 0;
-                const pluie = parseFloat(d.pluie) || 0;
-                const uv = d.uv || 0;
+                const pluieVal = parseFloat(pluie) || 0;
+                const uvVal = parseFloat(uv) || 0;
 
                 daysHtml += `
                     <div class="forecast-day">
@@ -1142,8 +1263,8 @@
                             <span class="sep">/</span>
                             <span class="tmin">${tempMin.toFixed(0)}°</span>
                         </div>
-                        <div class="day-rain">💧 ${pluie.toFixed(1)} mm</div>
-                        <div class="day-uv">☀️ ${uv.toFixed(1)}</div>
+                        <div class="day-rain">💧 ${pluieVal.toFixed(1)} mm</div>
+                        <div class="day-uv">☀️ ${uvVal.toFixed(1)}</div>
                         <div class="day-risk ${riskClass}">${d.risques || '✅'}</div>
                     </div>
                 `;
