@@ -1245,6 +1245,14 @@
         loadDemoData();
     }
 
+    // ============ DIRECTION → EMOJI ============
+    function dirEmoji(dir) {
+        if (!dir) return '';
+        const d = dir.toUpperCase().trim();
+        const map = { 'N': '⬆️', 'NNE': '↗️', 'NE': '↗️', 'ENE': '↗️', 'E': '➡️', 'ESE': '↘️', 'SE': '↘️', 'SSE': '↘️', 'S': '⬇️', 'SSO': '↙️', 'SO': '↙️', 'OSO': '↙️', 'O': '⬅️', 'ONO': '↖️', 'NO': '↖️', 'NNO': '↖️' };
+        return map[d] || '';
+    }
+
     // ============ CIEL → EMOJI ============
     function cielEmoji(ciel) {
         if (!ciel) return '☁️';
@@ -1446,7 +1454,7 @@
                     <td style="font-size:18px;text-align:center" title="${ciel}">${cielEmoji(ciel)}</td>
                     <td>${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</td>
                     <td>${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</td>
-                    <td>${direction || "?"}</td>
+                    <td>${direction ? dirEmoji(direction) + ' ' + direction : "?"}</td>
                     <td>${rain != null ? parseFloat(rain).toFixed(1) + " mm" : "? mm"}</td>
                     <td>${(zone.uv_index ?? zone.uv) != null ? parseFloat(zone.uv_index ?? zone.uv).toFixed(1) : "-"}</td>
                     <td><span class="risk-badge ${zone.risques?.includes("✅") || zone.risques?.includes("RAS") ? "ok" : ""}">${zone.risques || "RAS"}</span></td>
@@ -1521,7 +1529,7 @@
             const popupContent = `<div style='font-family:IBM Plex Sans,sans-serif;padding:10px;min-width:200px;font-size:12px;line-height:1.6'>
                 <b style="font-size:13px">${zone.name}</b> <span style="color:#a0aec0;font-size:11px">${isSite ? '(site)' : '(voisin)'}</span><br>
                 <span style="color:#718096">Temp :</span> ${zone.temp ? zone.temp.toFixed(1) + '°C' : '?'}<br>
-                <span style="color:#718096">Vent :</span> ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} (${zone.direction || '?'})<br>
+                <span style="color:#718096">Vent :</span> ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} ${dirEmoji(zone.direction)} ${zone.direction || '?'}<br>
                 <span style="color:#718096">Ciel :</span> ${cielEmoji(zone.ciel)} ${zone.ciel || '?'}<br>
                 <span style="color:#a0aec0;font-size:11px">MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}</span><br>
                 <hr style="border:none;border-top:1px solid #e2e8f0;margin:6px 0">
@@ -1568,12 +1576,15 @@
     }
 
     function getWeatherIcon(risques, pluie, uv) {
-        if (risques && risques.includes("Verglas")) return '<span style="color:#3182ce;font-weight:600">GEL</span>';
-        if (pluie > 5) return '<span style="color:#2b6cb0;font-weight:600">PLUIE</span>';
-        if (pluie > 0) return '<span style="color:#4299e1;font-weight:500">pluie</span>';
-        if (risques && risques.includes("Vent")) return '<span style="color:#d69e2e;font-weight:600">VENT</span>';
-        if (uv >= 6) return '<span style="color:#c53030;font-weight:600">UV+</span>';
-        return '<span style="color:#38a169">OK</span>';
+        if (risques && risques.includes("Verglas")) return '🧊';
+        if (risques && risques.includes("Neige")) return '🌨️';
+        if (risques && risques.includes("Orage")) return '⛈️';
+        if (pluie > 5) return '🌧️';
+        if (pluie > 0) return '🌦️';
+        if (risques && risques.includes("Vent")) return '💨';
+        if (uv >= 6) return '☀️';
+        if (risques && risques.includes("Brouillard")) return '🌫️';
+        return '✅';
     }
 
     function getRiskClass(risques) {
@@ -1631,14 +1642,14 @@
                 daysHtml += `
                     <div class="forecast-day">
                         <div class="day-name">${d.jour.substring(0, 3)}</div>
-                        <div class="day-icon">${weatherIcon}</div>
+                        <div class="day-icon" style="font-size:24px">${weatherIcon}</div>
                         <div class="day-temps">
                             <span class="tmax">${tempMax.toFixed(0)}°</span>
                             <span class="sep">/</span>
                             <span class="tmin">${tempMin.toFixed(0)}°</span>
                         </div>
-                        <div class="day-rain">${pluieVal.toFixed(1)} mm</div>
-                        <div class="day-uv">UV ${uvVal.toFixed(1)}</div>
+                        <div class="day-rain">${pluieVal > 0 ? '🌧️' : '—'} ${pluieVal.toFixed(1)} mm</div>
+                        <div class="day-uv">${uvVal >= 6 ? '☀️' : uvVal >= 3 ? '🌤️' : '☁️'} UV ${uvVal.toFixed(1)}</div>
                         <div class="day-risk ${riskClass}">${d.risques || 'RAS'}</div>
                     </div>
                 `;
