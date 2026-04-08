@@ -1292,12 +1292,9 @@
         loadDemoData();
     }
 
-    // ============ DIRECTION → EMOJI ============
+    // ============ DIRECTION → BOUSSOLE ============
     function dirEmoji(dir) {
-        if (!dir) return '';
-        const d = dir.toUpperCase().trim();
-        const map = { 'N': '⬆️', 'NNE': '↗️', 'NE': '↗️', 'ENE': '↗️', 'E': '➡️', 'ESE': '↘️', 'SE': '↘️', 'SSE': '↘️', 'S': '⬇️', 'SSO': '↙️', 'SO': '↙️', 'OSO': '↙️', 'O': '⬅️', 'ONO': '↖️', 'NO': '↖️', 'NNO': '↖️' };
-        return map[d] || '';
+        return dir ? '🧭' : '';
     }
 
     // ============ CIEL → EMOJI ============
@@ -1636,7 +1633,7 @@
         if (risques && risques.includes("Vent")) return '💨';
         if (uv >= 6) return '☀️';
         if (risques && risques.includes("Brouillard")) return '🌫️';
-        return '✅';
+        return '—';
     }
 
     function getRiskClass(risques) {
@@ -2322,10 +2319,11 @@
                 return;
             }
 
-            // Index météo par nom de ville (lowercase)
+            // Index météo par nom de ville (lowercase, sans emojis)
             const meteoIndex = {};
             (_cachedMeteo || []).forEach(z => {
-                meteoIndex[z.name.toLowerCase()] = z;
+                const cleanName = z.name.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}]/gu, '').trim().toLowerCase();
+                meteoIndex[cleanName] = z;
             });
 
             // Extraire incidents trafic
