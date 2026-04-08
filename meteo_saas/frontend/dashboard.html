@@ -451,6 +451,10 @@
             color: white;
             font-size: 11px;
             font-weight: 600;
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .risk-badge.ok {
@@ -1073,20 +1077,6 @@
                         <tbody></tbody>
                     </table>
                 </div>
-
-                <div class="table-container">
-                    <div class="table-title">Historique des alertes (30 dernières)</div>
-                    <table id="alertes-table">
-                        <thead>
-                            <th>Date/Heure</th>
-                            <th>Zone</th>
-                            <th>Type</th>
-                            <th>Valeur</th>
-                            <th>Message</th>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
             </div>
 
             <!-- TAB 4: TOURNÉES -->
@@ -1279,7 +1269,6 @@
         updateMapTab(demoMeteo, demoPrevisions);
         updatePrevisionTab(demoPrevisions);
         updateTraficTab(demoTrafic);
-        updateAlertesTab(demoAlertes);
         if (window.refreshTournees) window.refreshTournees();
 
         showNotif("Mode démo activé — données fictives chargées");
@@ -1434,7 +1423,7 @@
             updateMapTab(meteo, previsions);
             updatePrevisionTab(previsions);
             updateTraficTab(trafic);
-            updateAlertesTab(alertes);
+            updateTraficTab(trafic);
             if (window.refreshTournees) window.refreshTournees();
             
             showNotif("Données actualisées");
@@ -1811,29 +1800,6 @@
                 }
             });
         }
-    }
-
-    function updateAlertesTab(alertes) {
-        if (!alertes || alertes.length === 0) {
-            document.getElementById("alertes-table").querySelector("tbody").innerHTML = '<tr><td colspan="5" class="no-data">Aucune alerte</td></tr>';
-            return;
-        }
-
-        let html = "";
-        alertes.forEach(a => {
-            const time = new Date(a.timestamp).toLocaleString("fr-FR");
-            html += `
-                <tr>
-                    <td>${time}</td>
-                    <td>${a.zone_name}</td>
-                    <td>${a.type_alerte}</td>
-                    <td>${a.valeur}</td>
-                    <td>${a.message}</td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("alertes-table").querySelector("tbody").innerHTML = html;
     }
 
     // ============ TAB SWITCHING ============
@@ -2452,6 +2418,9 @@
             _villes = [];
             _renderSelectedDestinations();
             document.getElementById('t-date').valueAsDate = new Date();
+            // Heure par défaut = heure actuelle
+            const now = new Date();
+            document.getElementById('t-heure').value = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
         }
 
         // ======================================================

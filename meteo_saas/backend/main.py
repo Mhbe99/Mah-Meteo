@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from typing import Optional
 from .clients import get_meteo_actuelle, get_previsions, get_alertes, get_zones
 from .trafic import get_incidents
+from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert
 
 load_dotenv()
 
@@ -329,6 +330,31 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
             risques_actifs.append(f"{zone_name}: {risques}")
 
     alerte_combinee = get_alerte_combinee(incidents_list, risques_actifs)
+
+    # --- ENVOI ALERTES PAR EMAIL ---
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if client and client.email:
+        # Alertes météo
+        alertes_email = []
+        for zone in meteo:
+            risques = getattr(zone, "risques", None)
+            if risques and "RAS" not in risques:
+                alertes_email.append({
+                    "zone": getattr(zone, "name", "?"),
+                    "type": risques.split("(")[0].strip() if "(" in risques else risques,
+                    "valeur": risques,
+                    "message": f"Risque détecté sur {getattr(zone, 'name', '?')}"
+                })
+        if alertes_email:
+            send_meteo_alert(client.email, client.company_name, alertes_email)
+
+        # Alertes trafic (incidents critiques)
+        if incidents_list:
+            send_trafic_alert(client.email, client.company_name, incidents_list)
+
+        # Alerte combinée
+        if alerte_combinee and alerte_combinee.get("message"):
+            send_combined_alert(client.email, client.company_name, alerte_combinee["message"])
 
     return {
         "incidents": incidents_list,
