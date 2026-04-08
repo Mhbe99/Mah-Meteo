@@ -596,6 +596,45 @@
             color: #c0392b;
         }
 
+        /* TOURNÉES TAGS */
+        .ville-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #e8f0f8;
+            color: #1c4f82;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .ville-tag .remove-tag {
+            cursor: pointer;
+            font-size: 14px;
+            color: #999;
+            margin-left: 2px;
+        }
+
+        .ville-tag .remove-tag:hover {
+            color: #e74c3c;
+        }
+
+        .btn-delete-tournee {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .btn-delete-tournee:hover {
+            background: #c0392b;
+        }
+
         /* NO DATA MESSAGE */
         .no-data {
             text-align: center;
@@ -725,6 +764,7 @@
                 <button class="tab-btn" onclick="switchTab(2)">🔮 Prévisions</button>
                 <button class="tab-btn" onclick="switchTab(3)">🚗 Trafic</button>
                 <button class="tab-btn" onclick="switchTab(4)">📋 Alertes</button>
+                <button class="tab-btn" onclick="switchTab(5)">🚐 Tournées</button>
             </div>
 
             <!-- TAB 1: TEMPS RÉEL -->
@@ -842,6 +882,81 @@
                             <th>Type</th>
                             <th>Valeur</th>
                             <th>Message</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 6: TOURNÉES -->
+            <div class="tab-content" id="panel-tournees">
+                <!-- Stats rapides -->
+                <div class="kpi-grid tournees-stats">
+                    <div class="kpi-box">
+                        <div class="kpi-label">Total Tournées</div>
+                        <div class="kpi-value" id="stat-total">0</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Aujourd'hui</div>
+                        <div class="kpi-value" id="stat-today">0</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-label">Villes couvertes</div>
+                        <div class="kpi-value" id="stat-villes">0</div>
+                    </div>
+                </div>
+
+                <!-- Formulaire d'ajout -->
+                <div class="table-container" style="margin-bottom:20px;">
+                    <div class="table-title">➕ Nouvelle tournée</div>
+                    <div style="padding:20px;">
+                        <form id="form-tournee" autocomplete="off">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                <div class="form-group" style="margin-bottom:0">
+                                    <label>Prénom</label>
+                                    <input type="text" id="t-prenom" required placeholder="Jean">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0">
+                                    <label>Nom</label>
+                                    <input type="text" id="t-nom" required placeholder="Dupont">
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                <div class="form-group" style="margin-bottom:0">
+                                    <label>Date</label>
+                                    <input type="date" id="t-date" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0">
+                                    <label>Heure départ</label>
+                                    <input type="time" id="t-heure" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Villes de passage</label>
+                                <div id="tags-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid #ddd;border-radius:6px;min-height:42px;align-items:center;cursor:text;" onclick="document.getElementById('t-ville-input').focus()">
+                                    <input type="text" id="t-ville-input" placeholder="Taper une ville + Entrée" style="border:none;outline:none;flex:1;min-width:120px;font-size:14px;padding:4px;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Notes</label>
+                                <textarea id="t-notes" rows="2" placeholder="Remarques éventuelles..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;resize:vertical;"></textarea>
+                            </div>
+                            <button type="submit" class="login-btn" style="background:#27ae60;">✅ Enregistrer la tournée</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Liste des tournées -->
+                <div class="table-container">
+                    <div class="table-title">📋 Tournées enregistrées</div>
+                    <table id="tournees-table">
+                        <thead>
+                            <th>Date</th>
+                            <th>Heure</th>
+                            <th>Chauffeur</th>
+                            <th>Villes</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -1406,6 +1521,191 @@
         COMPANY_NAME = localStorage.getItem("company_name");
         showDashboard();
     }
+
+    // ============ MODULE TOURNÉES (IIFE) ============
+    (function () {
+        'use strict';
+
+        // --- Clé localStorage par client ---
+        function _storageKey() {
+            return 'tournees_' + (CLIENT_ID || 'default');
+        }
+
+        // --- Persistence ---
+        function _load() {
+            try {
+                return JSON.parse(localStorage.getItem(_storageKey())) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function _save(data) {
+            localStorage.setItem(_storageKey(), JSON.stringify(data));
+        }
+
+        // --- Sécurité : échapper le HTML ---
+        function _esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        // --- Gestion des tags (villes) ---
+        let _villes = [];
+
+        function _addTag(ville) {
+            ville = ville.trim();
+            if (!ville || _villes.includes(ville)) return;
+            _villes.push(ville);
+            _renderTags();
+        }
+
+        function _removeTag(index) {
+            _villes.splice(index, 1);
+            _renderTags();
+        }
+
+        function _renderTags() {
+            const container = document.getElementById('tags-container');
+            const input = document.getElementById('t-ville-input');
+            // Supprimer les anciens tags
+            container.querySelectorAll('.ville-tag').forEach(t => t.remove());
+            // Recréer les tags avant l'input
+            _villes.forEach((v, i) => {
+                const tag = document.createElement('span');
+                tag.className = 'ville-tag';
+                tag.innerHTML = _esc(v) + ' <span class="remove-tag" data-idx="' + i + '">&times;</span>';
+                container.insertBefore(tag, input);
+            });
+        }
+
+        // Événement sur le conteneur de tags (délégation)
+        document.getElementById('tags-container').addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-tag')) {
+                _removeTag(parseInt(e.target.dataset.idx));
+            }
+        });
+
+        // Événement sur l'input pour ajouter un tag
+        document.getElementById('t-ville-input').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                _addTag(this.value);
+                this.value = '';
+            }
+        });
+
+        // --- Ajouter une tournée ---
+        function ajouterTournee(prenom, nom, date, heure, villes, notes) {
+            const tournees = _load();
+            tournees.push({
+                id: Date.now(),
+                prenom: prenom,
+                nom: nom,
+                date: date,
+                heure: heure,
+                villes: villes,
+                notes: notes
+            });
+            _save(tournees);
+            _renderTournees();
+            _updateStats();
+        }
+
+        // --- Supprimer une tournée ---
+        function supprimerTournee(id) {
+            let tournees = _load();
+            tournees = tournees.filter(t => t.id !== id);
+            _save(tournees);
+            _renderTournees();
+            _updateStats();
+        }
+
+        // --- Rendu de la liste ---
+        function _renderTournees() {
+            const tbody = document.getElementById('tournees-table').querySelector('tbody');
+            const tournees = _load();
+
+            if (tournees.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucune tournée enregistrée</td></tr>';
+                return;
+            }
+
+            // Trier par date décroissante puis heure
+            tournees.sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure));
+
+            let html = '';
+            tournees.forEach(t => {
+                const villesTags = t.villes.map(v => '<span class="ville-tag">' + _esc(v) + '</span>').join(' ');
+                html += '<tr>'
+                    + '<td>' + _esc(t.date) + '</td>'
+                    + '<td>' + _esc(t.heure) + '</td>'
+                    + '<td>' + _esc(t.prenom) + ' ' + _esc(t.nom) + '</td>'
+                    + '<td>' + villesTags + '</td>'
+                    + '<td>' + _esc(t.notes || '') + '</td>'
+                    + '<td><button class="btn-delete-tournee" data-id="' + t.id + '">Supprimer</button></td>'
+                    + '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        // Événement suppression (délégation)
+        document.getElementById('tournees-table').addEventListener('click', function (e) {
+            if (e.target.classList.contains('btn-delete-tournee')) {
+                const id = parseInt(e.target.dataset.id);
+                if (confirm('Supprimer cette tournée ?')) {
+                    supprimerTournee(id);
+                }
+            }
+        });
+
+        // --- Mise à jour des stats ---
+        function _updateStats() {
+            const tournees = _load();
+            const today = new Date().toISOString().slice(0, 10);
+            const todayCount = tournees.filter(t => t.date === today).length;
+            const allVilles = new Set();
+            tournees.forEach(t => t.villes.forEach(v => allVilles.add(v)));
+
+            document.getElementById('stat-total').textContent = tournees.length;
+            document.getElementById('stat-today').textContent = todayCount;
+            document.getElementById('stat-villes').textContent = allVilles.size;
+        }
+
+        // --- Reset formulaire ---
+        function _resetForm() {
+            document.getElementById('form-tournee').reset();
+            _villes = [];
+            _renderTags();
+            // Pré-remplir la date du jour
+            document.getElementById('t-date').valueAsDate = new Date();
+        }
+
+        // --- Soumission du formulaire ---
+        document.getElementById('form-tournee').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const prenom = document.getElementById('t-prenom').value.trim();
+            const nom = document.getElementById('t-nom').value.trim();
+            const date = document.getElementById('t-date').value;
+            const heure = document.getElementById('t-heure').value;
+            const notes = document.getElementById('t-notes').value.trim();
+
+            if (_villes.length === 0) {
+                showNotif('⚠️ Ajoutez au moins une ville');
+                return;
+            }
+
+            ajouterTournee(prenom, nom, date, heure, [..._villes], notes);
+            _resetForm();
+            showNotif('✅ Tournée enregistrée');
+        });
+
+        // --- Init au chargement ---
+        _resetForm();
+        _renderTournees();
+        _updateStats();
+    })();
 </script>
 
 </body>
