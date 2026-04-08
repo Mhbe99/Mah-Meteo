@@ -908,6 +908,7 @@
             </div>
             <button type="submit" class="login-btn">Connexion</button>
         </form>
+        <button onclick="enterDemoMode()" style="margin-top:12px;width:100%;padding:10px;background:#e67e22;color:#fff;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer">Mode Démo (données fictives)</button>
     </div>
 </div>
 
@@ -917,6 +918,7 @@
         <div class="title"><svg style="width:22px;height:22px;display:inline-block;vertical-align:middle;margin-right:6px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="hSunG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#FFB81C"/><stop offset="100%" style="stop-color:#FF8C00"/></linearGradient></defs><circle cx="50" cy="40" r="28" fill="url(#hSunG)"/><g stroke="#FFB81C" stroke-width="3" stroke-linecap="round"><line x1="50" y1="5" x2="50" y2="15"/><line x1="50" y1="65" x2="50" y2="75"/><line x1="85" y1="40" x2="75" y2="40"/><line x1="25" y1="40" x2="15" y2="40"/><line x1="72" y1="18" x2="65" y2="11"/><line x1="35" y1="69" x2="28" y2="76"/></g><path d="M 25 65 Q 20 65 20 72 Q 20 80 28 82 L 72 82 Q 80 80 80 72 Q 80 65 75 65" fill="#ecf0f1" opacity="0.9"/></svg>Mah Météo</div>
         <div class="controls">
             <div class="company-badge" id="company-name">---</div>
+            <button class="refresh-btn" onclick="loadDemoData()" style="background:#e67e22;border-color:#d35400">Mode Démo</button>
             <button class="refresh-btn" onclick="refreshData()">Actualiser</button>
             <button class="logout-btn" onclick="logout()">Déconnexion</button>
         </div>
@@ -1136,6 +1138,94 @@
     let COMPANY_NAME = null;
     let map = null;
     let markers = [];
+
+    // ============ DONNÉES DÉMO ============
+    function loadDemoData() {
+        showNotif("Chargement des données de démonstration...");
+
+        // --- MÉTÉO (sites + voisins) ---
+        const demoMeteo = [
+            { name: "Le Meux", type: "site", lat: 49.3565, lon: 2.7286, temp: 14.2, wind: 22.5, direction: "SO", ciel: "Nuageux", precipitation: 1.2, uv_index: 3.1, risques: "Pluie légère" },
+            { name: "Clairoix", type: "site", lat: 49.4380, lon: 2.8310, temp: 13.8, wind: 18.3, direction: "O", ciel: "Couvert", precipitation: 0.0, uv_index: 2.8, risques: "RAS" },
+            { name: "Compiègne", type: "voisin", lat: 49.4178, lon: 2.8260, temp: 15.1, wind: 25.0, direction: "SO", ciel: "Averses", precipitation: 4.5, uv_index: 2.0, risques: "Pluie modérée" },
+            { name: "Creil", type: "voisin", lat: 49.2583, lon: 2.4833, temp: 14.7, wind: 19.8, direction: "O", ciel: "Partiellement nuageux", precipitation: 0.3, uv_index: 4.2, risques: "RAS" },
+            { name: "Beauvais", type: "voisin", lat: 49.4297, lon: 2.0833, temp: 12.9, wind: 31.2, direction: "NO", ciel: "Venteux", precipitation: 2.1, uv_index: 3.5, risques: "Vent fort (rafales 55 km/h)" },
+            { name: "Senlis", type: "voisin", lat: 49.2069, lon: 2.5856, temp: 15.5, wind: 14.1, direction: "S", ciel: "Éclaircies", precipitation: 0.0, uv_index: 5.8, risques: "UV modéré" },
+            { name: "Noyon", type: "voisin", lat: 49.5800, lon: 2.9994, temp: 13.3, wind: 20.4, direction: "O", ciel: "Couvert", precipitation: 3.8, uv_index: 1.9, risques: "Pluie modérée" },
+            { name: "Chantilly", type: "voisin", lat: 49.1944, lon: 2.4700, temp: 15.0, wind: 12.7, direction: "SE", ciel: "Dégagé", precipitation: 0.0, uv_index: 6.2, risques: "UV élevé" },
+            { name: "Pont-Sainte-Maxence", type: "voisin", lat: 49.3042, lon: 2.6042, temp: 14.4, wind: 16.5, direction: "O", ciel: "Nuageux", precipitation: 0.5, uv_index: 3.0, risques: "RAS" },
+            { name: "Clermont", type: "voisin", lat: 49.3797, lon: 2.4117, temp: 13.1, wind: 28.3, direction: "NO", ciel: "Venteux", precipitation: 1.0, uv_index: 2.6, risques: "Vent fort" }
+        ];
+
+        // --- PRÉVISIONS (J à J+4 pour chaque zone) ---
+        const jours = ['Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+        const demoPrevisions = [];
+        const zones = [
+            { zone: "Le Meux", base: { tmin: 8, tmax: 15, pluie: 1.2, uv: 3, risques: "Pluie légère" }},
+            { zone: "Clairoix", base: { tmin: 7, tmax: 14, pluie: 0, uv: 3, risques: "RAS" }},
+            { zone: "Compiègne", base: { tmin: 9, tmax: 16, pluie: 4.5, uv: 2, risques: "Pluie modérée" }},
+            { zone: "Creil", base: { tmin: 8, tmax: 15, pluie: 0.3, uv: 4, risques: "RAS" }},
+            { zone: "Beauvais", base: { tmin: 6, tmax: 13, pluie: 2.1, uv: 3, risques: "Vent fort" }},
+            { zone: "Senlis", base: { tmin: 9, tmax: 16, pluie: 0, uv: 6, risques: "UV modéré" }},
+            { zone: "Noyon", base: { tmin: 7, tmax: 14, pluie: 3.8, uv: 2, risques: "Pluie modérée" }},
+            { zone: "Chantilly", base: { tmin: 9, tmax: 16, pluie: 0, uv: 6, risques: "UV élevé" }}
+        ];
+        zones.forEach(z => {
+            jours.forEach((j, i) => {
+                demoPrevisions.push({
+                    zone: z.zone,
+                    jour: j + ' ' + (8 + i) + '/04',
+                    tmin: (z.base.tmin + Math.round(Math.random() * 3 - 1)).toFixed(0),
+                    tmax: (z.base.tmax + Math.round(Math.random() * 4 - 2)).toFixed(0),
+                    pluie: Math.max(0, z.base.pluie + (Math.random() * 3 - 1.5)).toFixed(1) + ' mm',
+                    uv: Math.max(0, z.base.uv + Math.round(Math.random() * 2 - 1)),
+                    risques: i < 2 ? z.base.risques : (Math.random() > 0.6 ? z.base.risques : 'RAS')
+                });
+            });
+        });
+
+        // --- TRAFIC (incidents variés) ---
+        const demoTrafic = {
+            incidents: [
+                { route: "A1 — Compiègne → Paris", description: "Accident — voie de droite bloquée", severity: "high", delay_minutes: 25, lat: 49.35, lon: 2.75 },
+                { route: "D932 — Creil → Senlis", description: "Travaux — rétrécissement chaussée", severity: "med", delay_minutes: 12, lat: 49.26, lon: 2.50 },
+                { route: "A26 — Beauvais → Noyon", description: "Ralentissement — bouchon 3 km", severity: "med", delay_minutes: 18, lat: 49.50, lon: 2.55 },
+                { route: "N31 — Compiègne → Rouen", description: "Véhicule en panne sur BAU", severity: "low", delay_minutes: 5, lat: 49.42, lon: 2.60 },
+                { route: "D200 — Le Meux → Pont-Ste-Maxence", description: "Route fermée — inondation", severity: "high", delay_minutes: 0, lat: 49.33, lon: 2.65 },
+                { route: "A1 — Senlis → Chantilly", description: "Congestion — heure de pointe", severity: "low", delay_minutes: 8, lat: 49.20, lon: 2.52 }
+            ],
+            alerte_combinee: {
+                message: "Attention : pluie modérée prévue à Compiègne + accident A1 = risque de retard important sur les tournées nord. Prévoir 20-30 min supplémentaires."
+            }
+        };
+
+        // --- ALERTES ---
+        const now = new Date();
+        const demoAlertes = [
+            { timestamp: new Date(now - 3600000).toISOString(), zone_name: "Le Meux", type_alerte: "Pluie", valeur: "1.2 mm/h", message: "Précipitations légères sur le site — visibilité réduite" },
+            { timestamp: new Date(now - 7200000).toISOString(), zone_name: "Beauvais", type_alerte: "Vent", valeur: "55 km/h", message: "Rafales de vent dépassant le seuil de 50 km/h — attention manoeuvres PL" },
+            { timestamp: new Date(now - 1800000).toISOString(), zone_name: "Compiègne", type_alerte: "Pluie", valeur: "4.5 mm/h", message: "Pluie modérée — risque d'aquaplaning sur A1" },
+            { timestamp: new Date(now - 900000).toISOString(), zone_name: "Chantilly", type_alerte: "UV", valeur: "6.2", message: "Indice UV élevé — protection recommandée pour le personnel extérieur" },
+            { timestamp: new Date(now - 5400000).toISOString(), zone_name: "Noyon", type_alerte: "Pluie", valeur: "3.8 mm/h", message: "Pluie persistante — vérifier drainage zones de chargement" },
+            { timestamp: new Date(now - 600000).toISOString(), zone_name: "A1 Compiègne", type_alerte: "Trafic", valeur: "+25 min", message: "Accident A1 — voie bloquée, retard estimé 25 min sur tournées sud" }
+        ];
+
+        // Injecter les données
+        updateMeteoTab(demoMeteo);
+        updateMapTab(demoMeteo, demoPrevisions);
+        updatePrevisionTab(demoPrevisions);
+        updateTraficTab(demoTrafic);
+        updateAlertesTab(demoAlertes);
+
+        showNotif("Mode démo activé — données fictives chargées");
+    }
+
+    function enterDemoMode() {
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("dashboard").style.display = "flex";
+        document.getElementById("company-name").textContent = "GEODIS — Le Meux (DÉMO)";
+        loadDemoData();
+    }
 
     // ============ NOTIFICATIONS ============
     function showNotif(message) {
