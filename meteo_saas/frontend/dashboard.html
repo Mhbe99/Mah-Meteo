@@ -214,85 +214,8 @@
         .container {
             display: flex;
             flex: 1;
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            width: 260px;
-            background: #fff;
-            border-right: 1px solid #dce1e8;
-            padding: 20px 16px;
-            overflow-y: auto;
-        }
-
-        .sidebar-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #4a5568;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .sidebar-section {
-            margin-bottom: 20px;
-        }
-
-        .sidebar-section-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: #a0aec0;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 10px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
-        }
-
-        .sidebar-card {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
-            font-size: 12px;
-        }
-
-        .sidebar-card .zone-name {
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 4px;
-            font-size: 13px;
-        }
-
-        .sidebar-card .zone-meta {
-            display: flex;
-            justify-content: space-between;
-            gap: 6px;
-            color: #718096;
-            font-size: 12px;
-        }
-
-        .sidebar-card .zone-meta span {
-            flex: 1;
-        }
-
-        .alert-badge {
-            display: inline-block;
-            background: #c53030;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-top: 4px;
-        }
-
-        .alert-badge.warning {
-            background: #d69e2e;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         /* Spinner de chargement */
@@ -334,6 +257,47 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+
+        /* PERSISTENT KPI BAR */
+        .kpi-bar {
+            display: flex;
+            gap: 0;
+            background: #fff;
+            border-bottom: 1px solid #dce1e8;
+            padding: 0;
+        }
+
+        .kpi-bar .kpi-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-right: 1px solid #edf2f7;
+        }
+
+        .kpi-bar .kpi-item:last-child {
+            border-right: none;
+        }
+
+        .kpi-bar .kpi-item .kpi-val {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .kpi-bar .kpi-item .kpi-meta {
+            font-size: 11px;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-weight: 600;
+        }
+
+        .kpi-bar .kpi-item.alert-active .kpi-val {
+            color: #c53030;
         }
 
         .tabs {
@@ -381,7 +345,7 @@
             display: block;
         }
 
-        /* KPIs */
+        /* KPIs (in-tab) */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -493,9 +457,47 @@
             background: #38a169;
         }
 
-        /* MAP */
+        /* OVERVIEW — SPLIT LAYOUT (carte + tableau) */
+        .overview-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .overview-split #map {
+            height: 420px;
+            border-radius: 4px;
+            border: 1px solid #dce1e8;
+        }
+
+        .overview-tables {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ALERT BADGE (for tab titles) */
+        .alert-badge {
+            display: inline-block;
+            background: #c53030;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-left: 4px;
+            min-width: 16px;
+            text-align: center;
+        }
+
+        .alert-badge.warning {
+            background: #d69e2e;
+        }
+
+        /* MAP standalone */
         #map {
-            height: 600px;
+            height: 420px;
             border-radius: 4px;
             border: 1px solid #dce1e8;
         }
@@ -841,20 +843,21 @@
 
         /* RESPONSIVE */
         @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
+            .kpi-bar {
+                flex-wrap: wrap;
             }
 
-            .sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid #dce1e8;
-                max-height: 140px;
-                display: flex;
-                gap: 16px;
-                overflow-x: auto;
-                overflow-y: hidden;
-                padding: 12px;
+            .kpi-bar .kpi-item {
+                flex: 1 1 50%;
+                padding: 8px 12px;
+            }
+
+            .overview-split {
+                grid-template-columns: 1fr;
+            }
+
+            .overview-split #map {
+                height: 300px;
             }
 
             .kpi-grid {
@@ -867,13 +870,13 @@
             }
 
             .tab-btn {
-                flex: 1 1 33%;
+                flex: 1 1 50%;
                 padding: 10px 8px;
                 font-size: 12px;
             }
 
             #map {
-                height: 400px;
+                height: 300px;
             }
         }
     </style>
@@ -911,13 +914,23 @@
     </header>
 
     <div class="container">
-        <!-- SIDEBAR -->
-        <div class="sidebar">
-            <div class="sidebar-title">Zones</div>
-            <div id="sidebar-zones"></div>
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">Alertes Actives</div>
-                <div id="sidebar-alerts"></div>
+        <!-- PERSISTENT KPI BAR -->
+        <div class="kpi-bar">
+            <div class="kpi-item">
+                <div class="kpi-val" id="kpi-temp">--</div>
+                <div class="kpi-meta">Temp. max</div>
+            </div>
+            <div class="kpi-item">
+                <div class="kpi-val" id="kpi-wind">--</div>
+                <div class="kpi-meta">Vent max</div>
+            </div>
+            <div class="kpi-item">
+                <div class="kpi-val" id="kpi-rain">--</div>
+                <div class="kpi-meta">Précip.</div>
+            </div>
+            <div class="kpi-item" id="kpi-alerts-box">
+                <div class="kpi-val" id="kpi-alerts">0</div>
+                <div class="kpi-meta">Alertes</div>
             </div>
         </div>
 
@@ -925,95 +938,69 @@
         <div class="main-content">
             <!-- TABS -->
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab(0)">Temps réel</button>
-                <button class="tab-btn" onclick="switchTab(1)">Carte</button>
-                <button class="tab-btn" onclick="switchTab(2)">Prévisions</button>
-                <button class="tab-btn" onclick="switchTab(3)">Trafic</button>
-                <button class="tab-btn" onclick="switchTab(4)">Alertes</button>
-                <button class="tab-btn" onclick="switchTab(5)">Tournées</button>
+                <button class="tab-btn active" onclick="switchTab(0)">Vue générale</button>
+                <button class="tab-btn" onclick="switchTab(1)">Prévisions</button>
+                <button class="tab-btn" onclick="switchTab(2)">Trafic & Alertes</button>
+                <button class="tab-btn" onclick="switchTab(3)">Tournées</button>
             </div>
 
-            <!-- TAB 1: TEMPS RÉEL -->
+            <!-- TAB 1: VUE GÉNÉRALE (Carte + Tableaux) -->
             <div class="tab-content active">
-                <div class="kpi-grid">
-                    <div class="kpi-box">
-                        <div class="kpi-label">Température Max</div>
-                        <div class="kpi-value" id="kpi-temp">--</div>
-                        <div class="kpi-unit">°C</div>
+                <div class="overview-split">
+                    <div id="map"></div>
+                    <div class="overview-tables">
+                        <div class="table-container">
+                            <div class="table-title">Sites GEODIS</div>
+                            <table id="sites-table">
+                                <thead>
+                                    <th>Zone</th>
+                                    <th>Ciel</th>
+                                    <th>Temp.</th>
+                                    <th>Vent</th>
+                                    <th>Dir.</th>
+                                    <th>Pluie</th>
+                                    <th>UV</th>
+                                    <th>Risques</th>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="table-container">
+                            <div class="table-title">Zones voisines</div>
+                            <table id="voisins-table">
+                                <thead>
+                                    <th>Zone</th>
+                                    <th>Ciel</th>
+                                    <th>Temp.</th>
+                                    <th>Vent</th>
+                                    <th>Dir.</th>
+                                    <th>Pluie</th>
+                                    <th>UV</th>
+                                    <th>Risques</th>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="kpi-box">
-                        <div class="kpi-label">Vent Max</div>
-                        <div class="kpi-value" id="kpi-wind">--</div>
-                        <div class="kpi-unit">km/h</div>
-                    </div>
-                    <div class="kpi-box">
-                        <div class="kpi-label">Précipitations</div>
-                        <div class="kpi-value" id="kpi-rain">--</div>
-                        <div class="kpi-unit">mm</div>
-                    </div>
-                    <div class="kpi-box">
-                        <div class="kpi-label">Alertes Actives</div>
-                        <div class="kpi-value" id="kpi-alerts">0</div>
-                        <div class="kpi-unit">détectées</div>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-title">Sites GEODIS</div>
-                    <table id="sites-table">
-                        <thead>
-                            <th>Zone</th>
-                            <th>Ciel</th>
-                            <th>Temp.</th>
-                            <th>Vent</th>
-                            <th>Dir.</th>
-                            <th>Pluie</th>
-                            <th>UV</th>
-                            <th>Risques</th>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-title">Zones voisines</div>
-                    <table id="voisins-table">
-                        <thead>
-                            <th>Zone</th>
-                            <th>Ciel</th>
-                            <th>Temp.</th>
-                            <th>Vent</th>
-                            <th>Dir.</th>
-                            <th>Pluie</th>
-                            <th>UV</th>
-                            <th>Risques</th>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
                 </div>
             </div>
 
-            <!-- TAB 2: CARTE -->
-            <div class="tab-content">
-                <div id="map"></div>
-            </div>
-
-            <!-- TAB 3: PRÉVISIONS -->
+            <!-- TAB 2: PRÉVISIONS -->
             <div class="tab-content">
                 <div class="forecast-grid" id="forecast-grid"></div>
             </div>
 
-            <!-- TAB 4: TRAFIC -->
+            <!-- TAB 3: TRAFIC & ALERTES -->
             <div class="tab-content">
                 <div id="alerte-combinee" style="display:none;margin-bottom:16px;"></div>
                 
-                <div class="kpi-grid">
+                <div class="kpi-grid" style="margin-bottom:16px;">
                     <div class="kpi-box">
-                        <div class="kpi-label">Incidents Actifs</div>
+                        <div class="kpi-label">Incidents actifs</div>
                         <div class="kpi-value" id="kpi-incidents">0</div>
                     </div>
                     <div class="kpi-box">
-                        <div class="kpi-label">Retard Max</div>
+                        <div class="kpi-label">Retard max</div>
                         <div class="kpi-value" id="kpi-delay">--</div>
                         <div class="kpi-unit">min</div>
                     </div>
@@ -1023,7 +1010,7 @@
                     </div>
                 </div>
 
-                <div class="table-container">
+                <div class="table-container" style="margin-bottom:16px;">
                     <div class="table-title">Incidents trafic</div>
                     <table id="trafic-table">
                         <thead>
@@ -1035,10 +1022,7 @@
                         <tbody></tbody>
                     </table>
                 </div>
-            </div>
 
-            <!-- TAB 5: ALERTES -->
-            <div class="tab-content">
                 <div class="table-container">
                     <div class="table-title">Historique des alertes (30 dernières)</div>
                     <table id="alertes-table">
@@ -1054,7 +1038,7 @@
                 </div>
             </div>
 
-            <!-- TAB 6: TOURNÉES -->
+            <!-- TAB 4: TOURNÉES -->
             <div class="tab-content" id="panel-tournees">
                 <!-- Stats rapides -->
                 <div class="kpi-grid tournees-stats">
@@ -1254,7 +1238,6 @@
             const zones = await fetchData("zones");
 
             updateMeteoTab(meteo);
-            updateSidebar(meteo, alertes);
             updateMapTab(meteo, previsions);
             updatePrevisionTab(previsions);
             updateTraficTab(trafic);
@@ -1346,47 +1329,13 @@
         document.getElementById("voisins-table").querySelector("tbody").innerHTML = voisinsContent;
 
         // CORRECTION: Afficher les KPIs avec les bonnes valeurs (utiliser ?? pour éviter -Infinity)
-        document.getElementById("kpi-temp").textContent = isFinite(maxTemp) ? maxTemp.toFixed(1) + ' °C' : '--';
-        document.getElementById("kpi-wind").textContent = maxWind !== 0 ? maxWind.toFixed(0) + ' km/h' : '-- km/h';
-        document.getElementById("kpi-rain").textContent = maxRain !== 0 ? maxRain.toFixed(1) + ' mm' : '-- mm';
+        document.getElementById("kpi-temp").textContent = isFinite(maxTemp) ? maxTemp.toFixed(1) + '°' : '--';
+        document.getElementById("kpi-wind").textContent = maxWind !== 0 ? maxWind.toFixed(0) + ' km/h' : '--';
+        document.getElementById("kpi-rain").textContent = maxRain !== 0 ? maxRain.toFixed(1) + ' mm' : '--';
         document.getElementById("kpi-alerts").textContent = alertCount;
-    }
-
-    function updateSidebar(meteo, alertes) {
-        if (!meteo) return;
-
-        const sites = meteo.filter(z => z.type === "site");
-        let html = "";
-        
-        sites.forEach(z => {
-            // CORRECTION: Utiliser les bons noms de champs API avec ?? pour fallback
-            const temp = z.temp ?? z.temperature;
-            const wind = z.wind ?? z.windspeed;
-            const precip = z.precipitation ?? z.rain ?? 0;
-            
-            html += `
-                <div class="sidebar-card">
-                    <div class="zone-name">${z.name}</div>
-                    <div class="zone-meta">
-                        <span>${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</span>
-                        <span>${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</span>
-                        <span>${precip != null ? parseFloat(precip).toFixed(1) + " mm" : "? mm"}</span>
-                    </div>
-                </div>
-            `;
-        });
-
-        document.getElementById("sidebar-zones").innerHTML = html;
-
-        // Alertes
-        if (alertes && alertes.length > 0) {
-            const latestAlerts = alertes.slice(0, 2);
-            let alertsHtml = "";
-            latestAlerts.forEach(a => {
-                alertsHtml += `<div class="alert-badge warning">${a.zone_name}: ${a.type_alerte}</div>`;
-            });
-            document.getElementById("sidebar-alerts").innerHTML = alertsHtml;
-        }
+        // Highlight alert count if > 0
+        const alertBox = document.getElementById("kpi-alerts-box");
+        if (alertBox) alertBox.classList.toggle('alert-active', alertCount > 0);
     }
 
     function updateMapTab(meteo, previsions) {
@@ -1681,7 +1630,8 @@
             content.classList.toggle("active", i === index);
         });
 
-        if (index === 1 && map) {
+        // Map is in tab 0 (Vue générale)
+        if (index === 0 && map) {
             setTimeout(() => map.invalidateSize(), 100);
         }
     }
