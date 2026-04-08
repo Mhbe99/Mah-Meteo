@@ -562,8 +562,12 @@
         }
 
         .day-icon {
-            font-size: 24px;
+            font-size: 12px;
             margin-bottom: 8px;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .day-temps {
@@ -898,10 +902,10 @@
 <!-- DASHBOARD -->
 <div id="dashboard">
     <header>
-        <div class="title">🌡️ Mah Météo</div>
+        <div class="title"><svg style="width:22px;height:22px;display:inline-block;vertical-align:middle;margin-right:6px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="hSunG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#FFB81C"/><stop offset="100%" style="stop-color:#FF8C00"/></linearGradient></defs><circle cx="50" cy="40" r="28" fill="url(#hSunG)"/><g stroke="#FFB81C" stroke-width="3" stroke-linecap="round"><line x1="50" y1="5" x2="50" y2="15"/><line x1="50" y1="65" x2="50" y2="75"/><line x1="85" y1="40" x2="75" y2="40"/><line x1="25" y1="40" x2="15" y2="40"/><line x1="72" y1="18" x2="65" y2="11"/><line x1="35" y1="69" x2="28" y2="76"/></g><path d="M 25 65 Q 20 65 20 72 Q 20 80 28 82 L 72 82 Q 80 80 80 72 Q 80 65 75 65" fill="#ecf0f1" opacity="0.9"/></svg>Mah Météo</div>
         <div class="controls">
             <div class="company-badge" id="company-name">---</div>
-            <button class="refresh-btn" onclick="refreshData()">🔄 Actualiser</button>
+            <button class="refresh-btn" onclick="refreshData()">Actualiser</button>
             <button class="logout-btn" onclick="logout()">Déconnexion</button>
         </div>
     </header>
@@ -909,7 +913,7 @@
     <div class="container">
         <!-- SIDEBAR -->
         <div class="sidebar">
-            <div class="sidebar-title">📍 Zone</div>
+            <div class="sidebar-title">Zones</div>
             <div id="sidebar-zones"></div>
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Alertes Actives</div>
@@ -921,12 +925,12 @@
         <div class="main-content">
             <!-- TABS -->
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab(0)">☀️ Temps réel</button>
-                <button class="tab-btn" onclick="switchTab(1)">🗺️ Carte</button>
-                <button class="tab-btn" onclick="switchTab(2)">🔮 Prévisions</button>
-                <button class="tab-btn" onclick="switchTab(3)">🚗 Trafic</button>
-                <button class="tab-btn" onclick="switchTab(4)">📋 Alertes</button>
-                <button class="tab-btn" onclick="switchTab(5)">🚐 Tournées</button>
+                <button class="tab-btn active" onclick="switchTab(0)">Temps réel</button>
+                <button class="tab-btn" onclick="switchTab(1)">Carte</button>
+                <button class="tab-btn" onclick="switchTab(2)">Prévisions</button>
+                <button class="tab-btn" onclick="switchTab(3)">Trafic</button>
+                <button class="tab-btn" onclick="switchTab(4)">Alertes</button>
+                <button class="tab-btn" onclick="switchTab(5)">Tournées</button>
             </div>
 
             <!-- TAB 1: TEMPS RÉEL -->
@@ -955,34 +959,34 @@
                 </div>
 
                 <div class="table-container">
-                    <div class="table-title">📍 Sites GEODIS</div>
+                    <div class="table-title">Sites GEODIS</div>
                     <table id="sites-table">
                         <thead>
                             <th>Zone</th>
-                            <th>🌤️ Ciel</th>
-                            <th>🌡️ Temp</th>
-                            <th>💨 Vent</th>
-                            <th>↻ Direction</th>
-                            <th>🌧️ Pluie</th>
-                            <th>☀️ UV</th>
-                            <th>⚠️ Risques</th>
+                            <th>Ciel</th>
+                            <th>Temp.</th>
+                            <th>Vent</th>
+                            <th>Dir.</th>
+                            <th>Pluie</th>
+                            <th>UV</th>
+                            <th>Risques</th>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
 
                 <div class="table-container">
-                    <div class="table-title">🌍 Zones Voisines</div>
+                    <div class="table-title">Zones voisines</div>
                     <table id="voisins-table">
                         <thead>
                             <th>Zone</th>
-                            <th>🌤️ Ciel</th>
-                            <th>🌡️ Temp</th>
-                            <th>💨 Vent</th>
-                            <th>↻ Direction</th>
-                            <th>🌧️ Pluie</th>
-                            <th>☀️ UV</th>
-                            <th>⚠️ Risques</th>
+                            <th>Ciel</th>
+                            <th>Temp.</th>
+                            <th>Vent</th>
+                            <th>Dir.</th>
+                            <th>Pluie</th>
+                            <th>UV</th>
+                            <th>Risques</th>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -1020,7 +1024,7 @@
                 </div>
 
                 <div class="table-container">
-                    <div class="table-title">🚗 Incidents Trafic</div>
+                    <div class="table-title">Incidents trafic</div>
                     <table id="trafic-table">
                         <thead>
                             <th>Route</th>
@@ -1036,7 +1040,7 @@
             <!-- TAB 5: ALERTES -->
             <div class="tab-content">
                 <div class="table-container">
-                    <div class="table-title">📢 Historique des Alertes (30 dernières)</div>
+                    <div class="table-title">Historique des alertes (30 dernières)</div>
                     <table id="alertes-table">
                         <thead>
                             <th>Date/Heure</th>
@@ -1070,7 +1074,7 @@
 
                 <!-- Formulaire d'ajout -->
                 <div class="table-container" style="margin-bottom:20px;">
-                    <div class="table-title">➕ Nouvelle tournée</div>
+                    <div class="table-title">Nouvelle tournée</div>
                     <div style="padding:20px;">
                         <form id="form-tournee" autocomplete="off">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
@@ -1105,14 +1109,14 @@
                                 <label>Notes</label>
                                 <textarea id="t-notes" rows="2" placeholder="Remarques éventuelles..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;resize:vertical;"></textarea>
                             </div>
-                            <button type="submit" class="login-btn" style="background:#27ae60;">✅ Enregistrer la tournée</button>
+                            <button type="submit" class="login-btn" style="background:#2c3e50;">Enregistrer la tournée</button>
                         </form>
                     </div>
                 </div>
 
                 <!-- Liste des tournées -->
                 <div class="table-container">
-                    <div class="table-title">📋 Tournées enregistrées</div>
+                    <div class="table-title">Tournées enregistrées</div>
                     <table id="tournees-table">
                         <thead>
                             <th>Date</th>
@@ -1142,7 +1146,7 @@
 
     // ============ NOTIFICATIONS ============
     function showNotif(message) {
-        console.log("📢 Notif:", message);
+        console.log("Notif:", message);
         // Optionnel: Afficher une toast/notification visuelle
         const notifEl = document.createElement("div");
         notifEl.style.cssText = `
@@ -1235,13 +1239,13 @@
 
     async function refreshData() {
         try {
-            showNotif("🔄 Actualisation en cours...");
+            showNotif("Actualisation en cours...");
             
             // AMÉLIORATION: Montrer les spinners de chargement
             const sitesTableBody = document.getElementById("sites-table").querySelector("tbody");
             const voisinsTableBody = document.getElementById("voisins-table").querySelector("tbody");
-            sitesTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>⏳ Chargement des données...</p></div></td></tr>`;
-            voisinsTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>⏳ Chargement des données...</p></div></td></tr>`;
+            sitesTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>Chargement des données…</p></div></td></tr>`;
+            voisinsTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>Chargement des données…</p></div></td></tr>`;
             
             const meteo = await fetchData("meteo");
             const previsions = await fetchData("previsions");
@@ -1256,7 +1260,7 @@
             updateTraficTab(trafic);
             updateAlertesTab(alertes);
             
-            showNotif("✅ Données actualisées");
+            showNotif("Données actualisées");
             
             // AMÉLIORATION: Mettre à jour l'heure de dernière MAJ
             const lastUpdateEl = document.getElementById("lastUpdate");
@@ -1264,7 +1268,7 @@
                 lastUpdateEl.textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR");
             }
         } catch(e) {
-            showNotif("❌ Erreur lors de l'actualisation");
+            showNotif("Erreur lors de l'actualisation");
             console.error("refreshData error:", e);
         }
     }
@@ -1274,14 +1278,14 @@
         // AMÉLIORATION: Fallback si données vides
         if (!meteo || meteo.length === 0) {
             document.getElementById("sites-table").querySelector("tbody").innerHTML = `
-                <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">
-                    ⚠️ Données en cours de collecte...
+                <tr><td colspan="8" style="text-align:center;padding:20px;color:#a0aec0">
+                    Données en cours de collecte…
                     Prochaine mise à jour dans quelques minutes.
                 </td></tr>
             `;
             document.getElementById("voisins-table").querySelector("tbody").innerHTML = `
-                <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">
-                    ⚠️ Données en cours de collecte...
+                <tr><td colspan="8" style="text-align:center;padding:20px;color:#a0aec0">
+                    Données en cours de collecte…
                     Prochaine mise à jour dans quelques minutes.
                 </td></tr>
             `;
@@ -1305,7 +1309,7 @@
             const temp = zone.temp ?? zone.temperature;
             const wind = zone.wind ?? zone.windspeed;
             const direction = zone.direction ?? zone.wind_direction;
-            const ciel = zone.ciel || "☁️";
+            const ciel = zone.ciel || "Couvert";
             const rain = zone.precipitation ?? zone.rain ?? 0;
             
             // CORRECTION: Utiliser ?? et vérifier que la valeur n'est pas null/undefined (pas falsy)
@@ -1313,7 +1317,7 @@
             if (temp != null) maxTemp = Math.max(maxTemp, parseFloat(temp) || 0);
             if (wind != null) maxWind = Math.max(maxWind, parseFloat(wind) || 0);
             if (rain != null) maxRain = Math.max(maxRain, parseFloat(rain) || 0);
-            if (zone.risques && !zone.risques.includes("✅")) alertCount++;
+            if (zone.risques && !zone.risques.includes("RAS") && !zone.risques.includes("✅")) alertCount++;
 
             const row = `
                 <tr>
@@ -1324,7 +1328,7 @@
                     <td>${direction || "?"}</td>
                     <td>${rain != null ? parseFloat(rain).toFixed(1) + " mm" : "? mm"}</td>
                     <td>${(zone.uv_index ?? zone.uv) != null ? parseFloat(zone.uv_index ?? zone.uv).toFixed(1) : "-"}</td>
-                    <td><span class="risk-badge ${zone.risques?.includes("✅") ? "ok" : ""}">${zone.risques || "RAS"}</span></td>
+                    <td><span class="risk-badge ${zone.risques?.includes("✅") || zone.risques?.includes("RAS") ? "ok" : ""}">${zone.risques || "RAS"}</span></td>
                 </tr>
             `;
 
@@ -1335,8 +1339,8 @@
         // AMÉLIORATION: Ajouter l'heure de dernière MAJ sous chaque tableau
         const lastUpdateTime = new Date().toLocaleTimeString("fr-FR", {hour: '2-digit', minute: '2-digit'});
         
-        const sitesContent = sites.join("") + `<tr><td colspan="8"><div class="last-update">🕒 Dernière mise à jour: ${lastUpdateTime}</div></td></tr>`;
-        const voisinsContent = voisins.join("") + `<tr><td colspan="8"><div class="last-update">🕒 Dernière mise à jour: ${lastUpdateTime}</div></td></tr>`;
+        const sitesContent = sites.join("") + `<tr><td colspan="8"><div class="last-update">Dernière mise à jour : ${lastUpdateTime}</div></td></tr>`;
+        const voisinsContent = voisins.join("") + `<tr><td colspan="8"><div class="last-update">Dernière mise à jour : ${lastUpdateTime}</div></td></tr>`;
 
         document.getElementById("sites-table").querySelector("tbody").innerHTML = sitesContent;
         document.getElementById("voisins-table").querySelector("tbody").innerHTML = voisinsContent;
@@ -1364,9 +1368,9 @@
                 <div class="sidebar-card">
                     <div class="zone-name">${z.name}</div>
                     <div class="zone-meta">
-                        <span>🌡️ ${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</span>
-                        <span>💨 ${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</span>
-                        <span>☔ ${precip != null ? parseFloat(precip).toFixed(1) + " mm" : "? mm"}</span>
+                        <span>${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</span>
+                        <span>${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</span>
+                        <span>${precip != null ? parseFloat(precip).toFixed(1) + " mm" : "? mm"}</span>
                     </div>
                 </div>
             `;
@@ -1415,10 +1419,10 @@
         meteo.forEach(zone => {
             const isSite = zone.type === "site";
             const icon = L.divIcon({
-                html: isSite ? '🚚' : '📍',
-                iconSize: isSite ? [32, 32] : [20, 20],
-                iconAnchor: isSite ? [16, 32] : [10, 20],
-                popupAnchor: isSite ? [0, -32] : [0, -20],
+                html: '<div style="width:12px;height:12px;background:' + (isSite ? '#2c3e50' : '#3498db') + ';border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
+                iconSize: isSite ? [16, 16] : [12, 12],
+                iconAnchor: isSite ? [8, 8] : [6, 6],
+                popupAnchor: [0, -10],
                 className: 'custom-icon'
             });
 
@@ -1427,17 +1431,18 @@
             const forecast = forecastMap[key] || {};
 
             // CORRECTION: Utiliser les bons noms de champs API (temp, wind, direction)
-            const popupContent = `<div style='font-family:sans-serif;padding:8px;min-width:180px;font-size:12px'>
-                <b>${zone.name}</b><br>
-                🌡️ Actuel : ${zone.temp ? zone.temp.toFixed(1) + '°C' : '?'}<br>
-                💨 Vent : ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} (${zone.direction || '?'})<br>
-                ${zone.ciel || '?'}<br>
-                🕒 MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}<br><br>
-                📆 Prévisions du jour :<br>
-                🔻 Tmin : ${forecast.tmin || '?'} / 🔺 Tmax : ${forecast.tmax || '?'}<br>
-                ☔ Pluie : ${forecast.pluie || '? mm'}<br>
-                🌞 UV max : ${forecast.uv !== undefined ? forecast.uv : '?'}<br>
-                ⚠️ Risques : ${forecast.risques || zone.risques || 'N/A'}
+            const popupContent = `<div style='font-family:IBM Plex Sans,sans-serif;padding:10px;min-width:200px;font-size:12px;line-height:1.6'>
+                <b style="font-size:13px">${zone.name}</b> <span style="color:#a0aec0;font-size:11px">${isSite ? '(site)' : '(voisin)'}</span><br>
+                <span style="color:#718096">Temp :</span> ${zone.temp ? zone.temp.toFixed(1) + '°C' : '?'}<br>
+                <span style="color:#718096">Vent :</span> ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} (${zone.direction || '?'})<br>
+                <span style="color:#718096">Ciel :</span> ${zone.ciel || '?'}<br>
+                <span style="color:#a0aec0;font-size:11px">MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}</span><br>
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:6px 0">
+                <b style="font-size:11px;color:#4a5568">Prévisions J+0</b><br>
+                <span style="color:#718096">Min/Max :</span> ${forecast.tmin || '?'} / ${forecast.tmax || '?'}<br>
+                <span style="color:#718096">Pluie :</span> ${forecast.pluie || '? mm'}<br>
+                <span style="color:#718096">UV max :</span> ${forecast.uv !== undefined ? forecast.uv : '?'}<br>
+                <span style="color:#718096">Risques :</span> ${forecast.risques || zone.risques || 'N/A'}
             </div>`;
 
             const marker = L.marker([zone.lat, zone.lon], { icon: icon }).addTo(map);
@@ -1476,16 +1481,16 @@
     }
 
     function getWeatherIcon(risques, pluie, uv) {
-        if (risques && risques.includes("Verglas")) return "❄️";
-        if (pluie > 5) return "🌧️";
-        if (pluie > 0) return "🌦️";
-        if (risques && risques.includes("Vent")) return "🌬️";
-        if (uv >= 6) return "☀️";
-        return "⛅";
+        if (risques && risques.includes("Verglas")) return '<span style="color:#3182ce;font-weight:600">GEL</span>';
+        if (pluie > 5) return '<span style="color:#2b6cb0;font-weight:600">PLUIE</span>';
+        if (pluie > 0) return '<span style="color:#4299e1;font-weight:500">pluie</span>';
+        if (risques && risques.includes("Vent")) return '<span style="color:#d69e2e;font-weight:600">VENT</span>';
+        if (uv >= 6) return '<span style="color:#c53030;font-weight:600">UV+</span>';
+        return '<span style="color:#38a169">OK</span>';
     }
 
     function getRiskClass(risques) {
-        if (risques && risques.includes("✅")) return "risk-ok";
+        if (!risques || risques.includes("✅") || risques.includes("RAS")) return "risk-ok";
         if (risques && risques.includes("Verglas")) return "risk-verglas";
         if (risques && risques.includes("Vent")) return "risk-vent";
         if (risques && risques.includes("Pluie")) return "risk-pluie";
@@ -1511,18 +1516,18 @@
         // Afficher d'abord les sites, puis les voisins
         const zoneOrder = [];
         Object.keys(grouped).forEach(zone => {
-            const isSite = zone.includes("🏣");
+            const isSite = zone.includes("🏣") || zone.toLowerCase().includes("le meux") || zone.toLowerCase().includes("clairoix");
             if (isSite) zoneOrder.push(zone);
         });
         Object.keys(grouped).forEach(zone => {
-            const isSite = zone.includes("🏣");
+            const isSite = zone.includes("🏣") || zone.toLowerCase().includes("le meux") || zone.toLowerCase().includes("clairoix");
             if (!isSite) zoneOrder.push(zone);
         });
 
         zoneOrder.forEach(zone => {
             const days = grouped[zone].slice(0, 5);
-            const isSite = zone.includes("🏣");
-            const icon = isSite ? "🚚" : "📍";
+            const isSite = zone.includes("🏣") || zone.toLowerCase().includes("le meux") || zone.toLowerCase().includes("clairoix");
+            const icon = isSite ? "S" : "V";
 
             let daysHtml = "";
             days.forEach(d => {
@@ -1545,9 +1550,9 @@
                             <span class="sep">/</span>
                             <span class="tmin">${tempMin.toFixed(0)}°</span>
                         </div>
-                        <div class="day-rain">💧 ${pluieVal.toFixed(1)} mm</div>
-                        <div class="day-uv">☀️ ${uvVal.toFixed(1)}</div>
-                        <div class="day-risk ${riskClass}">${d.risques || '✅'}</div>
+                        <div class="day-rain">${pluieVal.toFixed(1)} mm</div>
+                        <div class="day-uv">UV ${uvVal.toFixed(1)}</div>
+                        <div class="day-risk ${riskClass}">${d.risques || 'RAS'}</div>
                     </div>
                 `;
             });
@@ -1555,7 +1560,7 @@
             html += `
                 <div class="prevision-zone">
                     <div class="zone-header">
-                        <span class="zone-icon">${icon}</span>
+                        <span class="zone-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:${isSite ? '#2c3e50' : '#718096'};color:#fff;border-radius:3px;font-size:10px;font-weight:700">${icon}</span>
                         <span class="zone-name">${zone}</span>
                     </div>
                     <div class="forecast-card">${daysHtml}</div>
@@ -1581,7 +1586,7 @@
             document.getElementById("kpi-delay").textContent = "0 min";
             document.getElementById("kpi-trafic-time").textContent = new Date().toLocaleTimeString("fr-FR");
             const container = document.getElementById("trafic-table");
-            if (container) container.querySelector("tbody").innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:#8a8785;font-size:13px">✅ Aucun incident signalé</td></tr>';
+            if (container) container.querySelector("tbody").innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:#a0aec0;font-size:13px">Aucun incident signalé</td></tr>';
             
             const alerteBox = document.getElementById("alerte-combinee");
             if (alerteBox) alerteBox.style.display = 'none';
@@ -1618,7 +1623,7 @@
                 alerteBox.style.display = 'block';
                 alerteBox.innerHTML = `
                     <div style="padding:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;margin-bottom:16px;">
-                        <div style="font-weight:600;color:#856404;font-size:13px;">🔴 Alerte combinée météo + trafic</div>
+                        <div style="font-weight:600;color:#856404;font-size:13px;">Alerte combinée météo + trafic</div>
                         <div style="color:#856404;font-size:12px;margin-top:6px;">${alerte_combinee.message}</div>
                     </div>`;
             } else {
@@ -1631,10 +1636,10 @@
             incidents.forEach(inc => {
                 if (inc.lat && inc.lon) {
                     const icon = L.divIcon({
-                        html: '🚨',
-                        iconSize: [20, 20],
-                        iconAnchor: [10, 10],
-                        popupAnchor: [0, -10]
+                        html: '<div style="width:10px;height:10px;background:#c53030;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
+                        iconSize: [14, 14],
+                        iconAnchor: [7, 7],
+                        popupAnchor: [0, -8]
                     });
                     L.marker([inc.lat, inc.lon], { icon })
                         .addTo(window.map)
@@ -2004,7 +2009,7 @@
             let html = '';
             items.forEach((item, i) => {
                 const cls = 't-suggestion-item' + (item.corrected ? ' t-sg-corrected' : '');
-                const typeLabel = item.type === 'site' ? '🏣 Site' : '📍 Voisin';
+                const typeLabel = item.type === 'site' ? 'Site' : 'Voisin';
                 const correction = item.corrected ? '<span class="t-sg-correction">(correction)</span>' : '';
                 html += '<div class="' + cls + '" data-idx="' + i + '" data-ville="' + _esc(item.ville) + '">'
                     + '<span>' + _esc(item.ville) + correction + '</span>'
@@ -2204,13 +2209,13 @@
             const notes = document.getElementById('t-notes').value.trim();
 
             if (_villes.length === 0) {
-                showNotif('⚠️ Ajoutez au moins une destination');
+                showNotif('Ajoutez au moins une destination');
                 return;
             }
 
             ajouterTournee(prenom, nom, date, heure, [..._villes], notes);
             _resetForm();
-            showNotif('✅ Tournée enregistrée');
+            showNotif('Tournée enregistrée');
         });
 
         // --- Init au chargement ---
