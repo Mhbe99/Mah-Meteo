@@ -502,6 +502,15 @@
             border: 1px solid #dce1e8;
         }
 
+        /* Leaflet emoji markers */
+        .custom-icon {
+            background: none !important;
+            border: none !important;
+            font-size: 20px;
+            line-height: 1;
+            text-align: center;
+        }
+
         /* FORECAST GRID */
         .forecast-grid {
             display: flex;
@@ -918,15 +927,15 @@
         <div class="kpi-bar">
             <div class="kpi-item">
                 <div class="kpi-val" id="kpi-temp">--</div>
-                <div class="kpi-meta">Temp. max</div>
+                <div class="kpi-meta">Temp. max<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">toutes zones</span></div>
             </div>
             <div class="kpi-item">
                 <div class="kpi-val" id="kpi-wind">--</div>
-                <div class="kpi-meta">Vent max</div>
+                <div class="kpi-meta">Vent max<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">toutes zones</span></div>
             </div>
             <div class="kpi-item">
                 <div class="kpi-val" id="kpi-rain">--</div>
-                <div class="kpi-meta">Précip.</div>
+                <div class="kpi-meta">Précip.<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">toutes zones</span></div>
             </div>
             <div class="kpi-item" id="kpi-alerts-box">
                 <div class="kpi-val" id="kpi-alerts">0</div>
@@ -1368,10 +1377,10 @@
         meteo.forEach(zone => {
             const isSite = zone.type === "site";
             const icon = L.divIcon({
-                html: '<div style="width:12px;height:12px;background:' + (isSite ? '#2c3e50' : '#3498db') + ';border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
-                iconSize: isSite ? [16, 16] : [12, 12],
-                iconAnchor: isSite ? [8, 8] : [6, 6],
-                popupAnchor: [0, -10],
+                html: isSite ? '🚚' : '📍',
+                iconSize: isSite ? [28, 28] : [22, 22],
+                iconAnchor: isSite ? [14, 28] : [11, 22],
+                popupAnchor: isSite ? [0, -28] : [0, -22],
                 className: 'custom-icon'
             });
 
@@ -1548,10 +1557,18 @@
         incidents.forEach(t => {
             maxDelay = Math.max(maxDelay, t.delay_minutes || 0);
             const severityClass = t.severity === "high" ? "severity-high" : t.severity === "med" ? "severity-med" : "severity-low";
+            // Emoji par type d'incident
+            const desc = (t.description || '').toLowerCase();
+            let incIcon = '⚠️';
+            if (desc.includes('accident') || desc.includes('collision')) incIcon = '💥';
+            else if (desc.includes('bouchon') || desc.includes('congestion') || desc.includes('ralentissement') || desc.includes('traffic jam')) incIcon = '🚗';
+            else if (desc.includes('travaux') || desc.includes('chantier') || desc.includes('construction') || desc.includes('road work')) incIcon = '🚧';
+            else if (desc.includes('ferm') || desc.includes('closed') || desc.includes('barr')) incIcon = '⛔';
+            else if (desc.includes('panne') || desc.includes('véhicule') || desc.includes('broken')) incIcon = '🚛';
             html += `
                 <tr style="border-bottom: 1px solid #e4e2dc;">
                     <td style="padding:10px 12px;font-size:13px;">${t.route}</td>
-                    <td style="padding:10px 12px;font-size:13px;">${t.description}</td>
+                    <td style="padding:10px 12px;font-size:13px;">${incIcon} ${t.description}</td>
                     <td style="padding:10px 12px;text-align:center;"><span class="${severityClass}" style="padding:4px 8px;border-radius:3px;font-size:11px;font-weight:500;">${t.severity.toUpperCase()}</span></td>
                     <td style="padding:10px 12px;text-align:right;font-weight:500;">${t.delay_minutes > 0 ? '+' + t.delay_minutes + ' min' : 'Faible'}</td>
                 </tr>
@@ -1584,11 +1601,20 @@
         if (window.map && incidents.length > 0) {
             incidents.forEach(inc => {
                 if (inc.lat && inc.lon) {
+                    // Emoji par type
+                    const d = (inc.description || '').toLowerCase();
+                    let tIcon = '⚠️';
+                    if (d.includes('accident') || d.includes('collision')) tIcon = '💥';
+                    else if (d.includes('bouchon') || d.includes('congestion') || d.includes('ralentissement') || d.includes('traffic jam')) tIcon = '🚗';
+                    else if (d.includes('travaux') || d.includes('chantier') || d.includes('construction') || d.includes('road work')) tIcon = '🚧';
+                    else if (d.includes('ferm') || d.includes('closed') || d.includes('barr')) tIcon = '⛔';
+                    else if (d.includes('panne') || d.includes('véhicule') || d.includes('broken')) tIcon = '🚛';
                     const icon = L.divIcon({
-                        html: '<div style="width:10px;height:10px;background:#c53030;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
-                        iconSize: [14, 14],
-                        iconAnchor: [7, 7],
-                        popupAnchor: [0, -8]
+                        html: tIcon,
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11],
+                        popupAnchor: [0, -12],
+                        className: 'custom-icon'
                     });
                     L.marker([inc.lat, inc.lon], { icon })
                         .addTo(window.map)
