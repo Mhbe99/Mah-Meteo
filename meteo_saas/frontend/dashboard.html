@@ -596,7 +596,7 @@
             color: #c0392b;
         }
 
-        /* TOURNÉES TAGS */
+        /* TOURNÉES — TAGS / BADGES */
         .ville-tag {
             display: inline-flex;
             align-items: center;
@@ -633,6 +633,129 @@
 
         .btn-delete-tournee:hover {
             background: #c0392b;
+        }
+
+        /* TOURNÉES — AUTOCOMPLETE */
+        .t-autocomplete-wrap {
+            position: relative;
+        }
+
+        #t-search-ville {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 14px;
+        }
+
+        #t-search-ville:focus {
+            outline: none;
+            border-color: #1c4f82;
+            box-shadow: 0 0 0 3px rgba(28, 79, 130, 0.1);
+        }
+
+        #t-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .t-suggestion-item {
+            padding: 9px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .t-suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .t-suggestion-item:hover,
+        .t-suggestion-item.active {
+            background: #e8f0f8;
+            color: #1c4f82;
+        }
+
+        .t-suggestion-item .t-sg-type {
+            font-size: 10px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .t-suggestion-item.t-sg-corrected .t-sg-correction {
+            font-size: 10px;
+            color: #f39c12;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        /* TOURNÉES — LISTE DES DESTINATIONS SÉLECTIONNÉES */
+        #t-selected-destinations {
+            list-style: none;
+            padding: 0;
+            margin: 8px 0 0 0;
+        }
+
+        #t-selected-destinations li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 12px;
+            background: #f9f8f7;
+            border: 1px solid #e5e3e0;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        #t-selected-destinations li .t-dest-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            background: #1c4f82;
+            color: white;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        #t-selected-destinations li .t-dest-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        #t-selected-destinations li .t-dest-remove {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        #t-selected-destinations li .t-dest-remove:hover {
+            color: #e74c3c;
         }
 
         /* NO DATA MESSAGE */
@@ -932,10 +1055,12 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Villes de passage</label>
-                                <div id="tags-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid #ddd;border-radius:6px;min-height:42px;align-items:center;cursor:text;" onclick="document.getElementById('t-ville-input').focus()">
-                                    <input type="text" id="t-ville-input" placeholder="Taper une ville + Entrée" style="border:none;outline:none;flex:1;min-width:120px;font-size:14px;padding:4px;">
+                                <label>Destinations</label>
+                                <div class="t-autocomplete-wrap">
+                                    <input type="text" id="t-search-ville" placeholder="Rechercher une ville..." autocomplete="off">
+                                    <div id="t-suggestions"></div>
                                 </div>
+                                <ul id="t-selected-destinations"></ul>
                             </div>
                             <div class="form-group">
                                 <label>Notes</label>
@@ -1526,12 +1651,205 @@
     (function () {
         'use strict';
 
-        // --- Clé localStorage par client ---
+        // ======================================================
+        // BASE DE DESTINATIONS — sites + voisins connus
+        // Construite à partir de clients.json (GEODIS — Le Meux)
+        // ======================================================
+        const baseDestinations = [
+            { ville: "Le Meux",              type: "site"  },
+            { ville: "Clairoix",             type: "site"  },
+            { ville: "Compiègne",            type: "voisin" },
+            { ville: "Creil",                type: "voisin" },
+            { ville: "Beauvais",             type: "voisin" },
+            { ville: "Chantilly",            type: "voisin" },
+            { ville: "Noyon",                type: "voisin" },
+            { ville: "Senlis",               type: "voisin" },
+            { ville: "Méru",                 type: "voisin" },
+            { ville: "Nogent-sur-Oise",      type: "voisin" },
+            { ville: "Clermont",             type: "voisin" },
+            { ville: "Montataire",           type: "voisin" },
+            { ville: "Liancourt",            type: "voisin" },
+            { ville: "Chaumont-en-Vexin",    type: "voisin" },
+            { ville: "Formerie",             type: "voisin" },
+            { ville: "Pont-Sainte-Maxence",  type: "voisin" },
+            { ville: "Margny-lès-Compiègne", type: "voisin" },
+            { ville: "Lacroix-Saint-Ouen",   type: "voisin" },
+            { ville: "Verberie",             type: "voisin" },
+            { ville: "Thourotte",            type: "voisin" }
+        ];
+
+        // Liste plate de toutes les villes connues (source de vérité)
+        function _getToutesVillesConnues() {
+            const set = new Set(baseDestinations.map(d => d.ville));
+            // Enrichir avec les villes déjà utilisées dans les tournées sauvegardées
+            const tournees = _load();
+            tournees.forEach(t => t.villes.forEach(v => set.add(v)));
+            return Array.from(set);
+        }
+
+        // ======================================================
+        // NORMALISATION — préparer un nom pour comparaison
+        // ======================================================
+
+        /**
+         * Normalise une chaîne pour la comparaison :
+         * supprime accents, tirets, apostrophes, espaces multiples,
+         * et passe en minuscule.
+         */
+        function normaliserVille(str) {
+            return str
+                .normalize('NFD')                       // décomposer les accents
+                .replace(/[\u0300-\u036f]/g, '')        // supprimer les diacritiques
+                .replace(/['\u2019]/g, '')              // supprimer apostrophes
+                .replace(/[-]/g, ' ')                   // tirets → espaces
+                .replace(/\s+/g, ' ')                   // espaces multiples → un seul
+                .trim()
+                .toLowerCase();
+        }
+
+        // ======================================================
+        // DISTANCE DE LEVENSHTEIN — similarité entre deux chaînes
+        // ======================================================
+
+        /**
+         * Calcule la distance d'édition (Levenshtein) entre deux chaînes.
+         * Permet de détecter les petites fautes de frappe.
+         */
+        function _levenshtein(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    dp[i][j] = Math.min(
+                        dp[i - 1][j] + 1,
+                        dp[i][j - 1] + 1,
+                        dp[i - 1][j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0)
+                    );
+                }
+            }
+            return dp[m][n];
+        }
+
+        // ======================================================
+        // RECHERCHE DE CORRESPONDANCE PROCHE
+        // ======================================================
+
+        /**
+         * Cherche la ville connue la plus proche de la saisie.
+         * Retourne { ville, distance, exact } ou null si rien de fiable.
+         *
+         * Seuils de tolérance :
+         *  - mot court (≤5 car.) : max 1 erreur
+         *  - mot moyen (6-9 car.) : max 2 erreurs
+         *  - mot long (≥10 car.) : max 3 erreurs
+         */
+        function trouverVilleProche(saisie) {
+            const norm = normaliserVille(saisie);
+            if (!norm) return null;
+
+            const connues = _getToutesVillesConnues();
+            let meilleur = null;
+            let meilleurDist = Infinity;
+
+            for (const ville of connues) {
+                const normV = normaliserVille(ville);
+
+                // Correspondance exacte normalisée
+                if (normV === norm) {
+                    return { ville: ville, distance: 0, exact: true };
+                }
+
+                // Vérifier si la saisie est contenue dans le nom ou inversement
+                if (normV.includes(norm) || norm.includes(normV)) {
+                    const d = Math.abs(normV.length - norm.length);
+                    if (d < meilleurDist) {
+                        meilleurDist = d;
+                        meilleur = ville;
+                    }
+                    continue;
+                }
+
+                // Distance de Levenshtein
+                const dist = _levenshtein(norm, normV);
+                if (dist < meilleurDist) {
+                    meilleurDist = dist;
+                    meilleur = ville;
+                }
+            }
+
+            if (!meilleur) return null;
+
+            // Seuils de tolérance adaptatifs
+            const len = norm.length;
+            const maxDist = len <= 5 ? 1 : len <= 9 ? 2 : 3;
+
+            if (meilleurDist <= maxDist) {
+                return { ville: meilleur, distance: meilleurDist, exact: meilleurDist === 0 };
+            }
+
+            return null; // Pas de correspondance fiable
+        }
+
+        /**
+         * Corrige la saisie si une ville connue correspond.
+         * Retourne la ville corrigée ou la saisie originale
+         * (première lettre en majuscule) si aucune correction.
+         */
+        function corrigerVille(saisie) {
+            const match = trouverVilleProche(saisie);
+            if (match) return match.ville;
+            // Aucune correspondance : capitaliser la saisie telle quelle
+            const s = saisie.trim();
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        // ======================================================
+        // FILTRAGE DES SUGGESTIONS
+        // ======================================================
+
+        /**
+         * Filtre les destinations pour l'autocomplete.
+         * Retourne un tableau d'objets { ville, type, corrected }.
+         */
+        function _filtrerSuggestions(query) {
+            const norm = normaliserVille(query);
+            if (!norm) return baseDestinations.map(d => ({ ...d, corrected: false }));
+
+            const resultats = [];
+
+            for (const dest of baseDestinations) {
+                // Ignorer les villes déjà sélectionnées
+                if (_villes.includes(dest.ville)) continue;
+
+                const normV = normaliserVille(dest.ville);
+
+                // Correspondance par inclusion (partielle)
+                if (normV.includes(norm) || norm.includes(normV)) {
+                    resultats.push({ ...dest, corrected: false });
+                    continue;
+                }
+
+                // Correspondance floue (Levenshtein sur chaque mot)
+                const dist = _levenshtein(norm, normV);
+                const maxDist = norm.length <= 5 ? 1 : norm.length <= 9 ? 2 : 3;
+                if (dist <= maxDist) {
+                    resultats.push({ ...dest, corrected: true });
+                }
+            }
+
+            return resultats;
+        }
+
+        // ======================================================
+        // PERSISTENCE (inchangé)
+        // ======================================================
+
         function _storageKey() {
             return 'tournees_' + (CLIENT_ID || 'default');
         }
 
-        // --- Persistence ---
         function _load() {
             try {
                 return JSON.parse(localStorage.getItem(_storageKey())) || [];
@@ -1551,52 +1869,165 @@
             return d.innerHTML;
         }
 
-        // --- Gestion des tags (villes) ---
+        // ======================================================
+        // GESTION DES DESTINATIONS SÉLECTIONNÉES
+        // ======================================================
+
         let _villes = [];
+        let _activeIdx = -1; // index actif dans la liste de suggestions
 
-        function _addTag(ville) {
-            ville = ville.trim();
-            if (!ville || _villes.includes(ville)) return;
-            _villes.push(ville);
-            _renderTags();
+        /** Ajouter une destination (avec correction) */
+        function _addDestination(ville) {
+            const corrigee = corrigerVille(ville);
+            if (!corrigee || _villes.includes(corrigee)) return;
+            _villes.push(corrigee);
+            _renderSelectedDestinations();
+            _hideSuggestions();
+            document.getElementById('t-search-ville').value = '';
         }
 
-        function _removeTag(index) {
+        /** Supprimer une destination par index */
+        function _removeDestination(index) {
             _villes.splice(index, 1);
-            _renderTags();
+            _renderSelectedDestinations();
         }
 
-        function _renderTags() {
-            const container = document.getElementById('tags-container');
-            const input = document.getElementById('t-ville-input');
-            // Supprimer les anciens tags
-            container.querySelectorAll('.ville-tag').forEach(t => t.remove());
-            // Recréer les tags avant l'input
+        /** Afficher la liste des destinations sélectionnées */
+        function _renderSelectedDestinations() {
+            const ul = document.getElementById('t-selected-destinations');
+            if (_villes.length === 0) {
+                ul.innerHTML = '';
+                return;
+            }
+            let html = '';
             _villes.forEach((v, i) => {
-                const tag = document.createElement('span');
-                tag.className = 'ville-tag';
-                tag.innerHTML = _esc(v) + ' <span class="remove-tag" data-idx="' + i + '">&times;</span>';
-                container.insertBefore(tag, input);
+                html += '<li>'
+                    + '<span class="t-dest-num">' + (i + 1) + '</span>'
+                    + '<span class="t-dest-name">' + _esc(v) + '</span>'
+                    + '<button type="button" class="t-dest-remove" data-idx="' + i + '" title="Retirer">&times;</button>'
+                    + '</li>';
             });
+            ul.innerHTML = html;
         }
 
-        // Événement sur le conteneur de tags (délégation)
-        document.getElementById('tags-container').addEventListener('click', function (e) {
-            if (e.target.classList.contains('remove-tag')) {
-                _removeTag(parseInt(e.target.dataset.idx));
+        // Délégation : suppression dans la liste de destinations
+        document.getElementById('t-selected-destinations').addEventListener('click', function (e) {
+            const btn = e.target.closest('.t-dest-remove');
+            if (btn) {
+                _removeDestination(parseInt(btn.dataset.idx));
             }
         });
 
-        // Événement sur l'input pour ajouter un tag
-        document.getElementById('t-ville-input').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
+        // ======================================================
+        // AUTOCOMPLETE — affichage / masquage / navigation
+        // ======================================================
+
+        function _showSuggestions(items) {
+            const box = document.getElementById('t-suggestions');
+            if (items.length === 0) {
+                box.style.display = 'none';
+                return;
+            }
+            _activeIdx = -1;
+            let html = '';
+            items.forEach((item, i) => {
+                const cls = 't-suggestion-item' + (item.corrected ? ' t-sg-corrected' : '');
+                const typeLabel = item.type === 'site' ? '🏣 Site' : '📍 Voisin';
+                const correction = item.corrected ? '<span class="t-sg-correction">(correction)</span>' : '';
+                html += '<div class="' + cls + '" data-idx="' + i + '" data-ville="' + _esc(item.ville) + '">'
+                    + '<span>' + _esc(item.ville) + correction + '</span>'
+                    + '<span class="t-sg-type">' + typeLabel + '</span>'
+                    + '</div>';
+            });
+            box.innerHTML = html;
+            box.style.display = 'block';
+        }
+
+        function _hideSuggestions() {
+            const box = document.getElementById('t-suggestions');
+            box.style.display = 'none';
+            _activeIdx = -1;
+        }
+
+        // Événement : saisie dans le champ de recherche
+        const searchInput = document.getElementById('t-search-ville');
+
+        searchInput.addEventListener('input', function () {
+            const val = this.value.trim();
+            if (!val) {
+                // Afficher toutes les destinations disponibles (non sélectionnées)
+                const all = baseDestinations
+                    .filter(d => !_villes.includes(d.ville))
+                    .map(d => ({ ...d, corrected: false }));
+                _showSuggestions(all);
+                return;
+            }
+            const suggestions = _filtrerSuggestions(val);
+            _showSuggestions(suggestions);
+        });
+
+        // Afficher toutes les suggestions au focus
+        searchInput.addEventListener('focus', function () {
+            const val = this.value.trim();
+            if (!val) {
+                const all = baseDestinations
+                    .filter(d => !_villes.includes(d.ville))
+                    .map(d => ({ ...d, corrected: false }));
+                _showSuggestions(all);
+            } else {
+                const suggestions = _filtrerSuggestions(val);
+                _showSuggestions(suggestions);
+            }
+        });
+
+        // Navigation clavier dans les suggestions
+        searchInput.addEventListener('keydown', function (e) {
+            const box = document.getElementById('t-suggestions');
+            const items = box.querySelectorAll('.t-suggestion-item');
+
+            if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                _addTag(this.value);
-                this.value = '';
+                _activeIdx = Math.min(_activeIdx + 1, items.length - 1);
+                items.forEach((el, i) => el.classList.toggle('active', i === _activeIdx));
+                if (items[_activeIdx]) items[_activeIdx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                _activeIdx = Math.max(_activeIdx - 1, 0);
+                items.forEach((el, i) => el.classList.toggle('active', i === _activeIdx));
+                if (items[_activeIdx]) items[_activeIdx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (_activeIdx >= 0 && items[_activeIdx]) {
+                    // Sélectionner la suggestion active
+                    _addDestination(items[_activeIdx].dataset.ville);
+                } else if (this.value.trim()) {
+                    // Ajouter la saisie libre (avec correction)
+                    _addDestination(this.value);
+                }
+            } else if (e.key === 'Escape') {
+                _hideSuggestions();
             }
         });
 
-        // --- Ajouter une tournée ---
+        // Clic sur une suggestion
+        document.getElementById('t-suggestions').addEventListener('click', function (e) {
+            const item = e.target.closest('.t-suggestion-item');
+            if (item) {
+                _addDestination(item.dataset.ville);
+            }
+        });
+
+        // Fermer les suggestions quand on clique ailleurs
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.t-autocomplete-wrap')) {
+                _hideSuggestions();
+            }
+        });
+
+        // ======================================================
+        // AJOUT / SUPPRESSION DE TOURNÉES (inchangé)
+        // ======================================================
+
         function ajouterTournee(prenom, nom, date, heure, villes, notes) {
             const tournees = _load();
             tournees.push({
@@ -1613,7 +2044,6 @@
             _updateStats();
         }
 
-        // --- Supprimer une tournée ---
         function supprimerTournee(id) {
             let tournees = _load();
             tournees = tournees.filter(t => t.id !== id);
@@ -1622,7 +2052,10 @@
             _updateStats();
         }
 
-        // --- Rendu de la liste ---
+        // ======================================================
+        // RENDU DE LA LISTE DES TOURNÉES (inchangé)
+        // ======================================================
+
         function _renderTournees() {
             const tbody = document.getElementById('tournees-table').querySelector('tbody');
             const tournees = _load();
@@ -1632,7 +2065,6 @@
                 return;
             }
 
-            // Trier par date décroissante puis heure
             tournees.sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure));
 
             let html = '';
@@ -1660,7 +2092,10 @@
             }
         });
 
-        // --- Mise à jour des stats ---
+        // ======================================================
+        // STATS (inchangé)
+        // ======================================================
+
         function _updateStats() {
             const tournees = _load();
             const today = new Date().toISOString().slice(0, 10);
@@ -1673,16 +2108,21 @@
             document.getElementById('stat-villes').textContent = allVilles.size;
         }
 
-        // --- Reset formulaire ---
+        // ======================================================
+        // RESET FORMULAIRE
+        // ======================================================
+
         function _resetForm() {
             document.getElementById('form-tournee').reset();
             _villes = [];
-            _renderTags();
-            // Pré-remplir la date du jour
+            _renderSelectedDestinations();
             document.getElementById('t-date').valueAsDate = new Date();
         }
 
-        // --- Soumission du formulaire ---
+        // ======================================================
+        // SOUMISSION DU FORMULAIRE (inchangé)
+        // ======================================================
+
         document.getElementById('form-tournee').addEventListener('submit', function (e) {
             e.preventDefault();
             const prenom = document.getElementById('t-prenom').value.trim();
@@ -1692,7 +2132,7 @@
             const notes = document.getElementById('t-notes').value.trim();
 
             if (_villes.length === 0) {
-                showNotif('⚠️ Ajoutez au moins une ville');
+                showNotif('⚠️ Ajoutez au moins une destination');
                 return;
             }
 
