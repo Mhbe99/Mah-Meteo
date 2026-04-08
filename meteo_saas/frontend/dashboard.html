@@ -1227,6 +1227,26 @@
         loadDemoData();
     }
 
+    // ============ CIEL → EMOJI ============
+    function cielEmoji(ciel) {
+        if (!ciel) return '☁️';
+        const c = ciel.toLowerCase();
+        if (c.includes('orage') || c.includes('tonnerre')) return '⛈️';
+        if (c.includes('neige') || c.includes('flocon')) return '🌨️';
+        if (c.includes('verglas') || c.includes('gel') || c.includes('givre')) return '🧊';
+        if (c.includes('averse')) return '🌧️';
+        if (c.includes('pluie') && c.includes('fort')) return '🌧️';
+        if (c.includes('pluie') || c.includes('bruine')) return '🌦️';
+        if (c.includes('brouillard') || c.includes('brume')) return '🌫️';
+        if (c.includes('vent') || c.includes('rafale')) return '💨';
+        if (c.includes('couvert')) return '☁️';
+        if (c.includes('nuageux') && (c.includes('partiel') || c.includes('peu'))) return '⛅';
+        if (c.includes('nuageux')) return '🌥️';
+        if (c.includes('éclaircie') || c.includes('variable')) return '⛅';
+        if (c.includes('dégagé') || c.includes('soleil') || c.includes('clair') || c.includes('beau')) return '☀️';
+        return '🌤️';
+    }
+
     // ============ NOTIFICATIONS ============
     function showNotif(message) {
         console.log("Notif:", message);
@@ -1405,7 +1425,7 @@
             const row = `
                 <tr>
                     <td>${zone.name}</td>
-                    <td>${ciel}</td>
+                    <td style="font-size:18px;text-align:center" title="${ciel}">${cielEmoji(ciel)}</td>
                     <td>${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</td>
                     <td>${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</td>
                     <td>${direction || "?"}</td>
@@ -1484,7 +1504,7 @@
                 <b style="font-size:13px">${zone.name}</b> <span style="color:#a0aec0;font-size:11px">${isSite ? '(site)' : '(voisin)'}</span><br>
                 <span style="color:#718096">Temp :</span> ${zone.temp ? zone.temp.toFixed(1) + '°C' : '?'}<br>
                 <span style="color:#718096">Vent :</span> ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} (${zone.direction || '?'})<br>
-                <span style="color:#718096">Ciel :</span> ${zone.ciel || '?'}<br>
+                <span style="color:#718096">Ciel :</span> ${cielEmoji(zone.ciel)} ${zone.ciel || '?'}<br>
                 <span style="color:#a0aec0;font-size:11px">MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}</span><br>
                 <hr style="border:none;border-top:1px solid #e2e8f0;margin:6px 0">
                 <b style="font-size:11px;color:#4a5568">Prévisions J+0</b><br>
