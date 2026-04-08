@@ -927,15 +927,15 @@
         <div class="kpi-bar">
             <div class="kpi-item">
                 <div class="kpi-val" id="kpi-temp">--</div>
-                <div class="kpi-meta">Temp. max<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">toutes zones</span></div>
+                <div class="kpi-meta">Temp. max<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">sites GEODIS</span></div>
             </div>
             <div class="kpi-item">
                 <div class="kpi-val" id="kpi-wind">--</div>
-                <div class="kpi-meta">Vent max<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">toutes zones</span></div>
+                <div class="kpi-meta">Vent max<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">sites GEODIS</span></div>
             </div>
             <div class="kpi-item">
                 <div class="kpi-val" id="kpi-rain">--</div>
-                <div class="kpi-meta">Précip.<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">toutes zones</span></div>
+                <div class="kpi-meta">Précip.<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">sites GEODIS</span></div>
             </div>
             <div class="kpi-item" id="kpi-alerts-box">
                 <div class="kpi-val" id="kpi-alerts">0</div>
@@ -1284,9 +1284,9 @@
             return;
         }
 
-        let maxTemp = -Infinity;
-        let maxWind = 0;
-        let maxRain = 0;
+        let siteMaxTemp = -Infinity;
+        let siteMaxWind = 0;
+        let siteMaxRain = 0;
         let alertCount = 0;
 
         const sites = [], voisins = [];
@@ -1297,18 +1297,19 @@
         }
         
         meteo.forEach(zone => {
-            // Utilise les bons noms de champs de l'API (avec fallback si ancien format)
             const temp = zone.temp ?? zone.temperature;
             const wind = zone.wind ?? zone.windspeed;
             const direction = zone.direction ?? zone.wind_direction;
             const ciel = zone.ciel || "Couvert";
             const rain = zone.precipitation ?? zone.rain ?? 0;
             
-            // CORRECTION: Utiliser ?? et vérifier que la valeur n'est pas null/undefined (pas falsy)
-            // Cela évite les problèmes avec temp=0, wind=0, etc.
-            if (temp != null) maxTemp = Math.max(maxTemp, parseFloat(temp) || 0);
-            if (wind != null) maxWind = Math.max(maxWind, parseFloat(wind) || 0);
-            if (rain != null) maxRain = Math.max(maxRain, parseFloat(rain) || 0);
+            // KPI : uniquement les sites GEODIS (pas les voisins)
+            if (zone.type === "site") {
+                if (temp != null) siteMaxTemp = Math.max(siteMaxTemp, parseFloat(temp) || 0);
+                if (wind != null) siteMaxWind = Math.max(siteMaxWind, parseFloat(wind) || 0);
+                if (rain != null) siteMaxRain = Math.max(siteMaxRain, parseFloat(rain) || 0);
+            }
+            // Alertes : toutes les zones
             if (zone.risques && !zone.risques.includes("RAS") && !zone.risques.includes("✅")) alertCount++;
 
             const row = `
@@ -1338,9 +1339,9 @@
         document.getElementById("voisins-table").querySelector("tbody").innerHTML = voisinsContent;
 
         // CORRECTION: Afficher les KPIs avec les bonnes valeurs (utiliser ?? pour éviter -Infinity)
-        document.getElementById("kpi-temp").textContent = isFinite(maxTemp) ? maxTemp.toFixed(1) + '°' : '--';
-        document.getElementById("kpi-wind").textContent = maxWind !== 0 ? maxWind.toFixed(0) + ' km/h' : '--';
-        document.getElementById("kpi-rain").textContent = maxRain !== 0 ? maxRain.toFixed(1) + ' mm' : '--';
+        document.getElementById("kpi-temp").textContent = isFinite(siteMaxTemp) ? siteMaxTemp.toFixed(1) + '°' : '--';
+        document.getElementById("kpi-wind").textContent = siteMaxWind !== 0 ? siteMaxWind.toFixed(0) + ' km/h' : '--';
+        document.getElementById("kpi-rain").textContent = siteMaxRain !== 0 ? siteMaxRain.toFixed(1) + ' mm' : '--';
         document.getElementById("kpi-alerts").textContent = alertCount;
         // Highlight alert count if > 0
         const alertBox = document.getElementById("kpi-alerts-box");
