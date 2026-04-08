@@ -656,6 +656,46 @@
             border: 1px solid #bee3f8;
         }
 
+        /* TOURNÉES — MÉTÉO PAR ÉTAPE */
+        .t-villes-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .t-ville-tag {
+            display: flex;
+            flex-direction: column;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 5px 8px;
+            font-size: 12px;
+            min-width: 100px;
+        }
+        .t-ville-tag.t-ville-ok { border-left: 3px solid #38a169; }
+        .t-ville-tag.t-ville-warn { border-left: 3px solid #ecc94b; background: #fffff0; }
+        .t-ville-tag.t-ville-danger { border-left: 3px solid #e53e3e; background: #fff5f5; }
+        .t-ville-name { font-weight: 600; color: #2d3748; }
+        .t-ville-meteo { font-size: 11px; color: #718096; margin-top: 2px; }
+
+        /* SCORE RISQUE */
+        .t-risk-ok { color: #38a169; font-weight: 600; font-size: 12px; }
+        .t-risk-warn { color: #d69e2e; font-weight: 600; font-size: 12px; }
+        .t-risk-danger { color: #e53e3e; font-weight: 700; font-size: 12px; }
+
+        /* BANDEAU ALERTE TOURNÉE */
+        .t-alerte-row td { padding: 0 !important; border: none !important; }
+        .t-alerte-banner {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            border-radius: 3px;
+            padding: 6px 12px;
+            font-size: 11px;
+            color: #c53030;
+            margin: 0 8px 8px 8px;
+            line-height: 1.5;
+        }
+
         .ville-tag .remove-tag {
             cursor: pointer;
             font-size: 14px;
@@ -1117,7 +1157,8 @@
                             <th>Date</th>
                             <th>Heure</th>
                             <th>Chauffeur</th>
-                            <th>Villes</th>
+                            <th>Risque</th>
+                            <th>Villes &amp; Météo</th>
                             <th>Notes</th>
                             <th>Actions</th>
                         </thead>
@@ -1138,6 +1179,9 @@
     let COMPANY_NAME = null;
     let map = null;
     let markers = [];
+    // Cache global des données pour le module Tournées
+    let _cachedMeteo = [];
+    let _cachedTrafic = null;
 
     // ============ DONNÉES DÉMO ============
     function loadDemoData() {
@@ -1229,11 +1273,14 @@
         ];
 
         // Injecter les données
+        _cachedMeteo = demoMeteo;
+        _cachedTrafic = demoTrafic;
         updateMeteoTab(demoMeteo);
         updateMapTab(demoMeteo, demoPrevisions);
         updatePrevisionTab(demoPrevisions);
         updateTraficTab(demoTrafic);
         updateAlertesTab(demoAlertes);
+        if (window.refreshTournees) window.refreshTournees();
 
         showNotif("Mode démo activé — données fictives chargées");
     }
@@ -1382,11 +1429,16 @@
             const trafic = await fetchData("trafic");
             const zones = await fetchData("zones");
 
+            // Stocker pour le module Tournées
+            _cachedMeteo = meteo || [];
+            _cachedTrafic = trafic || null;
+
             updateMeteoTab(meteo);
             updateMapTab(meteo, previsions);
             updatePrevisionTab(previsions);
             updateTraficTab(trafic);
             updateAlertesTab(alertes);
+            if (window.refreshTournees) window.refreshTournees();
             
             showNotif("Données actualisées");
             
@@ -2266,23 +2318,103 @@
             const tournees = _load();
 
             if (tournees.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucune tournée enregistrée</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune tournée enregistrée</td></tr>';
                 return;
+            }
+
+            // Index météo par nom de ville (lowercase)
+            const meteoIndex = {};
+            (_cachedMeteo || []).forEach(z => {
+                meteoIndex[z.name.toLowerCase()] = z;
+            });
+
+            // Extraire incidents trafic
+            let incidents = [];
+            if (_cachedTrafic) {
+                incidents = Array.isArray(_cachedTrafic) ? _cachedTrafic : (_cachedTrafic.incidents || []);
             }
 
             tournees.sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure));
 
             let html = '';
             tournees.forEach(t => {
-                const villesTags = t.villes.map(v => '<span class="ville-tag">' + _esc(v) + '</span>').join(' ');
+                let maxRisk = 0; // 0=ok, 1=modéré, 2=élevé
+                const alertes = [];
+
+                // Construire les tags villes avec météo
+                const villesTags = t.villes.map(v => {
+                    const m = meteoIndex[v.toLowerCase()];
+                    let meteoHtml = '';
+                    let tagClass = 't-ville-ok';
+
+                    if (m) {
+                        const temp = m.temp != null ? parseFloat(m.temp).toFixed(0) + '°' : '?';
+                        const rain = parseFloat(m.precipitation ?? m.rain ?? 0);
+                        const wind = parseFloat(m.wind ?? 0);
+                        const sky = cielEmoji(m.ciel);
+                        const risques = m.risques || 'RAS';
+
+                        meteoHtml = '<span class="t-ville-meteo">' + sky + ' ' + temp;
+                        if (rain > 0) meteoHtml += ' 🌧️' + rain.toFixed(1);
+                        if (wind > 25) meteoHtml += ' 💨' + wind.toFixed(0);
+                        meteoHtml += '</span>';
+
+                        // Évaluer le risque
+                        if (!risques.includes('RAS') && !risques.includes('✅')) {
+                            if (risques.toLowerCase().includes('fort') || risques.toLowerCase().includes('élevé') || rain > 5 || wind > 50) {
+                                maxRisk = Math.max(maxRisk, 2);
+                                tagClass = 't-ville-danger';
+                                alertes.push('⚠️ ' + _esc(v) + ' : ' + _esc(risques));
+                            } else {
+                                maxRisk = Math.max(maxRisk, 1);
+                                tagClass = 't-ville-warn';
+                            }
+                        }
+                    } else {
+                        meteoHtml = '<span class="t-ville-meteo" style="color:#a0aec0">pas de données</span>';
+                    }
+
+                    return '<div class="t-ville-tag ' + tagClass + '">'
+                        + '<span class="t-ville-name">' + _esc(v) + '</span>'
+                        + meteoHtml
+                        + '</div>';
+                }).join('');
+
+                // Vérifier incidents trafic sur le trajet
+                incidents.forEach(inc => {
+                    const desc = (inc.route || '').toLowerCase() + ' ' + (inc.description || '').toLowerCase();
+                    t.villes.forEach(v => {
+                        if (desc.includes(v.toLowerCase())) {
+                            maxRisk = Math.max(maxRisk, inc.severity === 'high' ? 2 : 1);
+                            alertes.push('🚨 Trafic ' + _esc(v) + ' : ' + _esc(inc.description));
+                        }
+                    });
+                });
+
+                // Score risque
+                const scoreEmoji = maxRisk === 0 ? '🟢' : maxRisk === 1 ? '🟡' : '🔴';
+                const scoreLabel = maxRisk === 0 ? 'OK' : maxRisk === 1 ? 'Modéré' : 'Élevé';
+                const scoreClass = maxRisk === 0 ? 't-risk-ok' : maxRisk === 1 ? 't-risk-warn' : 't-risk-danger';
+
+                // Bandeau alerte si risque > 0
+                let alerteRow = '';
+                if (alertes.length > 0) {
+                    alerteRow = '<tr class="t-alerte-row"><td colspan="7">'
+                        + '<div class="t-alerte-banner">'
+                        + alertes.join(' &nbsp;|&nbsp; ')
+                        + '</div></td></tr>';
+                }
+
                 html += '<tr>'
                     + '<td>' + _esc(t.date) + '</td>'
                     + '<td>' + _esc(t.heure) + '</td>'
                     + '<td>' + _esc(t.prenom) + ' ' + _esc(t.nom) + '</td>'
-                    + '<td>' + villesTags + '</td>'
+                    + '<td style="text-align:center"><span class="' + scoreClass + '">' + scoreEmoji + ' ' + scoreLabel + '</span></td>'
+                    + '<td><div class="t-villes-grid">' + villesTags + '</div></td>'
                     + '<td>' + _esc(t.notes || '') + '</td>'
                     + '<td><button class="btn-delete-tournee" data-id="' + t.id + '">Supprimer</button></td>'
                     + '</tr>';
+                html += alerteRow;
             });
             tbody.innerHTML = html;
         }
@@ -2350,6 +2482,12 @@
         _resetForm();
         _renderTournees();
         _updateStats();
+
+        // Exposer le rafraîchissement pour refreshData/loadDemoData
+        window.refreshTournees = function() {
+            _renderTournees();
+            _updateStats();
+        };
     })();
 </script>
 
