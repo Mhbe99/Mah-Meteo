@@ -3,8 +3,10 @@ FROM python:3.11.9-slim
 WORKDIR /app
 
 # Install system dependencies
+# Cache bust: 2026-04-09-postgresql
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
