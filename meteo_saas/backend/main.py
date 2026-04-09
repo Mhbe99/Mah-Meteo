@@ -104,7 +104,7 @@ app.add_middleware(
 PLAN_LIMITS = {
     "free":       {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3},
     "pro":        {"sites": 3, "voisins": 8,  "emails": 3, "changes": 10},
-    "enterprise": {"sites": 5, "voisins": 15, "emails": 10, "changes": 30},
+    "enterprise": {"sites": 5, "voisins": 15, "emails": 5, "changes": 30},
 }
 
 @limiter.limit("10/minute")
