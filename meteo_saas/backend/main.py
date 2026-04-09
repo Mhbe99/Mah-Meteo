@@ -102,9 +102,9 @@ app.add_middleware(
 
 # Limites par plan
 PLAN_LIMITS = {
-    "free":       {"zones": 5,  "sites": 1, "emails": 1},
-    "pro":        {"zones": 15, "sites": 3, "emails": 3},
-    "enterprise": {"zones": 30, "sites": 5, "emails": 10},
+    "free":       {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3},
+    "pro":        {"sites": 3, "voisins": 8,  "emails": 3, "changes": 10},
+    "enterprise": {"sites": 5, "voisins": 15, "emails": 10, "changes": 30},
 }
 
 @limiter.limit("10/minute")
@@ -198,11 +198,13 @@ def get_account(client_id: int, current_client: int = Depends(get_current_client
         "company_name": client.company_name,
         "email": client.email,
         "plan": client.plan,
-        "zones_used": len(zones),
-        "zones_max": limits["zones"],
         "sites_used": sum(1 for z in zones if z.type == "site"),
         "sites_max": limits["sites"],
+        "voisins_used": sum(1 for z in zones if z.type == "voisin"),
+        "voisins_max": limits["voisins"],
         "emails_max": limits["emails"],
+        "changes_used": client.zone_changes or 0,
+        "changes_max": limits["changes"],
     }
 
 
@@ -252,11 +254,11 @@ def add_zone(client_id: int, data: ZoneAddRequest, current_client: int = Depends
     limits = PLAN_LIMITS.get(client.plan, PLAN_LIMITS["free"])
     zones = db.query(Zone).filter(Zone.client_id == client_id).all()
 
-    if len(zones) >= limits["zones"]:
-        raise HTTPException(status_code=403, detail=f"Limite de {limits['zones']} zones atteinte (plan {client.plan})")
-
     if data.type == "site" and sum(1 for z in zones if z.type == "site") >= limits["sites"]:
         raise HTTPException(status_code=403, detail=f"Limite de {limits['sites']} sites atteinte (plan {client.plan})")
+
+    if data.type == "voisin" and sum(1 for z in zones if z.type == "voisin") >= limits["voisins"]:
+        raise HTTPException(status_code=403, detail=f"Limite de {limits['voisins']} villes voisines atteinte (plan {client.plan})")
 
     # Vérifier doublon
     existing = db.query(Zone).filter(Zone.client_id == client_id, Zone.name == data.name).first()
@@ -278,6 +280,15 @@ def delete_zone(client_id: int, zone_id: int, current_client: int = Depends(get_
     zone = db.query(Zone).filter(Zone.id == zone_id, Zone.client_id == client_id).first()
     if not zone:
         raise HTTPException(status_code=404, detail="Zone introuvable")
+
+    # Vérifier limite de changements (suppression = 1 changement)
+    client = db.query(Client).filter(Client.id == client_id).first()
+    limits = PLAN_LIMITS.get(client.plan, PLAN_LIMITS["free"])
+    changes_used = client.zone_changes or 0
+    if changes_used >= limits["changes"]:
+        raise HTTPException(status_code=403, detail=f"Limite de {limits['changes']} changements atteinte (plan {client.plan})")
+
+    client.zone_changes = changes_used + 1
     db.delete(zone)
     db.commit()
     return {"status": "ok", "deleted": zone.name}

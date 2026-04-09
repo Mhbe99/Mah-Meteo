@@ -1039,17 +1039,17 @@
                     <label class="plan-card selected" onclick="selectPlan('free',this)">
                         <input type="radio" name="plan" value="free" checked style="display:none">
                         <div style="font-weight:700;font-size:15px;color:#27ae60">Gratuit</div>
-                        <div style="font-size:11px;color:#718096;margin-top:4px">5 zones<br>1 site<br>1 email</div>
+                        <div style="font-size:11px;color:#718096;margin-top:4px">1 site + 5 voisins<br>1 email<br>3 modifs</div>
                     </label>
                     <label class="plan-card" onclick="selectPlan('pro',this)">
                         <input type="radio" name="plan" value="pro" style="display:none">
                         <div style="font-weight:700;font-size:15px;color:#3498db">Pro</div>
-                        <div style="font-size:11px;color:#718096;margin-top:4px">15 zones<br>3 sites<br>3 emails</div>
+                        <div style="font-size:11px;color:#718096;margin-top:4px">3 sites + 8 voisins<br>3 emails<br>10 modifs</div>
                     </label>
                     <label class="plan-card" onclick="selectPlan('enterprise',this)">
                         <input type="radio" name="plan" value="enterprise" style="display:none">
                         <div style="font-weight:700;font-size:15px;color:#e67e22">Enterprise</div>
-                        <div style="font-size:11px;color:#718096;margin-top:4px">30 zones<br>5 sites<br>10 emails</div>
+                        <div style="font-size:11px;color:#718096;margin-top:4px">5 sites + 15 voisins<br>10 emails<br>30 modifs</div>
                     </label>
                 </div>
             </div>
@@ -1276,17 +1276,24 @@
                         </div>
                         <div class="quota-bar">
                             <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
-                                <span>Zones</span>
-                                <span id="acc-zones-text">0 / 0</span>
-                            </div>
-                            <div class="quota-bar-bg"><div class="quota-bar-fill" id="acc-zones-bar" style="width:0%"></div></div>
-                        </div>
-                        <div class="quota-bar">
-                            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
                                 <span>Sites</span>
                                 <span id="acc-sites-text">0 / 0</span>
                             </div>
                             <div class="quota-bar-bg"><div class="quota-bar-fill" id="acc-sites-bar" style="width:0%"></div></div>
+                        </div>
+                        <div class="quota-bar">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
+                                <span>Villes voisines</span>
+                                <span id="acc-voisins-text">0 / 0</span>
+                            </div>
+                            <div class="quota-bar-bg"><div class="quota-bar-fill" id="acc-voisins-bar" style="width:0%"></div></div>
+                        </div>
+                        <div class="quota-bar">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
+                                <span>Modifications restantes</span>
+                                <span id="acc-changes-text">0 / 0</span>
+                            </div>
+                            <div class="quota-bar-bg"><div class="quota-bar-fill" id="acc-changes-bar" style="width:0%"></div></div>
                         </div>
                     </div>
 
@@ -2057,14 +2064,18 @@
             document.getElementById("acc-user").textContent = acc.username;
             document.getElementById("acc-email").textContent = acc.email;
             document.getElementById("acc-plan").textContent = acc.plan;
-            document.getElementById("acc-zones-text").textContent = `${acc.zones_used} / ${acc.zones_max}`;
             document.getElementById("acc-sites-text").textContent = `${acc.sites_used} / ${acc.sites_max}`;
-            const zPct = acc.zones_max > 0 ? Math.min(100, (acc.zones_used / acc.zones_max) * 100) : 0;
+            document.getElementById("acc-voisins-text").textContent = `${acc.voisins_used} / ${acc.voisins_max}`;
+            document.getElementById("acc-changes-text").textContent = `${acc.changes_used} / ${acc.changes_max}`;
             const sPct = acc.sites_max > 0 ? Math.min(100, (acc.sites_used / acc.sites_max) * 100) : 0;
-            document.getElementById("acc-zones-bar").style.width = zPct + "%";
+            const vPct = acc.voisins_max > 0 ? Math.min(100, (acc.voisins_used / acc.voisins_max) * 100) : 0;
+            const cPct = acc.changes_max > 0 ? Math.min(100, (acc.changes_used / acc.changes_max) * 100) : 0;
             document.getElementById("acc-sites-bar").style.width = sPct + "%";
-            if (zPct >= 90) document.getElementById("acc-zones-bar").style.background = "#e53e3e";
-            else document.getElementById("acc-zones-bar").style.background = "#3498db";
+            document.getElementById("acc-voisins-bar").style.width = vPct + "%";
+            document.getElementById("acc-changes-bar").style.width = cPct + "%";
+            document.getElementById("acc-sites-bar").style.background = sPct >= 90 ? "#e53e3e" : "#3498db";
+            document.getElementById("acc-voisins-bar").style.background = vPct >= 90 ? "#e53e3e" : "#27ae60";
+            document.getElementById("acc-changes-bar").style.background = cPct >= 90 ? "#e53e3e" : "#e67e22";
         } catch (e) { console.error("Erreur chargement compte:", e); }
         loadZoneList();
     }

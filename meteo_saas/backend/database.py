@@ -58,6 +58,7 @@ class Client(Base):
     email = Column(String)
     plan = Column(String, default="free")  # free, pro, enterprise
     active = Column(Integer, default=1)  # booléen stocké comme 0/1
+    zone_changes = Column(Integer, default=0)  # compteur de changements de zones
 
     # Relations
     zones = relationship("Zone", back_populates="client", cascade="all, delete-orphan")
