@@ -191,7 +191,15 @@ def init_db():
                 print(f"  ✅ Colonne {col_name} ajoutée")
             except Exception as e:
                 # La colonne existe déjà, c'est normal
-                pass
+                db.rollback()
+        
+        # Migration: ajouter zone_changes à la table clients
+        try:
+            db.execute(text("ALTER TABLE clients ADD COLUMN zone_changes INTEGER DEFAULT 0"))
+            db.commit()
+            print("  ✅ Colonne zone_changes ajoutée à clients")
+        except Exception:
+            db.rollback()
         
         db.close()
     except Exception as e:
