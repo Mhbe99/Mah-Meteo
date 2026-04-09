@@ -15,14 +15,15 @@ from datetime import datetime
 
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "")
-ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "false").lower() == "true"
+SMTP_USER = os.getenv("SMTP_USER", "") or os.getenv("SENDER_EMAIL", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") or os.getenv("GMAIL_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "") or os.getenv("SENDER_EMAIL", "")
+RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS", "")
+ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
 
 
-def _send_email(to_email: str, subject: str, html_body: str):
-    """Envoie un email HTML via SMTP."""
+def _send_email(to_emails, subject: str, html_body: str):
+    """Envoie un email HTML via SMTP à un ou plusieurs destinataires."""
     if not ALERT_ENABLED:
         print(f"[EMAIL] Désactivé — sujet: {subject}")
         return False
@@ -31,24 +32,41 @@ def _send_email(to_email: str, subject: str, html_body: str):
         print(f"[EMAIL] SMTP non configuré — sujet: {subject}")
         return False
 
+    # Accepter str ou list
+    if isinstance(to_emails, str):
+        to_emails = [to_emails]
+
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = SMTP_FROM or SMTP_USER
-        msg["To"] = to_email
+        msg["To"] = ", ".join(to_emails)
 
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.starttls()
             server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(msg["From"], [to_email], msg.as_string())
+            server.sendmail(msg["From"], to_emails, msg.as_string())
 
-        print(f"[EMAIL] Envoyé à {to_email} — {subject}")
+        print(f"[EMAIL] Envoyé à {', '.join(to_emails)} — {subject}")
         return True
     except Exception as e:
-        print(f"[EMAIL] Erreur envoi à {to_email}: {e}")
+        print(f"[EMAIL] Erreur envoi: {e}")
         return False
+
+
+def _get_all_recipients(to_email: str):
+    """Combine le destinataire spécifique + RECEIVER_EMAILS du .env."""
+    recipients = set()
+    if to_email:
+        recipients.add(to_email.strip())
+    if RECEIVER_EMAILS:
+        for e in RECEIVER_EMAILS.split(","):
+            e = e.strip()
+            if e:
+                recipients.add(e)
+    return list(recipients)
 
 
 # ============ TEMPLATES EMAIL ============
@@ -115,7 +133,7 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list):
     """
 
     subject = f"[Mah Météo] {len(alertes)} alerte(s) météo — {company_name}"
-    _send_email(to_email, subject, html)
+    _send_email(_get_all_recipients(to_email), subject, html)
 
 
 # ============ ALERTES TRAFIC ============
@@ -170,7 +188,7 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list):
     """
 
     subject = f"[Mah Météo] {len(critical)} incident(s) trafic — {company_name}"
-    _send_email(to_email, subject, html)
+    _send_email(_get_all_recipients(to_email), subject, html)
 
 
 # ============ ALERTE COMBINÉE MÉTÉO + TRAFIC ============
@@ -199,4 +217,4 @@ def send_combined_alert(to_email: str, company_name: str, message: str):
     """
 
     subject = f"[Mah Météo] ALERTE COMBINÉE météo + trafic — {company_name}"
-    _send_email(to_email, subject, html)
+    _send_email(_get_all_recipients(to_email), subject, html)

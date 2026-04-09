@@ -207,7 +207,19 @@ VOISINS = {
     "Montataire": {"lat": 49.2641, "lon": 2.4436},
     "Liancourt": {"lat": 49.3334, "lon": 2.4573},
     "Chaumont-en-Vexin": {"lat": 49.2761, "lon": 1.8759},
-    "Formerie": {"lat": 49.65, "lon": 1.73}
+    "Formerie": {"lat": 49.65, "lon": 1.73},
+    "Breteuil": {"lat": 49.633331, "lon": 2.3},
+    "St Just en Chaussée": {"lat": 49.5, "lon": 2.43333},
+    "Trosly-Breuil": {"lat": 49.400002, "lon": 2.96667},
+    "Crépy-en-Valois": {"lat": 49.23333, "lon": 2.9},
+    "Saint-Maximin": {"lat": 49.216671, "lon": 2.45},
+    "Nanteuil-le-Haudouin": {"lat": 49.133331, "lon": 2.8},
+    "Ressons-sur-Matz": {"lat": 49.549999, "lon": 2.75},
+    "Estrées-Saint-Denis": {"lat": 49.433331, "lon": 2.65},
+    "Guiscard": {"lat": 49.650002, "lon": 3.05},
+    "Chambly": {"lat": 49.166672, "lon": 2.25},
+    "Crèvecoeur-le-Grand": {"lat": 49.599998, "lon": 2.08333},
+    "Mouy": {"lat": 49.316669, "lon": 2.31667},
 }
 
 TOUTES_ZONES = {**SITES, **VOISINS}
