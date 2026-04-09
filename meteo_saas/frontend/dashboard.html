@@ -932,15 +932,75 @@
                 height: 300px;
             }
         }
+
+        /* ============ PLAN CARDS ============ */
+        .plan-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .plan-card:hover { border-color: #3498db; }
+        .plan-card.selected { border-color: #2c3e50; background: #f7fafc; }
+
+        /* ============ MON COMPTE TAB ============ */
+        .account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .account-panel { background: #fff; border-radius: 6px; padding: 20px; border: 1px solid #e2e8f0; }
+        .account-panel h3 { font-size: 15px; margin-bottom: 14px; color: #2c3e50; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; }
+
+        .zone-search-box { position: relative; margin-bottom: 14px; }
+        .zone-search-box input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 14px; }
+        .zone-search-box input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,0.15); }
+        .autocomplete-list {
+            position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e0;
+            border-top: none; border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; z-index: 100; display: none;
+        }
+        .autocomplete-list .ac-item {
+            padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f0f0f0;
+        }
+        .autocomplete-list .ac-item:hover { background: #edf2f7; }
+        .autocomplete-list .ac-item small { color: #a0aec0; }
+
+        .zone-list { max-height: 280px; overflow-y: auto; }
+        .zone-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 7px 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px;
+        }
+        .zone-row:hover { background: #f7fafc; }
+        .zone-row .zone-type { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; text-transform: uppercase; }
+        .zone-row .zone-type.site { background: #ebf8ff; color: #2b6cb0; }
+        .zone-row .zone-type.voisin { background: #f0fff4; color: #276749; }
+        .zone-row button { background: none; border: none; color: #e53e3e; cursor: pointer; font-size: 16px; padding: 2px 6px; }
+        .zone-row button:hover { background: #fff5f5; border-radius: 3px; }
+
+        .quota-bar { margin: 10px 0; }
+        .quota-bar-bg { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .quota-bar-fill { height: 100%; background: #3498db; border-radius: 4px; transition: width 0.3s; }
+        .quota-text { font-size: 11px; color: #718096; margin-top: 4px; }
+
+        @media (max-width: 768px) {
+            .account-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- LOGIN / REGISTER SCREEN -->
 <div id="login-screen">
-    <div class="login-box">
+    <div class="login-box" style="max-width:440px;">
         <h1><svg style="width:32px;height:32px;display:inline-block;margin-right:8px;vertical-align:middle;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#FFB81C;stop-opacity:1"/><stop offset="100%" style="stop-color:#FF8C00;stop-opacity:1"/></linearGradient></defs><circle cx="50" cy="40" r="28" fill="url(#sunGrad)"/><g stroke="#FFB81C" stroke-width="3" stroke-linecap="round"><line x1="50" y1="5" x2="50" y2="15"/><line x1="50" y1="65" x2="50" y2="75"/><line x1="85" y1="40" x2="75" y2="40"/><line x1="25" y1="40" x2="15" y2="40"/><line x1="72" y1="18" x2="65" y2="11"/><line x1="35" y1="69" x2="28" y2="76"/></g><path d="M 25 65 Q 20 65 20 72 Q 20 80 28 82 L 72 82 Q 80 80 80 72 Q 80 65 75 65" fill="#1c4f82" opacity="0.9"/></svg>Mah Météo<span class="dot"></span></h1>
+
+        <!-- TOGGLE SE CONNECTER / S'INSCRIRE -->
+        <div style="display:flex;margin-bottom:20px;border-radius:4px;overflow:hidden;border:1px solid #cbd5e0;">
+            <button id="toggle-login" onclick="switchAuthMode('login')" style="flex:1;padding:10px;border:none;font-weight:600;font-size:13px;cursor:pointer;background:#2c3e50;color:#fff;transition:all 0.2s">Se connecter</button>
+            <button id="toggle-register" onclick="switchAuthMode('register')" style="flex:1;padding:10px;border:none;font-weight:600;font-size:13px;cursor:pointer;background:#fff;color:#4a5568;transition:all 0.2s">S'inscrire</button>
+        </div>
+
         <div class="login-error" id="login-error"></div>
+
+        <!-- FORMULAIRE CONNEXION -->
         <form id="login-form">
             <div class="form-group">
                 <label>Utilisateur</label>
@@ -952,6 +1012,50 @@
             </div>
             <button type="submit" class="login-btn">Connexion</button>
         </form>
+
+        <!-- FORMULAIRE INSCRIPTION -->
+        <form id="register-form" style="display:none;">
+            <div class="form-group">
+                <label>Entreprise</label>
+                <input type="text" id="reg-company" placeholder="Mon Entreprise" required>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                    <label>Utilisateur</label>
+                    <input type="text" id="reg-username" placeholder="mon-user" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" placeholder="contact@example.com" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" id="reg-password" placeholder="Min. 6 caractères" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>Plan</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px;">
+                    <label class="plan-card selected" onclick="selectPlan('free',this)">
+                        <input type="radio" name="plan" value="free" checked style="display:none">
+                        <div style="font-weight:700;font-size:15px;color:#27ae60">Gratuit</div>
+                        <div style="font-size:11px;color:#718096;margin-top:4px">5 zones<br>1 site<br>1 email</div>
+                    </label>
+                    <label class="plan-card" onclick="selectPlan('pro',this)">
+                        <input type="radio" name="plan" value="pro" style="display:none">
+                        <div style="font-weight:700;font-size:15px;color:#3498db">Pro</div>
+                        <div style="font-size:11px;color:#718096;margin-top:4px">15 zones<br>3 sites<br>3 emails</div>
+                    </label>
+                    <label class="plan-card" onclick="selectPlan('enterprise',this)">
+                        <input type="radio" name="plan" value="enterprise" style="display:none">
+                        <div style="font-weight:700;font-size:15px;color:#e67e22">Enterprise</div>
+                        <div style="font-size:11px;color:#718096;margin-top:4px">30 zones<br>5 sites<br>10 emails</div>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="login-btn" style="background:#27ae60">Créer mon compte</button>
+        </form>
+
         <button onclick="enterDemoMode()" style="margin-top:12px;width:100%;padding:10px;background:#e67e22;color:#fff;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer">Mode Démo (données fictives)</button>
     </div>
 </div>
@@ -997,6 +1101,7 @@
                 <button class="tab-btn" onclick="switchTab(1)">Prévisions</button>
                 <button class="tab-btn" onclick="switchTab(2)">Trafic & Alertes</button>
                 <button class="tab-btn" onclick="switchTab(3)">Tournées</button>
+                <button class="tab-btn" onclick="switchTab(4)">Mon Compte</button>
             </div>
 
             <!-- TAB 1: VUE GÉNÉRALE (Carte + Tableaux) -->
@@ -1154,6 +1259,64 @@
                         </thead>
                         <tbody></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- TAB 5: MON COMPTE -->
+            <div class="tab-content" id="panel-account">
+                <div class="account-grid">
+                    <!-- INFOS COMPTE -->
+                    <div class="account-panel">
+                        <h3>Mon abonnement</h3>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px;">
+                            <div><strong>Entreprise :</strong> <span id="acc-company">—</span></div>
+                            <div><strong>Utilisateur :</strong> <span id="acc-user">—</span></div>
+                            <div><strong>Email :</strong> <span id="acc-email">—</span></div>
+                            <div><strong>Plan :</strong> <span id="acc-plan" style="font-weight:700;text-transform:uppercase">—</span></div>
+                        </div>
+                        <div class="quota-bar">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
+                                <span>Zones</span>
+                                <span id="acc-zones-text">0 / 0</span>
+                            </div>
+                            <div class="quota-bar-bg"><div class="quota-bar-fill" id="acc-zones-bar" style="width:0%"></div></div>
+                        </div>
+                        <div class="quota-bar">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
+                                <span>Sites</span>
+                                <span id="acc-sites-text">0 / 0</span>
+                            </div>
+                            <div class="quota-bar-bg"><div class="quota-bar-fill" id="acc-sites-bar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- GESTION ZONES -->
+                    <div class="account-panel">
+                        <h3>Mes zones</h3>
+                        <div class="zone-search-box">
+                            <input type="text" id="zone-search-input" placeholder="Rechercher une ville..." autocomplete="off">
+                            <div class="autocomplete-list" id="zone-autocomplete"></div>
+                        </div>
+                        <div id="zone-add-bar" style="display:none;margin-bottom:12px;padding:10px;background:#f7fafc;border-radius:4px;border:1px solid #e2e8f0;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;">
+                                <div>
+                                    <strong id="zone-add-name"></strong>
+                                    <small id="zone-add-info" style="color:#718096;margin-left:6px"></small>
+                                </div>
+                                <div style="display:flex;gap:6px;">
+                                    <select id="zone-add-type" style="padding:4px 8px;border:1px solid #cbd5e0;border-radius:3px;font-size:12px;">
+                                        <option value="voisin">Voisin</option>
+                                        <option value="site">Site</option>
+                                    </select>
+                                    <button onclick="addSelectedZone()" style="padding:4px 14px;background:#27ae60;color:#fff;border:none;border-radius:3px;font-size:12px;font-weight:600;cursor:pointer">Ajouter</button>
+                                    <button onclick="cancelAddZone()" style="padding:4px 10px;background:#e2e8f0;color:#4a5568;border:none;border-radius:3px;font-size:12px;cursor:pointer">Annuler</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="zone-list" id="zone-list">
+                            <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Chargement...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1815,6 +1978,196 @@
         if (index === 0 && map) {
             setTimeout(() => map.invalidateSize(), 100);
         }
+        // Mon Compte tab → charger les infos
+        if (index === 4 && TOKEN) {
+            loadAccountInfo();
+        }
+    }
+
+    // ============ TOGGLE CONNEXION / INSCRIPTION ============
+    function switchAuthMode(mode) {
+        const errEl = document.getElementById("login-error");
+        errEl.style.display = "none";
+        if (mode === 'register') {
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("register-form").style.display = "block";
+            document.getElementById("toggle-login").style.background = "#fff";
+            document.getElementById("toggle-login").style.color = "#4a5568";
+            document.getElementById("toggle-register").style.background = "#2c3e50";
+            document.getElementById("toggle-register").style.color = "#fff";
+        } else {
+            document.getElementById("login-form").style.display = "block";
+            document.getElementById("register-form").style.display = "none";
+            document.getElementById("toggle-login").style.background = "#2c3e50";
+            document.getElementById("toggle-login").style.color = "#fff";
+            document.getElementById("toggle-register").style.background = "#fff";
+            document.getElementById("toggle-register").style.color = "#4a5568";
+        }
+    }
+    function selectPlan(plan, el) {
+        document.querySelectorAll(".plan-card").forEach(c => c.classList.remove("selected"));
+        el.classList.add("selected");
+        el.querySelector("input").checked = true;
+    }
+
+    document.getElementById("register-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("login-error");
+        errEl.style.display = "none";
+        const plan = document.querySelector('input[name="plan"]:checked').value;
+        const body = {
+            username: document.getElementById("reg-username").value,
+            password: document.getElementById("reg-password").value,
+            company_name: document.getElementById("reg-company").value,
+            email: document.getElementById("reg-email").value,
+            plan: plan
+        };
+        try {
+            const resp = await fetch("/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || "Erreur inscription");
+            TOKEN = data.access_token;
+            CLIENT_ID = data.client_id;
+            COMPANY_NAME = data.company_name;
+            localStorage.setItem("token", TOKEN);
+            localStorage.setItem("client_id", CLIENT_ID);
+            localStorage.setItem("company_name", COMPANY_NAME);
+            showDashboard();
+            showNotif("Compte créé ! Ajoutez vos zones dans l'onglet Mon Compte.");
+            switchTab(4);
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = "block";
+        }
+    });
+
+    // ============ MON COMPTE — INFOS ============
+    async function loadAccountInfo() {
+        try {
+            const resp = await fetch(`/api/account/${CLIENT_ID}`, {
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+            if (!resp.ok) return;
+            const acc = await resp.json();
+            document.getElementById("acc-company").textContent = acc.company_name;
+            document.getElementById("acc-user").textContent = acc.username;
+            document.getElementById("acc-email").textContent = acc.email;
+            document.getElementById("acc-plan").textContent = acc.plan;
+            document.getElementById("acc-zones-text").textContent = `${acc.zones_used} / ${acc.zones_max}`;
+            document.getElementById("acc-sites-text").textContent = `${acc.sites_used} / ${acc.sites_max}`;
+            const zPct = acc.zones_max > 0 ? Math.min(100, (acc.zones_used / acc.zones_max) * 100) : 0;
+            const sPct = acc.sites_max > 0 ? Math.min(100, (acc.sites_used / acc.sites_max) * 100) : 0;
+            document.getElementById("acc-zones-bar").style.width = zPct + "%";
+            document.getElementById("acc-sites-bar").style.width = sPct + "%";
+            if (zPct >= 90) document.getElementById("acc-zones-bar").style.background = "#e53e3e";
+            else document.getElementById("acc-zones-bar").style.background = "#3498db";
+        } catch (e) { console.error("Erreur chargement compte:", e); }
+        loadZoneList();
+    }
+
+    // ============ MON COMPTE — LISTE DES ZONES ============
+    async function loadZoneList() {
+        const container = document.getElementById("zone-list");
+        try {
+            const resp = await fetch(`/api/zones/${CLIENT_ID}`, {
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+            if (!resp.ok) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur chargement</div>'; return; }
+            const zones = await resp.json();
+            if (!zones.length) {
+                container.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Aucune zone. Recherchez une ville ci-dessus pour en ajouter.</div>';
+                return;
+            }
+            container.innerHTML = zones.map(z => `
+                <div class="zone-row">
+                    <div><span class="zone-type ${z.type}">${z.type}</span> ${z.name}</div>
+                    <button onclick="deleteZone(${z.id}, '${z.name.replace(/'/g, "\\'")}')" title="Supprimer">&#10005;</button>
+                </div>
+            `).join("");
+        } catch (e) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur réseau</div>'; }
+    }
+
+    // ============ MON COMPTE — RECHERCHE GEOCODING ============
+    let _geoTimeout = null;
+    let _selectedGeo = null;
+
+    document.getElementById("zone-search-input").addEventListener("input", function() {
+        const q = this.value.trim();
+        const list = document.getElementById("zone-autocomplete");
+        if (q.length < 2) { list.style.display = "none"; return; }
+        clearTimeout(_geoTimeout);
+        _geoTimeout = setTimeout(async () => {
+            try {
+                const resp = await fetch(`/api/geocoding/search?q=${encodeURIComponent(q)}`);
+                const results = await resp.json();
+                if (!results.length) { list.innerHTML = '<div class="ac-item">Aucun résultat</div>'; list.style.display = "block"; return; }
+                list.innerHTML = results.map((r, i) => `
+                    <div class="ac-item" onclick="selectGeoResult(${i})">
+                        <strong>${r.name}</strong> <small>${r.admin1 ? r.admin1 + ', ' : ''}${r.country}</small>
+                    </div>
+                `).join("");
+                list.style.display = "block";
+                window._geoResults = results;
+            } catch (e) { list.style.display = "none"; }
+        }, 300);
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!e.target.closest(".zone-search-box")) {
+            document.getElementById("zone-autocomplete").style.display = "none";
+        }
+    });
+
+    function selectGeoResult(index) {
+        const r = window._geoResults[index];
+        _selectedGeo = r;
+        document.getElementById("zone-autocomplete").style.display = "none";
+        document.getElementById("zone-search-input").value = "";
+        document.getElementById("zone-add-name").textContent = r.name;
+        document.getElementById("zone-add-info").textContent = `${r.admin1 ? r.admin1 + ', ' : ''}${r.country} (${r.lat.toFixed(2)}, ${r.lon.toFixed(2)})`;
+        document.getElementById("zone-add-bar").style.display = "block";
+    }
+
+    function cancelAddZone() {
+        _selectedGeo = null;
+        document.getElementById("zone-add-bar").style.display = "none";
+    }
+
+    async function addSelectedZone() {
+        if (!_selectedGeo) return;
+        const type = document.getElementById("zone-add-type").value;
+        try {
+            const resp = await fetch(`/api/zones/${CLIENT_ID}/add`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN}` },
+                body: JSON.stringify({ name: _selectedGeo.name, lat: _selectedGeo.lat, lon: _selectedGeo.lon, type: type })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || "Erreur ajout");
+            showNotif(`Zone "${_selectedGeo.name}" ajoutée`);
+            cancelAddZone();
+            loadAccountInfo();
+        } catch (e) {
+            showNotif(e.message);
+        }
+    }
+
+    async function deleteZone(zoneId, zoneName) {
+        if (!confirm(`Supprimer la zone "${zoneName}" ?`)) return;
+        try {
+            const resp = await fetch(`/api/zones/${CLIENT_ID}/${zoneId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || "Erreur suppression");
+            showNotif(`Zone "${zoneName}" supprimée`);
+            loadAccountInfo();
+        } catch (e) { showNotif(e.message); }
     }
 
     // ============ INIT ============

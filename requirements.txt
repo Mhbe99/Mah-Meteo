@@ -14,3 +14,5 @@ python-multipart==0.0.6
 bcrypt==4.0.1
 # Rate-limiting pour protéger /auth/login contre le brute-force
 slowapi==0.1.9
+# HTTP async client pour proxy geocoding
+httpx==0.27.0

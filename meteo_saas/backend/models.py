@@ -16,6 +16,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    """Requête pour l'inscription"""
+    username: str
+    password: str
+    company_name: str
+    email: str
+    plan: str = "free"
+
+
 class TokenResponse(BaseModel):
     """Réponse contenant le token JWT"""
     access_token: str

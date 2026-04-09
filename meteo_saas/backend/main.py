@@ -4,6 +4,7 @@ main.py — Application FastAPI principale
 """
 
 import os
+import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status, Request
@@ -21,10 +22,10 @@ from slowapi.errors import RateLimitExceeded
 limiter = Limiter(key_func=get_remote_address)
 
 from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache
-from .auth import create_token, verify_password, get_current_client
-from .models import LoginRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
+from .auth import create_token, verify_password, get_current_client, hash_password
+from .models import LoginRequest, RegisterRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from .clients import get_meteo_actuelle, get_previsions, get_alertes, get_zones
 from .trafic import get_incidents
 from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert
@@ -99,6 +100,13 @@ app.add_middleware(
 
 # ============ ROUTES AUTHENTIFICATION ============
 
+# Limites par plan
+PLAN_LIMITS = {
+    "free":       {"zones": 5,  "sites": 1, "emails": 1},
+    "pro":        {"zones": 15, "sites": 3, "emails": 3},
+    "enterprise": {"zones": 30, "sites": 5, "emails": 10},
+}
+
 @limiter.limit("10/minute")
 @app.post("/auth/login", response_model=TokenResponse)
 def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
@@ -133,6 +141,146 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
         client_id=client.id,
         company_name=client.company_name
     )
+
+
+# ============ INSCRIPTION SELF-SERVICE ============
+
+@limiter.limit("5/minute")
+@app.post("/auth/register", response_model=TokenResponse)
+def register(request: Request, data: RegisterRequest, db: Session = Depends(get_db)):
+    """Inscription d'un nouveau client avec plan."""
+    if data.plan not in PLAN_LIMITS:
+        raise HTTPException(status_code=400, detail="Plan invalide")
+
+    existing = db.query(Client).filter(Client.username == data.username).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Ce nom d'utilisateur existe déjà")
+
+    client = Client(
+        username=data.username,
+        password_hash=hash_password(data.password),
+        company_name=data.company_name,
+        email=data.email,
+        plan=data.plan,
+        active=1
+    )
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    token = create_token(data={"client_id": client.id, "username": client.username})
+    return TokenResponse(
+        access_token=token, token_type="bearer",
+        client_id=client.id, company_name=client.company_name
+    )
+
+
+# ============ PLANS ============
+
+@app.get("/api/plans")
+def get_plans():
+    """Retourne les limites de chaque plan."""
+    return PLAN_LIMITS
+
+
+@app.get("/api/account/{client_id}")
+def get_account(client_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Infos du compte : plan, quotas utilisés."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client introuvable")
+    zones = db.query(Zone).filter(Zone.client_id == client_id).all()
+    limits = PLAN_LIMITS.get(client.plan, PLAN_LIMITS["free"])
+    return {
+        "username": client.username,
+        "company_name": client.company_name,
+        "email": client.email,
+        "plan": client.plan,
+        "zones_used": len(zones),
+        "zones_max": limits["zones"],
+        "sites_used": sum(1 for z in zones if z.type == "site"),
+        "sites_max": limits["sites"],
+        "emails_max": limits["emails"],
+    }
+
+
+# ============ GEOCODING (proxy Open-Meteo) ============
+
+@app.get("/api/geocoding/search")
+async def geocoding_search(q: str):
+    """Recherche de villes via Open-Meteo Geocoding API."""
+    if not q or len(q) < 2:
+        return []
+    async with httpx.AsyncClient(timeout=5) as http:
+        resp = await http.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": q, "count": 8, "language": "fr"}
+        )
+        data = resp.json()
+    results = []
+    for r in data.get("results", []):
+        results.append({
+            "name": r.get("name"),
+            "lat": r.get("latitude"),
+            "lon": r.get("longitude"),
+            "country": r.get("country", ""),
+            "admin1": r.get("admin1", ""),
+        })
+    return results
+
+
+# ============ GESTION DES ZONES (ajout / suppression) ============
+
+class ZoneAddRequest(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    type: str = "voisin"  # "site" ou "voisin"
+
+@app.post("/api/zones/{client_id}/add")
+def add_zone(client_id: int, data: ZoneAddRequest, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Ajoute une zone au client (vérifie les limites du plan)."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client introuvable")
+
+    limits = PLAN_LIMITS.get(client.plan, PLAN_LIMITS["free"])
+    zones = db.query(Zone).filter(Zone.client_id == client_id).all()
+
+    if len(zones) >= limits["zones"]:
+        raise HTTPException(status_code=403, detail=f"Limite de {limits['zones']} zones atteinte (plan {client.plan})")
+
+    if data.type == "site" and sum(1 for z in zones if z.type == "site") >= limits["sites"]:
+        raise HTTPException(status_code=403, detail=f"Limite de {limits['sites']} sites atteinte (plan {client.plan})")
+
+    # Vérifier doublon
+    existing = db.query(Zone).filter(Zone.client_id == client_id, Zone.name == data.name).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"La zone '{data.name}' existe déjà")
+
+    zone = Zone(client_id=client_id, name=data.name, lat=data.lat, lon=data.lon, type=data.type)
+    db.add(zone)
+    db.commit()
+    db.refresh(zone)
+    return {"status": "ok", "zone_id": zone.id, "name": zone.name}
+
+
+@app.delete("/api/zones/{client_id}/{zone_id}")
+def delete_zone(client_id: int, zone_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Supprime une zone du client."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    zone = db.query(Zone).filter(Zone.id == zone_id, Zone.client_id == client_id).first()
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone introuvable")
+    db.delete(zone)
+    db.commit()
+    return {"status": "ok", "deleted": zone.name}
 
 
 # ============ ROUTES API — MÉTÉO ============
