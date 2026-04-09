@@ -6,12 +6,19 @@ main.py — Application FastAPI principale
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+
+# Rate-limiting pour protéger /auth/login contre le brute-force
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
 
 from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache
 from .auth import create_token, verify_password, get_current_client
@@ -68,6 +75,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Rate-limiting : 10 tentatives/minute par IP sur /auth/login
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # ============ CORS ============
 
 app.add_middleware(
@@ -88,16 +99,18 @@ app.add_middleware(
 
 # ============ ROUTES AUTHENTIFICATION ============
 
+@limiter.limit("10/minute")
 @app.post("/auth/login", response_model=TokenResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
     """
     Authentification utilisateur.
     Retourne un JWT valide 24h.
+    Rate-limit : 10 tentatives/minute par IP.
     """
     # Chercher le client
-    client = db.query(Client).filter(Client.username == request.username).first()
+    client = db.query(Client).filter(Client.username == login_data.username).first()
     
-    if not client or not verify_password(request.password, client.password_hash):
+    if not client or not verify_password(login_data.password, client.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Identifiants invalides"
