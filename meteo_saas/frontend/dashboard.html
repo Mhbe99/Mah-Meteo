@@ -1004,11 +1004,11 @@
         <form id="login-form">
             <div class="form-group">
                 <label>Utilisateur</label>
-                <input type="text" id="username" placeholder="geodis-lemeux" required>
+                <input type="text" id="username" placeholder="Identifiant" required>
             </div>
             <div class="form-group">
                 <label>Mot de passe</label>
-                <input type="password" id="password" placeholder="demo1234" required>
+                <input type="password" id="password" placeholder="Mot de passe" required>
             </div>
             <button type="submit" class="login-btn">Connexion</button>
         </form>
@@ -1539,6 +1539,18 @@
         document.getElementById("company-name").textContent = COMPANY_NAME;
         refreshData();
         setInterval(refreshData, 15 * 60 * 1000);  // Refresh tous les 15 min
+
+        // Vérifier expiration JWT toutes les 5 min — déconnexion auto
+        setInterval(() => {
+            if (!TOKEN) return;
+            try {
+                const payload = JSON.parse(atob(TOKEN.split('.')[1]));
+                if (payload.exp && Date.now() / 1000 > payload.exp) {
+                    showNotif("Session expirée — reconnexion nécessaire");
+                    setTimeout(logout, 2000);
+                }
+            } catch(e) {}
+        }, 5 * 60 * 1000);
     }
 
     function logout() {

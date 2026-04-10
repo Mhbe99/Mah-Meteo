@@ -213,6 +213,14 @@ def init_db():
                 db.commit()
                 print("  ✅ Mot de passe geodis-lemeux mis à jour depuis INIT_CLIENT_PASSWORD")
         
+        # Migration: contrainte unique (client_id, zone_name) pour éviter les doublons
+        try:
+            db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uix_client_zone ON zones (client_id, name)"))
+            db.commit()
+            print("  ✅ Contrainte unique (client_id, zone_name) ajoutée")
+        except Exception:
+            db.rollback()
+        
         db.close()
     except Exception as e:
         print(f"  ⚠️ Migration: {e}")

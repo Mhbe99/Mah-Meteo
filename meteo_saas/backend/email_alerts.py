@@ -21,6 +21,18 @@ SMTP_FROM = os.getenv("SMTP_FROM", "") or os.getenv("SENDER_EMAIL", "")
 RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS", "")
 ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
 
+# Cooldown anti-spam : 1 email par clé (zone+type) par heure
+_COOLDOWN_SECONDS = 3600
+_last_sent = {}  # clé = "zone:type" → datetime du dernier envoi
+
+def _check_cooldown(key: str) -> bool:
+    """Retourne True si on peut envoyer, False si cooldown actif."""
+    last = _last_sent.get(key)
+    if last and (datetime.now() - last).total_seconds() < _COOLDOWN_SECONDS:
+        return False
+    _last_sent[key] = datetime.now()
+    return True
+
 
 def _send_email(to_emails, subject: str, html_body: str):
     """Envoie un email HTML via SMTP à un ou plusieurs destinataires."""
@@ -98,6 +110,17 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list):
     if not alertes:
         return
 
+    # Filtrer par cooldown (1 email/heure/zone)
+    alertes_filtered = []
+    for a in alertes:
+        key = f"{a.get('zone','?')}:meteo:{a.get('type','')}"
+        if _check_cooldown(key):
+            alertes_filtered.append(a)
+    if not alertes_filtered:
+        print(f"[EMAIL] Cooldown actif — aucune alerte météo envoyée")
+        return
+    alertes = alertes_filtered
+
     rows = ""
     for a in alertes:
         color = "#e53e3e" if "fort" in a.get("type", "").lower() else "#d69e2e"
@@ -151,6 +174,17 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list):
     if not critical:
         return
 
+    # Filtrer par cooldown (1 email/heure/route)
+    critical_filtered = []
+    for inc in critical:
+        key = f"{inc.get('route','?')}:trafic:{inc.get('severity','')}"
+        if _check_cooldown(key):
+            critical_filtered.append(inc)
+    if not critical_filtered:
+        print(f"[EMAIL] Cooldown actif — aucune alerte trafic envoyée")
+        return
+    critical = critical_filtered
+
     rows = ""
     for inc in critical:
         sev = inc.get("severity", "low")
@@ -198,6 +232,10 @@ def send_combined_alert(to_email: str, company_name: str, message: str):
     Envoie l'alerte combinée météo + trafic par email.
     """
     if not message:
+        return
+
+    if not _check_cooldown(f"{company_name}:combined"):
+        print(f"[EMAIL] Cooldown actif — alerte combinée non envoyée")
         return
 
     html = f"""
