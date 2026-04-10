@@ -2,7 +2,6 @@
   "clients": [
     {
       "username": "geodis-lemeux",
-      "password": "demo1234",
       "company_name": "GEODIS — Le Meux",
       "email": "mahame.toure@geodis.com",
       "plan": "pro",

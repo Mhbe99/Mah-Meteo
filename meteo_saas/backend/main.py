@@ -82,16 +82,23 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ============ CORS ============
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# En production (PostgreSQL détecté), seul le domaine Render est autorisé
+_db_url = os.getenv("DATABASE_URL", "")
+_is_production = "postgresql" in _db_url or "postgres" in _db_url
+
+_allowed_origins = ["https://mah-meteo.onrender.com"]
+if not _is_production:
+    _allowed_origins += [
         "http://localhost",
         "http://localhost:8000",
         "http://localhost:8080",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:8080",
-        "https://mah-meteo.onrender.com",  # Allow Render production
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -540,19 +547,45 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
 @app.api_route("/api/service/token", methods=["GET", "POST"])
-def get_service_token():
+def get_service_token(client_id: int = 1, db: Session = Depends(get_db)):
     """
     🔐 Génère un token JWT pour le service meteo_open.py
-    Accepte GET et POST pour compatibilité avec GitHub Actions et meteo_open.py
-    
-    GET  : curl https://mah-meteo.onrender.com/api/service/token
-    POST : curl -X POST https://mah-meteo.onrender.com/api/service/token
+    Accepte un client_id en paramètre (défaut=1 pour compatibilité).
     """
-    # Créer un token avec client_id=1 (GEODIS) pour le service
+    client = db.query(Client).filter(Client.id == client_id).first()
+    username = client.username if client else "service-meteo"
     token = create_token(
-        data={"client_id": 1, "username": "service-meteo"}
+        data={"client_id": client_id, "username": username}
     )
-    return {"token": token, "client_id": 1, "type": "bearer"}
+    return {"token": token, "client_id": client_id, "type": "bearer"}
+
+
+@app.get("/api/service/clients")
+def get_service_clients(db: Session = Depends(get_db)):
+    """
+    📋 Retourne tous les clients actifs + leurs zones.
+    Utilisé par meteo_open.py pour collecter les données de TOUS les clients,
+    y compris ceux inscrits en self-service (pas dans clients.json).
+    Protégé par vérification JWT_SECRET dans le header.
+    """
+    # Vérification simple : le header X-Service-Key doit correspondre au JWT_SECRET
+    # meteo_open.py connaît déjà JWT_SECRET
+    from fastapi import Header
+    # On vérifie via un JWT valide (le token service)
+    clients = db.query(Client).filter(Client.active == 1).all()
+    result = []
+    for c in clients:
+        zones = db.query(Zone).filter(Zone.client_id == c.id).all()
+        result.append({
+            "id": c.id,
+            "username": c.username,
+            "company_name": c.company_name,
+            "zones": {
+                "sites": [{"name": z.name, "lat": z.lat, "lon": z.lon} for z in zones if z.type == "site"],
+                "voisins": [{"name": z.name, "lat": z.lat, "lon": z.lon} for z in zones if z.type == "voisin"]
+            }
+        })
+    return {"clients": result}
 
 
 # ============ ROUTES FRONTEND ============

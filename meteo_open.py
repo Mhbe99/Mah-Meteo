@@ -38,8 +38,25 @@ JWT_SECRET = os.getenv("JWT_SECRET", "geodis-secret-key-2024")
 
 
 def _charger_clients():
-    """Charge tous les clients depuis clients.json.
-       Retourne la liste des clients ou liste vide par défaut."""
+    """Charge tous les clients depuis l'API Render (priorité) puis clients.json.
+       Les clients self-service enregistrés via le dashboard sont ainsi inclus."""
+    clients = []
+    seen_usernames = set()
+
+    # Priorité 1 : charger depuis l'API Render (inclut les clients self-service)
+    try:
+        resp = requests.get(f"{RENDER_URL}/api/service/clients", timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            api_clients = data.get("clients", [])
+            for c in api_clients:
+                clients.append(c)
+                seen_usernames.add(c.get("username"))
+            print(f"[CLIENTS] {len(api_clients)} client(s) chargé(s) depuis API Render")
+    except Exception as e:
+        print(f"[CLIENTS] API Render indisponible: {e} — fallback clients.json")
+
+    # Priorité 2 : compléter avec clients.json (clients pas encore dans l'API)
     try:
         chemin = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -47,12 +64,16 @@ def _charger_clients():
         )
         with open(chemin, "r", encoding="utf-8") as f:
             data = json.load(f)
-        clients = data.get("clients", [])
-        print(f"[CLIENTS] {len(clients)} client(s) chargé(s)")
-        return clients
+        for c in data.get("clients", []):
+            if c.get("username") not in seen_usernames:
+                clients.append(c)
+                seen_usernames.add(c.get("username"))
+                print(f"[CLIENTS] + {c.get('username')} depuis clients.json")
     except Exception as e:
         print(f"[CLIENTS] Erreur lecture clients.json: {e}")
-        return []
+
+    print(f"[CLIENTS] Total: {len(clients)} client(s)")
+    return clients
 
 
 def _zones_depuis_client(client):
@@ -78,10 +99,11 @@ def get_jwt_token(client_id=1, username="geodis-lemeux"):
     2. RENDER_API_TOKEN (env fallback)
     3. Génération via JWT_SECRET (local dev)
     """
-    # Priorité 1: Token frais depuis Render
+    # Priorité 1: Token frais depuis Render (avec client_id)
     try:
         response = requests.get(
             f"{RENDER_URL}/api/service/token",
+            params={"client_id": client_id},
             timeout=5
         )
         if response.status_code == 200:

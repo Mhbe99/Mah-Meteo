@@ -251,9 +251,15 @@ def init_clients_from_json(json_path):
             from passlib.context import CryptContext
             pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
             
+            # Mot de passe : depuis le JSON, la variable d'env, ou un défaut sécurisé
+            raw_password = client_dict.get("password") or os.getenv("INIT_CLIENT_PASSWORD")
+            if not raw_password:
+                print(f"⚠️ Pas de mot de passe pour {client_dict['username']} — client ignoré")
+                continue
+            
             client = Client(
                 username=client_dict["username"],
-                password_hash=pwd_context.hash(client_dict["password"]),
+                password_hash=pwd_context.hash(raw_password),
                 company_name=client_dict["company_name"],
                 email=client_dict["email"],
                 plan=client_dict.get("plan", "free"),
