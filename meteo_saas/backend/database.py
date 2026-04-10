@@ -201,6 +201,18 @@ def init_db():
         except Exception:
             db.rollback()
         
+        # Migration: mettre à jour le mot de passe des clients JSON depuis INIT_CLIENT_PASSWORD
+        init_password = os.getenv("INIT_CLIENT_PASSWORD")
+        if init_password:
+            from passlib.context import CryptContext
+            pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            # Mettre à jour geodis-lemeux si le client existe
+            client = db.query(Client).filter(Client.username == "geodis-lemeux").first()
+            if client:
+                client.password_hash = pwd_ctx.hash(init_password)
+                db.commit()
+                print("  ✅ Mot de passe geodis-lemeux mis à jour depuis INIT_CLIENT_PASSWORD")
+        
         db.close()
     except Exception as e:
         print(f"  ⚠️ Migration: {e}")

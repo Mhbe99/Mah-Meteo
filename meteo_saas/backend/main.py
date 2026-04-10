@@ -568,10 +568,6 @@ def get_service_clients(db: Session = Depends(get_db)):
     y compris ceux inscrits en self-service (pas dans clients.json).
     Protégé par vérification JWT_SECRET dans le header.
     """
-    # Vérification simple : le header X-Service-Key doit correspondre au JWT_SECRET
-    # meteo_open.py connaît déjà JWT_SECRET
-    from fastapi import Header
-    # On vérifie via un JWT valide (le token service)
     clients = db.query(Client).filter(Client.active == 1).all()
     result = []
     for c in clients:
@@ -586,6 +582,29 @@ def get_service_clients(db: Session = Depends(get_db)):
             }
         })
     return {"clients": result}
+
+
+# ============ CHANGEMENT MOT DE PASSE ============
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@app.post("/api/account/{client_id}/password")
+def change_password(client_id: int, data: PasswordChangeRequest, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Change le mot de passe du client authentifié."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client introuvable")
+    if not verify_password(data.current_password, client.password_hash):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 6 caractères")
+    client.password_hash = hash_password(data.new_password)
+    db.commit()
+    return {"status": "ok", "message": "Mot de passe mis à jour"}
 
 
 # ============ ROUTES FRONTEND ============
