@@ -1103,7 +1103,6 @@
                 <button class="tab-btn" onclick="switchTab(2)">Trafic & Alertes</button>
                 <button class="tab-btn" onclick="switchTab(3)">Tournées</button>
                 <button class="tab-btn" onclick="switchTab(4)">Mon Compte</button>
-                <button class="tab-btn" onclick="switchTab(5)">Rapport</button>
             </div>
 
             <!-- TAB 1: VUE GÉNÉRALE (Carte + Tableaux) -->
@@ -1264,52 +1263,12 @@
                 </div>
             </div>
 
-            <!-- TAB 6: RAPPORT -->
-            <div class="tab-content" id="panel-rapport">
-                <div style="padding:24px;max-width:1100px;margin:0 auto">
-                    <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">Rapport des alertes</h2>
-                    <p style="font-size:13px;color:#718096;margin-bottom:24px">Basé sur les 30 dernières alertes enregistrées</p>
-
-                    <!-- KPI cards -->
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
-                        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #e53e3e">
-                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Total alertes</div>
-                            <div id="rpt-total" style="font-size:28px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
-                        </div>
-                        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #ed8936">
-                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Zones affectées</div>
-                            <div id="rpt-zones" style="font-size:28px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
-                        </div>
-                        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #3182ce">
-                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Types de risques</div>
-                            <div id="rpt-types" style="font-size:28px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
-                        </div>
-                    </div>
-
-                    <!-- Graphiques -->
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                        <div style="background:#fff;border-radius:8px;padding:20px">
-                            <h3 style="font-size:14px;font-weight:600;margin-bottom:16px">Alertes par zone (top 10)</h3>
-                            <canvas id="chart-zones" height="250"></canvas>
-                        </div>
-                        <div style="background:#fff;border-radius:8px;padding:20px">
-                            <h3 style="font-size:14px;font-weight:600;margin-bottom:16px">Répartition par type</h3>
-                            <canvas id="chart-types" height="250"></canvas>
-                        </div>
-                    </div>
-
-                    <div style="margin-top:20px;text-align:right">
-                        <button onclick="loadRapport()" style="background:#2c5282;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px">Actualiser</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- TAB 5: MON COMPTE -->
             <div class="tab-content" id="panel-account">
                 <div class="account-grid">
                     <!-- INFOS COMPTE -->
                     <div class="account-panel">
-                        <h3>Mon abonnement</h3>
+                        <h3>Mon compte</h3>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px;">
                             <div><strong>Entreprise :</strong> <span id="acc-company">—</span></div>
                             <div><strong>Utilisateur :</strong> <span id="acc-user">—</span></div>
@@ -1365,6 +1324,38 @@
                         <div class="zone-list" id="zone-list">
                             <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Chargement...</div>
                         </div>
+                    </div>
+                </div>
+                <!-- Statistiques alertes -->
+                <div style="margin-top:28px;border-top:2px solid #e2e8f0;padding-top:24px">
+                    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">Statistiques alertes</h3>
+                    <p style="font-size:12px;color:#718096;margin-bottom:20px">Basé sur les dernières alertes enregistrées</p>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+                        <div style="background:#f7fafc;border-radius:8px;padding:14px;border-left:4px solid #e53e3e">
+                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Total alertes</div>
+                            <div id="rpt-total" style="font-size:26px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        </div>
+                        <div style="background:#f7fafc;border-radius:8px;padding:14px;border-left:4px solid #ed8936">
+                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Zones affectées</div>
+                            <div id="rpt-zones" style="font-size:26px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        </div>
+                        <div style="background:#f7fafc;border-radius:8px;padding:14px;border-left:4px solid #3182ce">
+                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Types de risques</div>
+                            <div id="rpt-types" style="font-size:26px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                        <div style="background:#f7fafc;border-radius:8px;padding:16px">
+                            <h4 style="font-size:13px;font-weight:600;margin-bottom:12px">Alertes par zone (top 10)</h4>
+                            <canvas id="chart-zones" height="220"></canvas>
+                        </div>
+                        <div style="background:#f7fafc;border-radius:8px;padding:16px">
+                            <h4 style="font-size:13px;font-weight:600;margin-bottom:12px">Répartition par type</h4>
+                            <canvas id="chart-types" height="220"></canvas>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;text-align:right">
+                        <button onclick="loadRapport()" style="background:#2c5282;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px">Actualiser</button>
                     </div>
                 </div>
             </div>
@@ -2963,7 +2954,7 @@
         const _origSwitchTab = switchTab;
         window.switchTab = function(idx) {
             _origSwitchTab(idx);
-            if (idx === 5) loadRapport();
+            if (idx === 4) loadRapport();
         };
 </script>
 
