@@ -23,10 +23,11 @@ from dotenv import load_dotenv
 load_dotenv()
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
-RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS").split(",")
+_receivers_raw = os.getenv("RECEIVER_EMAILS", "")
+RECEIVER_EMAILS = [e.strip() for e in _receivers_raw.split(",") if e.strip()]
+RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
 
 # Paths
-HISTORIQUE_FILE = os.path.join("exports", "alertes_historique.json")
 EXPORT_PATH = "exports"
 RAPPORT_FILE = os.path.join(EXPORT_PATH, "rapport_hebdomadaire.xlsx")
 
@@ -37,14 +38,51 @@ SITES = {
 }
 
 def charger_historique():
-    """Charger l'historique complet des alertes"""
-    if os.path.exists(HISTORIQUE_FILE):
-        try:
-            with open(HISTORIQUE_FILE, "r", encoding="utf-8") as fh:
-                return json.load(fh)
-        except Exception as e:
-            print(f"❌ Erreur chargement historique: {e}")
-    return []
+    """Charger l'historique des alertes depuis l'API Render."""
+    try:
+        # Obtenir un token service
+        r = requests.get(f"{RENDER_URL}/api/service/token", timeout=15)
+        r.raise_for_status()
+        token = r.json().get("access_token", "")
+
+        # Récupérer les alertes de tous les clients
+        rc = requests.get(f"{RENDER_URL}/api/service/clients",
+                          headers={"Authorization": f"Bearer {token}"}, timeout=15)
+        rc.raise_for_status()
+        clients = rc.json()
+
+        alertes = []
+        for client in clients:
+            cid = client.get("id") or client.get("client_id")
+            if not cid:
+                continue
+            # Token par client
+            rt = requests.get(f"{RENDER_URL}/api/service/token?client_id={cid}", timeout=10)
+            if rt.status_code != 200:
+                continue
+            token_c = rt.json().get("access_token", "")
+            ra = requests.get(f"{RENDER_URL}/api/alertes/{cid}?limit=500",
+                              headers={"Authorization": f"Bearer {token_c}"}, timeout=15)
+            if ra.status_code == 200:
+                for a in ra.json():
+                    # Harmoniser les champs pour la compatibilité avec filtrer_semaine
+                    ts = a.get("timestamp") or a.get("created_at") or ""
+                    alertes.append({
+                        "timestamp": ts,
+                        "date": ts[:10] if ts else "",
+                        "heure": ts[11:16] if len(ts) > 15 else "",
+                        "jour_semaine": datetime.datetime.fromisoformat(ts).strftime("%A") if ts else "",
+                        "zone": a.get("zone_name", ""),
+                        "risques": a.get("message", ""),
+                        "temp": "",
+                        "wind": "",
+                        "rain": "",
+                    })
+        print(f"✅ {len(alertes)} alertes chargées depuis l'API")
+        return alertes
+    except Exception as e:
+        print(f"❌ Erreur chargement alertes API: {e}")
+        return []
 
 def get_semaine_precedente():
     """Retourner la date de début et fin de la semaine précédente (lundi-dimanche)"""

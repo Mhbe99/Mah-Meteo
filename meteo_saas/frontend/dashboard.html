@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1102,6 +1103,7 @@
                 <button class="tab-btn" onclick="switchTab(2)">Trafic & Alertes</button>
                 <button class="tab-btn" onclick="switchTab(3)">Tournées</button>
                 <button class="tab-btn" onclick="switchTab(4)">Mon Compte</button>
+                <button class="tab-btn" onclick="switchTab(5)">Rapport</button>
             </div>
 
             <!-- TAB 1: VUE GÉNÉRALE (Carte + Tableaux) -->
@@ -1259,6 +1261,46 @@
                         </thead>
                         <tbody></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- TAB 6: RAPPORT -->
+            <div class="tab-content" id="panel-rapport">
+                <div style="padding:24px;max-width:1100px;margin:0 auto">
+                    <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">Rapport des alertes</h2>
+                    <p style="font-size:13px;color:#718096;margin-bottom:24px">Basé sur les 30 dernières alertes enregistrées</p>
+
+                    <!-- KPI cards -->
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
+                        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #e53e3e">
+                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Total alertes</div>
+                            <div id="rpt-total" style="font-size:28px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        </div>
+                        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #ed8936">
+                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Zones affectées</div>
+                            <div id="rpt-zones" style="font-size:28px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        </div>
+                        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #3182ce">
+                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Types de risques</div>
+                            <div id="rpt-types" style="font-size:28px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Graphiques -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                        <div style="background:#fff;border-radius:8px;padding:20px">
+                            <h3 style="font-size:14px;font-weight:600;margin-bottom:16px">Alertes par zone (top 10)</h3>
+                            <canvas id="chart-zones" height="250"></canvas>
+                        </div>
+                        <div style="background:#fff;border-radius:8px;padding:20px">
+                            <h3 style="font-size:14px;font-weight:600;margin-bottom:16px">Répartition par type</h3>
+                            <canvas id="chart-types" height="250"></canvas>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px;text-align:right">
+                        <button onclick="loadRapport()" style="background:#2c5282;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px">Actualiser</button>
+                    </div>
                 </div>
             </div>
 
@@ -2832,6 +2874,97 @@
             _updateStats();
         };
     })();
+
+        // ======================================================
+        // ONGLET RAPPORT
+        // ======================================================
+        let _chartZones = null;
+        let _chartTypes = null;
+
+        async function loadRapport() {
+            if (!CLIENT_ID || !TOKEN) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/alertes/${CLIENT_ID}?limit=500`, {
+                    headers: { 'Authorization': 'Bearer ' + TOKEN }
+                });
+                if (!res.ok) return;
+                const alertes = await res.json();
+
+                // KPI total
+                document.getElementById('rpt-total').textContent = alertes.length;
+
+                // Zones uniques
+                const zonesCount = {};
+                alertes.forEach(a => {
+                    const z = a.zone_name || a.zone || 'Inconnue';
+                    zonesCount[z] = (zonesCount[z] || 0) + 1;
+                });
+                document.getElementById('rpt-zones').textContent = Object.keys(zonesCount).length;
+
+                // Types de risques (via message)
+                const typesCount = {};
+                const keywords = ['Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic', 'Combinée'];
+                alertes.forEach(a => {
+                    const msg = (a.message || a.type || '');
+                    keywords.forEach(k => {
+                        if (msg.toLowerCase().includes(k.toLowerCase())) {
+                            typesCount[k] = (typesCount[k] || 0) + 1;
+                        }
+                    });
+                    if (!keywords.some(k => msg.toLowerCase().includes(k.toLowerCase()))) {
+                        typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
+                    }
+                });
+                document.getElementById('rpt-types').textContent = Object.keys(typesCount).length;
+
+                // Graphique zones (bar)
+                const topZones = Object.entries(zonesCount)
+                    .sort((a, b) => b[1] - a[1]).slice(0, 10);
+                if (_chartZones) _chartZones.destroy();
+                _chartZones = new Chart(document.getElementById('chart-zones'), {
+                    type: 'bar',
+                    data: {
+                        labels: topZones.map(z => z[0]),
+                        datasets: [{
+                            label: 'Alertes',
+                            data: topZones.map(z => z[1]),
+                            backgroundColor: '#3182ce'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+
+                // Graphique types (doughnut)
+                const typeEntries = Object.entries(typesCount);
+                const colors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096'];
+                if (_chartTypes) _chartTypes.destroy();
+                _chartTypes = new Chart(document.getElementById('chart-types'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: typeEntries.map(t => t[0]),
+                        datasets: [{
+                            data: typeEntries.map(t => t[1]),
+                            backgroundColor: colors.slice(0, typeEntries.length)
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                });
+
+            } catch(e) {
+                console.error('Erreur loadRapport', e);
+            }
+        }
+
+        // Charger le rapport quand on clique sur l'onglet Rapport
+        const _origSwitchTab = switchTab;
+        window.switchTab = function(idx) {
+            _origSwitchTab(idx);
+            if (idx === 5) loadRapport();
+        };
 </script>
 
 </body>
