@@ -2873,84 +2873,85 @@
         let _chartTypes = null;
 
         async function loadRapport() {
-            if (!CLIENT_ID || !TOKEN) return;
+            // Mode démo : données synthétiques
+            if (!CLIENT_ID || !TOKEN) {
+                _renderRapportCharts([
+                    {zone_name:'Le Meux', message:'Verglas détecté'},
+                    {zone_name:'Le Meux', message:'Verglas détecté'},
+                    {zone_name:'Le Meux', message:'Vent fort'},
+                    {zone_name:'Clairoix', message:'Pluie forte'},
+                    {zone_name:'Clairoix', message:'Verglas détecté'},
+                    {zone_name:'Senlis', message:'Vent fort'},
+                    {zone_name:'Senlis', message:'Trafic perturbé'},
+                    {zone_name:'Compiègne', message:'UV fort'},
+                    {zone_name:'Compiègne', message:'Pluie forte'},
+                    {zone_name:'Saint-Maximin', message:'Verglas détecté'},
+                    {zone_name:'Clermont', message:'Vent fort'},
+                    {zone_name:'Liancourt', message:'Pluie forte'},
+                    {zone_name:'Le Meux', message:'Combinée'},
+                    {zone_name:'Clairoix', message:'UV fort'},
+                ]);
+                return;
+            }
             try {
                 const res = await fetch(`${API_BASE}/api/alertes/${CLIENT_ID}?limit=500`, {
                     headers: { 'Authorization': 'Bearer ' + TOKEN }
                 });
                 if (!res.ok) return;
-                const alertes = await res.json();
-
-                // KPI total
-                document.getElementById('rpt-total').textContent = alertes.length;
-
-                // Zones uniques
-                const zonesCount = {};
-                alertes.forEach(a => {
-                    const z = a.zone_name || a.zone || 'Inconnue';
-                    zonesCount[z] = (zonesCount[z] || 0) + 1;
-                });
-                document.getElementById('rpt-zones').textContent = Object.keys(zonesCount).length;
-
-                // Types de risques (via message)
-                const typesCount = {};
-                const keywords = ['Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic', 'Combinée'];
-                alertes.forEach(a => {
-                    const msg = (a.message || a.type || '');
-                    keywords.forEach(k => {
-                        if (msg.toLowerCase().includes(k.toLowerCase())) {
-                            typesCount[k] = (typesCount[k] || 0) + 1;
-                        }
-                    });
-                    if (!keywords.some(k => msg.toLowerCase().includes(k.toLowerCase()))) {
-                        typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
-                    }
-                });
-                document.getElementById('rpt-types').textContent = Object.keys(typesCount).length;
-
-                // Graphique zones (bar)
-                const topZones = Object.entries(zonesCount)
-                    .sort((a, b) => b[1] - a[1]).slice(0, 10);
-                if (_chartZones) _chartZones.destroy();
-                _chartZones = new Chart(document.getElementById('chart-zones'), {
-                    type: 'bar',
-                    data: {
-                        labels: topZones.map(z => z[0]),
-                        datasets: [{
-                            label: 'Alertes',
-                            data: topZones.map(z => z[1]),
-                            backgroundColor: '#3182ce'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-                    }
-                });
-
-                // Graphique types (doughnut)
-                const typeEntries = Object.entries(typesCount);
-                const colors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096'];
-                if (_chartTypes) _chartTypes.destroy();
-                _chartTypes = new Chart(document.getElementById('chart-types'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: typeEntries.map(t => t[0]),
-                        datasets: [{
-                            data: typeEntries.map(t => t[1]),
-                            backgroundColor: colors.slice(0, typeEntries.length)
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-                });
-
+                _renderRapportCharts(await res.json());
             } catch(e) {
                 console.error('Erreur loadRapport', e);
             }
         }
 
-        // Charger le rapport quand on clique sur l'onglet Rapport
+        function _renderRapportCharts(alertes) {
+            document.getElementById('rpt-total').textContent = alertes.length;
+
+            const zonesCount = {};
+            alertes.forEach(a => {
+                const z = a.zone_name || a.zone || 'Inconnue';
+                zonesCount[z] = (zonesCount[z] || 0) + 1;
+            });
+            document.getElementById('rpt-zones').textContent = Object.keys(zonesCount).length;
+
+            const typesCount = {};
+            const keywords = ['Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic', 'Combinée'];
+            alertes.forEach(a => {
+                const msg = (a.message || a.type || '');
+                keywords.forEach(k => {
+                    if (msg.toLowerCase().includes(k.toLowerCase()))
+                        typesCount[k] = (typesCount[k] || 0) + 1;
+                });
+                if (!keywords.some(k => msg.toLowerCase().includes(k.toLowerCase())))
+                    typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
+            });
+            document.getElementById('rpt-types').textContent = Object.keys(typesCount).length;
+
+            const topZones = Object.entries(zonesCount).sort((a,b) => b[1]-a[1]).slice(0,10);
+            if (_chartZones) _chartZones.destroy();
+            _chartZones = new Chart(document.getElementById('chart-zones'), {
+                type: 'bar',
+                data: {
+                    labels: topZones.map(z => z[0]),
+                    datasets: [{ label: 'Alertes', data: topZones.map(z => z[1]), backgroundColor: '#3182ce' }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+            });
+
+            const typeEntries = Object.entries(typesCount);
+            const colors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096'];
+            if (_chartTypes) _chartTypes.destroy();
+            _chartTypes = new Chart(document.getElementById('chart-types'), {
+                type: 'doughnut',
+                data: {
+                    labels: typeEntries.map(t => t[0]),
+                    datasets: [{ data: typeEntries.map(t => t[1]), backgroundColor: colors.slice(0, typeEntries.length) }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        // Charger le rapport quand on clique sur Mon Compte
         const _origSwitchTab = switchTab;
         window.switchTab = function(idx) {
             _origSwitchTab(idx);
