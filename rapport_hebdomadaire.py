@@ -43,7 +43,8 @@ def charger_historique():
         # Obtenir un token service
         r = requests.get(f"{RENDER_URL}/api/service/token", timeout=15)
         r.raise_for_status()
-        token = r.json().get("access_token", "")
+        data = r.json()
+        token = data.get("access_token") or data.get("token", "")
 
         # Récupérer les alertes de tous les clients
         rc = requests.get(f"{RENDER_URL}/api/service/clients",
@@ -60,7 +61,8 @@ def charger_historique():
             rt = requests.get(f"{RENDER_URL}/api/service/token?client_id={cid}", timeout=10)
             if rt.status_code != 200:
                 continue
-            token_c = rt.json().get("access_token", "")
+            td = rt.json()
+            token_c = td.get("access_token") or td.get("token", "")
             ra = requests.get(f"{RENDER_URL}/api/alertes/{cid}?limit=500",
                               headers={"Authorization": f"Bearer {token_c}"}, timeout=15)
             if ra.status_code == 200:
