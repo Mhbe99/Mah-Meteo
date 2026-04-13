@@ -3,6 +3,7 @@ name: Meteo Cron Job
 on:
   schedule:
     - cron: '*/22 * * * *'  # Toutes les 22 minutes
+  workflow_dispatch:
 
 jobs:
   run-meteo:
