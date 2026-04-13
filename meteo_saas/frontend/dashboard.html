@@ -1328,34 +1328,36 @@
                 </div>
                 <!-- Statistiques alertes -->
                 <div style="margin-top:28px;border-top:2px solid #e2e8f0;padding-top:24px">
-                    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">Statistiques alertes</h3>
-                    <p style="font-size:12px;color:#718096;margin-bottom:20px">Basé sur les dernières alertes enregistrées</p>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
-                        <div style="background:#f7fafc;border-radius:8px;padding:14px;border-left:4px solid #e53e3e">
-                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Total alertes</div>
-                            <div id="rpt-total" style="font-size:26px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                        <div>
+                            <h3 style="font-size:15px;font-weight:700;margin:0 0 2px">Statistiques alertes</h3>
+                            <p style="font-size:12px;color:#718096;margin:0">Basé sur les dernières alertes enregistrées</p>
                         </div>
-                        <div style="background:#f7fafc;border-radius:8px;padding:14px;border-left:4px solid #ed8936">
-                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Zones affectées</div>
-                            <div id="rpt-zones" style="font-size:26px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        <button onclick="loadRapport()" style="background:linear-gradient(135deg,#2c5282,#3182ce);color:#fff;border:none;padding:8px 18px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(49,130,206,0.3)">↻ Actualiser</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+                        <div style="background:linear-gradient(135deg,#fff5f5,#fed7d7);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                            <div style="font-size:11px;color:#c53030;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">🚨 Total alertes</div>
+                            <div id="rpt-total" style="font-size:32px;font-weight:800;color:#c53030;margin-top:6px">—</div>
                         </div>
-                        <div style="background:#f7fafc;border-radius:8px;padding:14px;border-left:4px solid #3182ce">
-                            <div style="font-size:11px;color:#718096;font-weight:600;text-transform:uppercase">Types de risques</div>
-                            <div id="rpt-types" style="font-size:26px;font-weight:700;color:#2d3748;margin-top:4px">—</div>
+                        <div style="background:linear-gradient(135deg,#fffaf0,#feebc8);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                            <div style="font-size:11px;color:#c05621;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">📍 Zones affectées</div>
+                            <div id="rpt-zones" style="font-size:32px;font-weight:800;color:#c05621;margin-top:6px">—</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#ebf8ff,#bee3f8);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                            <div style="font-size:11px;color:#2b6cb0;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">⚡ Types de risques</div>
+                            <div id="rpt-types" style="font-size:32px;font-weight:800;color:#2b6cb0;margin-top:6px">—</div>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-                        <div style="background:#f7fafc;border-radius:8px;padding:16px">
-                            <h4 style="font-size:13px;font-weight:600;margin-bottom:12px">Alertes par zone (top 10)</h4>
-                            <canvas id="chart-zones" height="220"></canvas>
+                        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">📊 Alertes par zone (top 10)</h4>
+                            <canvas id="chart-zones" height="240"></canvas>
                         </div>
-                        <div style="background:#f7fafc;border-radius:8px;padding:16px">
-                            <h4 style="font-size:13px;font-weight:600;margin-bottom:12px">Répartition par type</h4>
-                            <canvas id="chart-types" height="220"></canvas>
+                        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">🥧 Répartition par type</h4>
+                            <canvas id="chart-types" height="240"></canvas>
                         </div>
-                    </div>
-                    <div style="margin-top:14px;text-align:right">
-                        <button onclick="loadRapport()" style="background:#2c5282;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px">Actualiser</button>
                     </div>
                 </div>
             </div>
@@ -2936,21 +2938,51 @@
                 type: 'bar',
                 data: {
                     labels: topZones.map(z => z[0]),
-                    datasets: [{ label: 'Alertes', data: topZones.map(z => z[1]), backgroundColor: '#3182ce' }]
+                    datasets: [{
+                        label: 'Alertes',
+                        data: topZones.map(z => z[1]),
+                        backgroundColor: topZones.map((_,i) => `hsla(${210 + i*8},70%,${55-i*2}%,0.85)`),
+                        borderColor: topZones.map((_,i) => `hsla(${210 + i*8},70%,${45-i*2}%,1)`),
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
                 },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} alerte${ctx.parsed.y > 1 ? 's' : ''}` } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0, color: '#718096' }, grid: { color: '#edf2f7' } },
+                        x: { ticks: { color: '#4a5568', font: { size: 11 } }, grid: { display: false } }
+                    }
+                }
             });
 
             const typeEntries = Object.entries(typesCount);
-            const colors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096'];
+            const colors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096','#dd6b20'];
             if (_chartTypes) _chartTypes.destroy();
             _chartTypes = new Chart(document.getElementById('chart-types'), {
                 type: 'doughnut',
                 data: {
                     labels: typeEntries.map(t => t[0]),
-                    datasets: [{ data: typeEntries.map(t => t[1]), backgroundColor: colors.slice(0, typeEntries.length) }]
+                    datasets: [{
+                        data: typeEntries.map(t => t[1]),
+                        backgroundColor: colors.slice(0, typeEntries.length),
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                        hoverOffset: 8
+                    }]
                 },
-                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                options: {
+                    responsive: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 14, font: { size: 12 }, usePointStyle: true } },
+                        tooltip: { callbacks: { label: ctx => ` ${ctx.label} : ${ctx.parsed} alerte${ctx.parsed > 1 ? 's' : ''}` } }
+                    }
+                }
             });
         }
 
