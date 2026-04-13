@@ -1482,6 +1482,8 @@
         document.getElementById("dashboard").style.display = "flex";
         document.getElementById("company-name").textContent = "GEODIS — Le Meux (DÉMO)";
         loadDemoData();
+        // Pré-charger les graphiques rapport
+        setTimeout(() => loadRapport(), 200);
     }
 
     // ============ DIRECTION → BOUSSOLE ============
@@ -2030,9 +2032,10 @@
         if (index === 0 && map) {
             setTimeout(() => map.invalidateSize(), 100);
         }
-        // Mon Compte tab → charger les infos
-        if (index === 4 && TOKEN) {
-            loadAccountInfo();
+        // Mon Compte tab → charger les infos + statistiques
+        if (index === 4) {
+            if (TOKEN) loadAccountInfo();
+            setTimeout(() => loadRapport(), 50);
         }
     }
 
@@ -2951,12 +2954,7 @@
             });
         }
 
-        // Charger le rapport quand on clique sur Mon Compte
-        const _origSwitchTab = switchTab;
-        window.switchTab = function(idx) {
-            _origSwitchTab(idx);
-            if (idx === 4) loadRapport();
-        };
+
 </script>
 
 </body>
