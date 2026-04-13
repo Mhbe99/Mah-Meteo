@@ -50,7 +50,7 @@ def charger_historique():
         rc = requests.get(f"{RENDER_URL}/api/service/clients",
                           headers={"Authorization": f"Bearer {token}"}, timeout=15)
         rc.raise_for_status()
-        clients = rc.json()
+        clients = rc.json().get("clients", [])
 
         alertes = []
         for client in clients:
