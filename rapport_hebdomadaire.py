@@ -25,6 +25,8 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 _receivers_raw = os.getenv("RECEIVER_EMAILS", "")
 RECEIVER_EMAILS = [e.strip() for e in _receivers_raw.split(",") if e.strip()]
+# TEST: forcer les destinataires pour validation
+RECEIVER_EMAILS = ["mahame.toure@geodis.com", "mahmeteo@gmail.com"]
 RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
 
 # Paths
@@ -97,18 +99,8 @@ def get_semaine_precedente():
 
 def filtrer_semaine(alertes):
     """Filtrer les alertes de la semaine précédente"""
-    lundi, dimanche = get_semaine_precedente()
-    alertes_semaine = []
-    
-    for alerte in alertes:
-        try:
-            date_alerte = datetime.datetime.fromisoformat(alerte["timestamp"]).date()
-            if lundi <= date_alerte <= dimanche:
-                alertes_semaine.append(alerte)
-        except:
-            pass
-    
-    return alertes_semaine
+    # TEST: retourne toutes les alertes pour valider l'envoi email
+    return alertes
 
 def generer_statistiques(alertes_semaine):
     """Générer les statistiques des alertes"""
