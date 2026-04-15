@@ -4,7 +4,7 @@
       "username": "geodis-lemeux",
       "company_name": "GEODIS — Le Meux",
       "email": "mahame.toure@geodis.com",
-      "plan": "pro",
+      "plan": "enterprise",
       "zones": {
         "sites": [
           {"name": "Le Meux 🏣", "lat": 49.378829, "lon": 2.750393},
