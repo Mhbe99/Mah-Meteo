@@ -327,7 +327,14 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
                     "key": TOMTOM_API_KEY,
                     "bbox": f"{lon_min},{lat_min},{lon_max},{lat_max}",
                     "language": "fr-FR",
-                    "timeValidity": "present"
+                    "timeValidity": "present",
+                    "fields": (
+                        "{incidents{type,geometry{type,coordinates},"
+                        "properties{id,iconCategory,magnitudeOfDelay,"
+                        "events{description,code,iconCategory},"
+                        "startTime,endTime,from,to,length,delay,"
+                        "roadNumbers,timeValidity}}}"
+                    )
                 }
 
                 r = requests.get(url, params=params, timeout=10)
