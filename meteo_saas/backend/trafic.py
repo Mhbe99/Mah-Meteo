@@ -17,6 +17,9 @@ from dotenv import load_dotenv
 load_dotenv()
 TOMTOM_API_KEY = os.getenv("TOMTOM_API_KEY")
 
+# Flag circuit-breaker: si SMTP est down, on arrête d'essayer pour ce cycle
+_smtp_unreachable = False
+
 # Cache local pour incidents TomTom (30min de TTL)
 TRAFIC_CACHE_FILE = "exports/trafic_cache.json"
 TRAFIC_CACHE_TTL = 30 * 60  # 30 minutes en secondes
@@ -119,6 +122,10 @@ def send_email_trafic(incident: dict):
         print("[TRAFIC] Credentials email manquants ou RECEIVER_EMAILS vide")
         return
 
+    # Circuit-breaker: si SMTP déjà échoué ce cycle, ne pas retenter
+    if _smtp_unreachable:
+        return
+
     # Gestion cooldown 1h par route
     COOLDOWN_FILE = "exports/last_trafic_alerts.json"
     try:
@@ -158,7 +165,8 @@ def send_email_trafic(incident: dict):
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain", "utf-8"))
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
             server.login(sender, password)
             server.sendmail(sender, receivers, msg.as_string())
 
@@ -170,6 +178,11 @@ def send_email_trafic(incident: dict):
         with open(COOLDOWN_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
 
+    except OSError as e:
+        print(f"[TRAFIC] SMTP injoignable ({e}) — emails desactives pour ce cycle")
+        # Marquer le flag global pour stopper les tentatives suivantes
+        global _smtp_unreachable
+        _smtp_unreachable = True
     except Exception as e:
         print(f"[TRAFIC] Erreur envoi email : {e}")
 
@@ -423,8 +436,10 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
         )
 
         # Envoyer emails pour incidents HIGH severity
+        global _smtp_unreachable
+        _smtp_unreachable = False  # Reset pour ce cycle
         for inc in incidents_list:
-            if inc["severity"] == "high":
+            if inc["severity"] == "high" and not _smtp_unreachable:
                 send_email_trafic(inc)
 
         # Archiver incidents dans JSON historique

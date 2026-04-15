@@ -223,7 +223,8 @@ def send_email_alerte(zone, message):
     msg.attach(MIMEText(message, "plain"))
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
             server.login(SENDER_EMAIL, GMAIL_PASSWORD)
             server.sendmail(SENDER_EMAIL, RECEIVER_EMAILS, msg.as_string())
         print(f"📧 Alerte envoyée pour {zone} (vers 2 adresses)")

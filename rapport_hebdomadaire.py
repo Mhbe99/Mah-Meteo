@@ -417,7 +417,8 @@ def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file,
 
     # Envoyer réellement
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
             server.login(SENDER_EMAIL, GMAIL_PASSWORD)
             server.sendmail(SENDER_EMAIL, RECEIVER_EMAILS, msg.as_string())
         print(f"✅ Rapport envoyé par email")
