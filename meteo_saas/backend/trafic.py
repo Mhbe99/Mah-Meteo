@@ -146,26 +146,78 @@ def send_email_trafic(incident: dict):
     except Exception:
         state = {}
 
-    # Construire l'email
+    # Construire l'email HTML (même trame que le rapport hebdomadaire)
     subject = f"[MAH METEO] Alerte trafic : {incident['route']}"
-    body = (
-        f"Incident signale dans votre zone de surveillance\n\n"
-        f"Route      : {incident['route']}\n"
-        f"Type       : {incident['icon']} {incident['description']}\n"
-        f"Severite   : {incident['severity'].upper()}\n"
-        f"Retard     : +{incident['delay_minutes']} min\n"
-        f"Zone       : {incident.get('zone_source', 'N/A')}\n"
-        f"GPS        : {incident['lat']}, {incident['lon']}\n\n"
-        f"Detecte le {datetime.datetime.now().strftime('%d/%m/%Y a %H:%M')}\n\n"
-        f"-- Mah Meteo | Surveillance automatique --"
-    )
+    now_str = datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')
+
+    severity = incident['severity'].upper()
+    sev_colors = {"HIGH": "#e53e3e", "MEDIUM": "#dd6b20", "LOW": "#d69e2e"}
+    sev_color = sev_colors.get(severity, "#718096")
+    sev_labels = {"HIGH": "🔴 Élevée", "MEDIUM": "🟠 Moyenne", "LOW": "🟡 Faible"}
+    sev_label = sev_labels.get(severity, severity)
+
+    body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="max-width:620px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+
+  <!-- Header -->
+  <div style="background:#2c3e50;padding:20px 24px;">
+    <div style="font-size:11px;color:#a0aec0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Mah Météo</div>
+    <h1 style="margin:0;font-size:18px;color:#fff;font-weight:600;">🚨 Alerte Trafic</h1>
+    <p style="margin:6px 0 0 0;font-size:13px;color:#90cdf4;">Incident détecté le {now_str}</p>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:24px;">
+
+    <!-- Sévérité badge -->
+    <div style="display:inline-block;padding:6px 14px;border-radius:20px;background:{sev_color};color:#fff;font-size:13px;font-weight:600;margin-bottom:16px;">
+      {sev_label}
+    </div>
+
+    <!-- Détails incident -->
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;margin-top:12px;">
+      <tr style="background:#f7fafc;">
+        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;width:130px;border-bottom:1px solid #e2e8f0;">🛣️ Route</td>
+        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{incident['route']}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;border-bottom:1px solid #e2e8f0;">📌 Type</td>
+        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{incident['icon']} {incident['description']}</td>
+      </tr>
+      <tr style="background:#f7fafc;">
+        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;border-bottom:1px solid #e2e8f0;">⏱️ Retard</td>
+        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;font-weight:600;">+{incident['delay_minutes']} min</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;border-bottom:1px solid #e2e8f0;">📍 Zone</td>
+        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{incident.get('zone_source', 'N/A')}</td>
+      </tr>
+      <tr style="background:#f7fafc;">
+        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;">🌐 Coordonnées</td>
+        <td style="padding:10px 14px;font-size:13px;color:#2d3748;">{incident['lat']}, {incident['lon']}</td>
+      </tr>
+    </table>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:14px 24px;background:#f7fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;">
+    Envoyé automatiquement par Mah Météo — {now_str}<br>Ne pas répondre à cet email.
+  </div>
+
+</div>
+</body>
+</html>"""
 
     try:
         msg = MIMEMultipart()
         msg["From"] = sender
         msg["To"] = ", ".join(receivers)
         msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain", "utf-8"))
+        msg.attach(MIMEText(body, "html", "utf-8"))
 
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
