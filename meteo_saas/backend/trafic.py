@@ -312,121 +312,126 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
             "zones_verifiees": 3
         }
 
-    # MODE RÉEL — Boucle sur chaque zone avec rayon 30km
+    # MODE RÉEL — UN SEUL appel TomTom avec bbox englobante (toutes les zones)
     tous_incidents = {}  # dict pour déduplication par ID TomTom
 
     if not zones:
         return {"incidents": [], "total": 0, "retard_max": 0, "zones_verifiees": 0}
 
     try:
-        for zone in zones:
-            try:
-                # Délai anti-throttling (0.3s entre appels API)
-                time.sleep(0.3)
+        # Calculer la bbox globale couvrant toutes les zones + marge 10km
+        all_lats = [z.get("lat", 0) for z in zones]
+        all_lons = [z.get("lon", 0) for z in zones]
+        lat_min = min(all_lats) - 0.10  # ~10km marge
+        lat_max = max(all_lats) + 0.10
+        lon_min = min(all_lons) - 0.15  # ~10km marge (ajusté pour latitude)
+        lon_max = max(all_lons) + 0.15
 
-                zone_name = zone.get("name", "Zone inconnu")
-                zone_lat = zone.get("lat", 0)
-                zone_lon = zone.get("lon", 0)
+        # Vérifier que la bbox ne dépasse pas 10 000 km² (limite TomTom)
+        # Approximation: 1° lat ≈ 111km, 1° lon ≈ 73km à lat 49°
+        area_km2 = (lat_max - lat_min) * 111 * (lon_max - lon_min) * 73
+        if area_km2 > 9500:
+            # Trop grand — recentrer sur les sites uniquement
+            sites_only = [z for z in zones if z.get("type") == "site"]
+            if sites_only:
+                all_lats = [z["lat"] for z in sites_only]
+                all_lons = [z["lon"] for z in sites_only]
+            lat_min = min(all_lats) - 0.20
+            lat_max = max(all_lats) + 0.20
+            lon_min = min(all_lons) - 0.30
+            lon_max = max(all_lons) + 0.30
+            print(f"[TRAFIC] Bbox réduite (sites uniquement, ~{int((lat_max-lat_min)*111*(lon_max-lon_min)*73)}km²)")
 
-                # Bbox 30km autour de la zone (±0.27° lat, ±0.39° lon)
-                lat_min = zone_lat - 0.27
-                lat_max = zone_lat + 0.27
-                lon_min = zone_lon - 0.39
-                lon_max = zone_lon + 0.39
+        bbox_str = f"{lon_min},{lat_min},{lon_max},{lat_max}"
+        print(f"[TRAFIC] Bbox globale: {bbox_str} (~{int(area_km2)}km²) pour {len(zones)} zone(s)")
 
-                # Appel TomTom API — Utiliser dict params pour bien encoder l'URL
-                url = "https://api.tomtom.com/traffic/services/5/incidentDetails"
-                params = {
-                    "key": TOMTOM_API_KEY,
-                    "bbox": f"{lon_min},{lat_min},{lon_max},{lat_max}",
-                    "language": "fr-FR",
-                    "timeValidity": "present",
-                    "fields": (
-                        "{incidents{type,geometry{type,coordinates},"
-                        "properties{id,iconCategory,magnitudeOfDelay,"
-                        "events{description,code,iconCategory},"
-                        "startTime,endTime,from,to,length,delay,"
-                        "roadNumbers,timeValidity}}}"
-                    )
-                }
+        # UN SEUL appel TomTom API
+        url = "https://api.tomtom.com/traffic/services/5/incidentDetails"
+        params = {
+            "key": TOMTOM_API_KEY,
+            "bbox": bbox_str,
+            "language": "fr-FR",
+            "timeValidity": "present",
+            "fields": (
+                "{incidents{type,geometry{type,coordinates},"
+                "properties{id,iconCategory,magnitudeOfDelay,"
+                "events{description,code,iconCategory},"
+                "startTime,endTime,from,to,length,delay,"
+                "roadNumbers,timeValidity}}}"
+            )
+        }
 
-                r = requests.get(url, params=params, timeout=10)
-                r.raise_for_status()
-                data = r.json()
+        r = requests.get(url, params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
 
-                # Parser incidents de cette zone
-                for item in data.get("incidents", []):
-                    props = item.get("properties", {})
-                    incident_id = props.get("id", "")
+        # Parser tous les incidents
+        for item in data.get("incidents", []):
+            props = item.get("properties", {})
+            incident_id = props.get("id", "")
 
-                    # Dédupliquer par ID TomTom
-                    if not incident_id or incident_id in tous_incidents:
-                        continue
-
-                    # Extraire coordonnées géométriques
-                    geometry = item.get("geometry", {})
-                    coords = geometry.get("coordinates", [[zone_lon, zone_lat]])
-                    if isinstance(coords[0], list):
-                        lon_inc = coords[0][0]
-                        lat_inc = coords[0][1]
-                    else:
-                        lon_inc = coords[0]
-                        lat_inc = coords[1]
-
-                    # Mapper magnitudeOfDelay TomTom (0-4) vers sévérité
-                    mag = props.get("magnitudeOfDelay", 0)
-                    if mag <= 1:
-                        severity = "low"
-                    elif mag == 2:
-                        severity = "med"
-                    else:
-                        severity = "high"
-
-                    # Convertir délai de secondes en minutes
-                    delay_sec = props.get("delay", 0) or 0
-                    delay_min = round(delay_sec / 60)
-
-                    # Description depuis premier événement
-                    events = props.get("events", [])
-                    description = events[0].get("description", "Incident signale") if events else "Incident signale"
-
-                    # Construire nom de route
-                    road_numbers = props.get("roadNumbers", [])
-                    from_loc = props.get("from", "")
-                    to_loc = props.get("to", "")
-                    if road_numbers:
-                        route = f"{road_numbers[0]} — {from_loc} → {to_loc}"
-                    else:
-                        route = f"{from_loc} → {to_loc}" if from_loc else "Route locale"
-
-                    # Icône selon catégorie TomTom
-                    category = props.get("iconCategory", 14)
-                    icon = get_icon(category)
-
-                    # Ajouter incident formaté
-                    tous_incidents[incident_id] = {
-                        "route": route,
-                        "description": description,
-                        "severity": severity,
-                        "delay_minutes": delay_min,
-                        "icon": icon,
-                        "lat": lat_inc,
-                        "lon": lon_inc,
-                        "zone_source": zone_name
-                    }
-
-            except requests.RequestException as e:
-                # Gestion spéciale pour erreur 403 (quota atteint)
-                if "403" in str(e):
-                    print(f"[TRAFIC] ⚠️ Quota TomTom atteint (Forbidden 403) - ARRÊT (fallback au cache)")
-                    # ARRÊTER complètement la boucle pour ne pas épuiser le quota
-                    break
-                else:
-                    print(f"[TRAFIC] Erreur API zone {zone_name}: {e}")
-                    continue
-            except Exception as e:
-                print(f"[TRAFIC] Erreur parsing zone {zone_name}: {e}")
+            if not incident_id or incident_id in tous_incidents:
                 continue
+
+            # Extraire coordonnées géométriques
+            geometry = item.get("geometry", {})
+            coords = geometry.get("coordinates", [[0, 0]])
+            if isinstance(coords[0], list):
+                lon_inc = coords[0][0]
+                lat_inc = coords[0][1]
+            else:
+                lon_inc = coords[0]
+                lat_inc = coords[1]
+
+            # Mapper magnitudeOfDelay TomTom (0-4) vers sévérité
+            mag = props.get("magnitudeOfDelay", 0)
+            if mag <= 1:
+                severity = "low"
+            elif mag == 2:
+                severity = "med"
+            else:
+                severity = "high"
+
+            # Convertir délai de secondes en minutes
+            delay_sec = props.get("delay", 0) or 0
+            delay_min = round(delay_sec / 60)
+
+            # Description depuis premier événement
+            events = props.get("events", [])
+            description = events[0].get("description", "Incident signale") if events else "Incident signale"
+
+            # Construire nom de route
+            road_numbers = props.get("roadNumbers", [])
+            from_loc = props.get("from", "")
+            to_loc = props.get("to", "")
+            if road_numbers:
+                route = f"{road_numbers[0]} — {from_loc} → {to_loc}"
+            else:
+                route = f"{from_loc} → {to_loc}" if from_loc else "Route locale"
+
+            # Icône selon catégorie TomTom
+            category = props.get("iconCategory", 14)
+            icon = get_icon(category)
+
+            # Trouver la zone la plus proche
+            best_zone = "Zone inconnue"
+            best_dist = float("inf")
+            for z in zones:
+                d = (z["lat"] - lat_inc) ** 2 + (z["lon"] - lon_inc) ** 2
+                if d < best_dist:
+                    best_dist = d
+                    best_zone = z.get("name", "Zone inconnue")
+
+            tous_incidents[incident_id] = {
+                "route": route,
+                "description": description,
+                "severity": severity,
+                "delay_minutes": delay_min,
+                "icon": icon,
+                "lat": lat_inc,
+                "lon": lon_inc,
+                "zone_source": best_zone
+            }
 
         # Convertir dict en liste triée par sévérité (high → med → low)
         order = {"high": 0, "med": 1, "low": 2}
