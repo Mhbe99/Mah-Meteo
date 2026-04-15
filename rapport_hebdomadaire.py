@@ -177,6 +177,7 @@ def fetch_previsions_5j(sites, jours=5):
 
     Retourne dict: {site: [ {jour,tmin,tmax,pluie,uv,risk}, ... ] }
     """
+    import time
     result = {site: [] for site in sites}
     for site, coord in sites.items():
         lat, lon = coord.get("lat"), coord.get("lon")
@@ -185,7 +186,7 @@ def fetch_previsions_5j(sites, jours=5):
             f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=auto"
         )
         try:
-            r = requests.get(url, timeout=10)
+            r = requests.get(url, timeout=20)
             r.raise_for_status()
             data = r.json()
             days = data.get("daily", {})
@@ -205,6 +206,7 @@ def fetch_previsions_5j(sites, jours=5):
                     "uv": uv,
                     "risk": risk,
                 })
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Erreur récupération prévisions pour {site}: {e}")
     return result
