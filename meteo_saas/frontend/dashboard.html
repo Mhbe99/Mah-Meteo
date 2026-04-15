@@ -1379,116 +1379,6 @@
     let _cachedMeteo = [];
     let _cachedTrafic = null;
 
-    // ============ DONNÉES DÉMO ============
-    function loadDemoData() {
-        showNotif("Chargement des données de démonstration...");
-
-        // --- MÉTÉO (sites + voisins) ---
-        const demoMeteo = [
-            { name: "Le Meux", type: "site", lat: 49.3565, lon: 2.7286, temp: 14.2, wind: 22.5, direction: "SO", ciel: "Nuageux", precipitation: 1.2, uv_index: 3.1, risques: "Pluie légère" },
-            { name: "Clairoix", type: "site", lat: 49.4380, lon: 2.8310, temp: 13.8, wind: 18.3, direction: "O", ciel: "Couvert", precipitation: 0.0, uv_index: 2.8, risques: "RAS" },
-            { name: "Compiègne", type: "voisin", lat: 49.4178, lon: 2.8260, temp: 15.1, wind: 25.0, direction: "SO", ciel: "Averses", precipitation: 4.5, uv_index: 2.0, risques: "Pluie modérée" },
-            { name: "Creil", type: "voisin", lat: 49.2583, lon: 2.4833, temp: 14.7, wind: 19.8, direction: "O", ciel: "Partiellement nuageux", precipitation: 0.3, uv_index: 4.2, risques: "RAS" },
-            { name: "Beauvais", type: "voisin", lat: 49.4297, lon: 2.0833, temp: 12.9, wind: 31.2, direction: "NO", ciel: "Venteux", precipitation: 2.1, uv_index: 3.5, risques: "Vent fort (rafales 55 km/h)" },
-            { name: "Senlis", type: "voisin", lat: 49.2069, lon: 2.5856, temp: 15.5, wind: 14.1, direction: "S", ciel: "Éclaircies", precipitation: 0.0, uv_index: 5.8, risques: "UV modéré" },
-            { name: "Noyon", type: "voisin", lat: 49.5800, lon: 2.9994, temp: 13.3, wind: 20.4, direction: "O", ciel: "Couvert", precipitation: 3.8, uv_index: 1.9, risques: "Pluie modérée" },
-            { name: "Chantilly", type: "voisin", lat: 49.1944, lon: 2.4700, temp: 15.0, wind: 12.7, direction: "SE", ciel: "Dégagé", precipitation: 0.0, uv_index: 6.2, risques: "UV élevé" },
-            { name: "Pont-Sainte-Maxence", type: "voisin", lat: 49.3042, lon: 2.6042, temp: 14.4, wind: 16.5, direction: "O", ciel: "Nuageux", precipitation: 0.5, uv_index: 3.0, risques: "RAS" },
-            { name: "Clermont", type: "voisin", lat: 49.3797, lon: 2.4117, temp: 13.1, wind: 28.3, direction: "NO", ciel: "Venteux", precipitation: 1.0, uv_index: 2.6, risques: "Vent fort" },
-            { name: "Breteuil", type: "voisin", lat: 49.633331, lon: 2.3, temp: 12.5, wind: 24.1, direction: "O", ciel: "Couvert", precipitation: 2.3, uv_index: 2.1, risques: "Pluie légère" },
-            { name: "St Just en Chaussée", type: "voisin", lat: 49.5, lon: 2.43333, temp: 13.4, wind: 17.6, direction: "SO", ciel: "Nuageux", precipitation: 0.8, uv_index: 3.3, risques: "RAS" },
-            { name: "Trosly-Breuil", type: "voisin", lat: 49.400002, lon: 2.96667, temp: 14.0, wind: 19.2, direction: "O", ciel: "Éclaircies", precipitation: 0.0, uv_index: 4.0, risques: "RAS" },
-            { name: "Crépy-en-Valois", type: "voisin", lat: 49.23333, lon: 2.9, temp: 15.2, wind: 13.5, direction: "SE", ciel: "Dégagé", precipitation: 0.0, uv_index: 5.5, risques: "UV modéré" },
-            { name: "Saint-Maximin", type: "voisin", lat: 49.216671, lon: 2.45, temp: 14.6, wind: 15.8, direction: "S", ciel: "Partiellement nuageux", precipitation: 0.2, uv_index: 4.8, risques: "RAS" },
-            { name: "Nanteuil-le-Haudouin", type: "voisin", lat: 49.133331, lon: 2.8, temp: 15.3, wind: 11.9, direction: "SE", ciel: "Dégagé", precipitation: 0.0, uv_index: 6.0, risques: "UV élevé" },
-            { name: "Ressons-sur-Matz", type: "voisin", lat: 49.549999, lon: 2.75, temp: 13.0, wind: 22.7, direction: "O", ciel: "Averses", precipitation: 3.2, uv_index: 1.8, risques: "Pluie modérée" },
-            { name: "Estrées-Saint-Denis", type: "voisin", lat: 49.433331, lon: 2.65, temp: 14.1, wind: 20.0, direction: "SO", ciel: "Nuageux", precipitation: 1.5, uv_index: 2.9, risques: "Pluie légère" },
-            { name: "Guiscard", type: "voisin", lat: 49.650002, lon: 3.05, temp: 12.8, wind: 26.4, direction: "NO", ciel: "Venteux", precipitation: 1.8, uv_index: 2.3, risques: "Vent fort" },
-            { name: "Chambly", type: "voisin", lat: 49.166672, lon: 2.25, temp: 15.1, wind: 13.2, direction: "S", ciel: "Éclaircies", precipitation: 0.0, uv_index: 5.2, risques: "RAS" },
-            { name: "Crèvecoeur-le-Grand", type: "voisin", lat: 49.599998, lon: 2.08333, temp: 12.3, wind: 29.5, direction: "NO", ciel: "Venteux", precipitation: 2.5, uv_index: 2.0, risques: "Vent fort (rafales 60 km/h)" },
-            { name: "Mouy", type: "voisin", lat: 49.316669, lon: 2.31667, temp: 14.3, wind: 16.0, direction: "O", ciel: "Couvert", precipitation: 0.6, uv_index: 3.1, risques: "RAS" }
-        ];
-
-        // --- PRÉVISIONS (J à J+4 pour chaque zone) ---
-        const jours = ['Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-        const demoPrevisions = [];
-        const zones = [
-            { zone: "Le Meux", base: { tmin: 8, tmax: 15, pluie: 1.2, uv: 3, risques: "Pluie légère" }},
-            { zone: "Clairoix", base: { tmin: 7, tmax: 14, pluie: 0, uv: 3, risques: "RAS" }},
-            { zone: "Compiègne", base: { tmin: 9, tmax: 16, pluie: 4.5, uv: 2, risques: "Pluie modérée" }},
-            { zone: "Creil", base: { tmin: 8, tmax: 15, pluie: 0.3, uv: 4, risques: "RAS" }},
-            { zone: "Beauvais", base: { tmin: 6, tmax: 13, pluie: 2.1, uv: 3, risques: "Vent fort" }},
-            { zone: "Senlis", base: { tmin: 9, tmax: 16, pluie: 0, uv: 6, risques: "UV modéré" }},
-            { zone: "Noyon", base: { tmin: 7, tmax: 14, pluie: 3.8, uv: 2, risques: "Pluie modérée" }},
-            { zone: "Chantilly", base: { tmin: 9, tmax: 16, pluie: 0, uv: 6, risques: "UV élevé" }},
-            { zone: "Breteuil", base: { tmin: 6, tmax: 13, pluie: 2.3, uv: 2, risques: "Pluie légère" }},
-            { zone: "St Just en Chaussée", base: { tmin: 7, tmax: 14, pluie: 0.8, uv: 3, risques: "RAS" }},
-            { zone: "Crépy-en-Valois", base: { tmin: 9, tmax: 16, pluie: 0, uv: 5, risques: "UV modéré" }},
-            { zone: "Ressons-sur-Matz", base: { tmin: 7, tmax: 13, pluie: 3.2, uv: 2, risques: "Pluie modérée" }},
-            { zone: "Guiscard", base: { tmin: 6, tmax: 13, pluie: 1.8, uv: 2, risques: "Vent fort" }},
-            { zone: "Chambly", base: { tmin: 9, tmax: 16, pluie: 0, uv: 5, risques: "RAS" }}
-        ];
-        zones.forEach(z => {
-            jours.forEach((j, i) => {
-                demoPrevisions.push({
-                    zone: z.zone,
-                    jour: j + ' ' + (8 + i) + '/04',
-                    tmin: (z.base.tmin + Math.round(Math.random() * 3 - 1)).toFixed(0),
-                    tmax: (z.base.tmax + Math.round(Math.random() * 4 - 2)).toFixed(0),
-                    pluie: Math.max(0, z.base.pluie + (Math.random() * 3 - 1.5)).toFixed(1) + ' mm',
-                    uv: Math.max(0, z.base.uv + Math.round(Math.random() * 2 - 1)),
-                    risques: i < 2 ? z.base.risques : (Math.random() > 0.6 ? z.base.risques : 'RAS')
-                });
-            });
-        });
-
-        // --- TRAFIC (incidents variés) ---
-        const demoTrafic = {
-            incidents: [
-                { route: "A1 — Compiègne → Paris", description: "Accident — voie de droite bloquée", severity: "high", delay_minutes: 25, lat: 49.35, lon: 2.75 },
-                { route: "D932 — Creil → Senlis", description: "Travaux — rétrécissement chaussée", severity: "med", delay_minutes: 12, lat: 49.26, lon: 2.50 },
-                { route: "A26 — Beauvais → Noyon", description: "Ralentissement — bouchon 3 km", severity: "med", delay_minutes: 18, lat: 49.50, lon: 2.55 },
-                { route: "N31 — Compiègne → Rouen", description: "Véhicule en panne sur BAU", severity: "low", delay_minutes: 5, lat: 49.42, lon: 2.60 },
-                { route: "D200 — Le Meux → Pont-Ste-Maxence", description: "Route fermée — inondation", severity: "high", delay_minutes: 0, lat: 49.33, lon: 2.65 },
-                { route: "A1 — Senlis → Chantilly", description: "Congestion — heure de pointe", severity: "low", delay_minutes: 8, lat: 49.20, lon: 2.52 }
-            ],
-            alerte_combinee: {
-                message: "Attention : pluie modérée prévue à Compiègne + accident A1 = risque de retard important sur les tournées nord. Prévoir 20-30 min supplémentaires."
-            }
-        };
-
-        // --- ALERTES ---
-        const now = new Date();
-        const demoAlertes = [
-            { timestamp: new Date(now - 3600000).toISOString(), zone_name: "Le Meux", type_alerte: "Pluie", valeur: "1.2 mm/h", message: "Précipitations légères sur le site — visibilité réduite" },
-            { timestamp: new Date(now - 7200000).toISOString(), zone_name: "Beauvais", type_alerte: "Vent", valeur: "55 km/h", message: "Rafales de vent dépassant le seuil de 50 km/h — attention manoeuvres PL" },
-            { timestamp: new Date(now - 1800000).toISOString(), zone_name: "Compiègne", type_alerte: "Pluie", valeur: "4.5 mm/h", message: "Pluie modérée — risque d'aquaplaning sur A1" },
-            { timestamp: new Date(now - 900000).toISOString(), zone_name: "Chantilly", type_alerte: "UV", valeur: "6.2", message: "Indice UV élevé — protection recommandée pour le personnel extérieur" },
-            { timestamp: new Date(now - 5400000).toISOString(), zone_name: "Noyon", type_alerte: "Pluie", valeur: "3.8 mm/h", message: "Pluie persistante — vérifier drainage zones de chargement" },
-            { timestamp: new Date(now - 600000).toISOString(), zone_name: "A1 Compiègne", type_alerte: "Trafic", valeur: "+25 min", message: "Accident A1 — voie bloquée, retard estimé 25 min sur tournées sud" }
-        ];
-
-        // Injecter les données
-        _cachedMeteo = demoMeteo;
-        _cachedTrafic = demoTrafic;
-        updateMeteoTab(demoMeteo);
-        updateMapTab(demoMeteo, demoPrevisions);
-        updatePrevisionTab(demoPrevisions);
-        updateTraficTab(demoTrafic);
-        if (window.refreshTournees) window.refreshTournees();
-
-        showNotif("Mode démo activé — données fictives chargées");
-    }
-
-    function enterDemoMode() {
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("dashboard").style.display = "flex";
-        document.getElementById("company-name").textContent = "GEODIS — Le Meux (DÉMO)";
-        loadDemoData();
-        // Pré-charger les graphiques rapport
-        setTimeout(() => loadRapport(), 200);
-    }
-
     // ============ DIRECTION → BOUSSOLE ============
     function dirEmoji(dir) {
         return dir ? '🧭' : '';
@@ -2867,7 +2757,7 @@
         _renderTournees();
         _updateStats();
 
-        // Exposer le rafraîchissement pour refreshData/loadDemoData
+        // Exposer le rafraîchissement pour refreshData
         window.refreshTournees = function() {
             _renderTournees();
             _updateStats();
