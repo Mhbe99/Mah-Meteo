@@ -118,6 +118,8 @@ def send_email_trafic(incident: dict):
     receivers_str = os.getenv("RECEIVER_EMAILS", "")
     receivers = [r.strip() for r in receivers_str.split(",") if r.strip()]
 
+    global _smtp_unreachable
+
     if not sender or not password or not receivers:
         print("[TRAFIC] Credentials email manquants ou RECEIVER_EMAILS vide")
         return
@@ -180,8 +182,6 @@ def send_email_trafic(incident: dict):
 
     except OSError as e:
         print(f"[TRAFIC] SMTP injoignable ({e}) — emails desactives pour ce cycle")
-        # Marquer le flag global pour stopper les tentatives suivantes
-        global _smtp_unreachable
         _smtp_unreachable = True
     except Exception as e:
         print(f"[TRAFIC] Erreur envoi email : {e}")
