@@ -191,84 +191,131 @@ def fetch_previsions_5j(sites, jours=5):
 def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file, previsions=None, dry_run=False):
     """Envoyer le rapport par email"""
     
-    html_body = f"""
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body {{ font-family: Arial, sans-serif; }}
-            h2 {{ color: #333; }}
-            table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #4CAF50; color: white; }}
-            tr:nth-child(even) {{ background-color: #f2f2f2; }}
-        </style>
-    </head>
-    <body>
-        <h1>📊 Rapport Hebdomadaire Météo - Risques Détectés</h1>
-        <p><strong>Période :</strong> {semaine_debut} au {semaine_fin}</p>
-        
-        <h2>📈 Résumé</h2>
-        <table>
-            <tr><th>Métrique</th><th>Valeur</th></tr>
-            <tr><td>Total alertes</td><td>{stats['total_alertes']}</td></tr>
-            <tr><td>Zones affectées</td><td>{len(stats['zones'])}</td></tr>
-            <tr><td>Types de risques</td><td>{len(stats['risques'])}</td></tr>
-        </table>
-        
-        <h2>⚠️ Risques par type</h2>
-        <table>
-            <tr><th>Type de risque</th><th>Occurrences</th></tr>
-    """
-    
-    for risque, count in sorted(stats['risques'].items(), key=lambda x: x[1], reverse=True):
-        html_body += f"<tr><td>{risque}</td><td>{count}</td></tr>"
-    
-    html_body += """
-        </table>
-        
-        <h2>🗺️ Zones les plus affectées</h2>
-        <table>
-            <tr><th>Zone</th><th>Alertes</th></tr>
-    """
-    
-    for zone, count in sorted(stats['zones'].items(), key=lambda x: x[1], reverse=True):
-        html_body += f"<tr><td>{zone}</td><td>{count}</td></tr>"
-    
-    html_body += """
-        </table>
-        
-        <h2>🕐 Alertes par heure</h2>
-        <table>
-            <tr><th>Heure</th><th>Occurrences</th></tr>
-    """
-    
-    for heure in sorted(stats['par_heure'].keys()):
-        count = stats['par_heure'][heure]
-        html_body += f"<tr><td>{heure}</td><td>{count}</td></tr>"
-    
-    html_body += """
-        </table>
-        
-        <h2>🔮 Prévisions 5 jours (principaux sites)</h2>
-        <table>
-            <tr><th>Site</th><th>Jour</th><th>Tmin</th><th>Tmax</th><th>Pluie</th><th>UV</th><th>Risques</th></tr>
+    # --- KPI cards ---
+    kpi_html = f"""
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;background:#ebf8ff;border-left:4px solid #3182ce;border-radius:4px;padding:12px 16px;">
+            <div style="font-size:22px;font-weight:700;color:#2b6cb0;">{stats['total_alertes']}</div>
+            <div style="font-size:12px;color:#4a5568;margin-top:2px;">Alertes totales</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:#fff5f5;border-left:4px solid #e53e3e;border-radius:4px;padding:12px 16px;">
+            <div style="font-size:22px;font-weight:700;color:#c53030;">{len(stats['zones'])}</div>
+            <div style="font-size:12px;color:#4a5568;margin-top:2px;">Zones affectées</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:#fffaf0;border-left:4px solid #d69e2e;border-radius:4px;padding:12px 16px;">
+            <div style="font-size:22px;font-weight:700;color:#b7791f;">{len(stats['risques'])}</div>
+            <div style="font-size:12px;color:#4a5568;margin-top:2px;">Types de risques</div>
+        </div>
+    </div>
     """
 
+    # --- Tableau risques ---
+    risques_rows = ""
+    for risque, count in sorted(stats['risques'].items(), key=lambda x: x[1], reverse=True):
+        risques_rows += f"""
+        <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{risque}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:#e53e3e;">{count}</td>
+        </tr>"""
+
+    # --- Tableau zones ---
+    zones_rows = ""
+    for zone, count in sorted(stats['zones'].items(), key=lambda x: x[1], reverse=True):
+        zones_rows += f"""
+        <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{zone}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:#3182ce;">{count}</td>
+        </tr>"""
+
+    # --- Tableau prévisions ---
+    prev_rows = ""
     if previsions:
         for site, jours in previsions.items():
             for j in jours:
-                html_body += f"<tr><td>{site}</td><td>{j['jour']}</td><td>{j['tmin']}</td><td>{j['tmax']}</td><td>{j['pluie']}</td><td>{j['uv']}</td><td>{j['risk']}</td></tr>"
+                risk_color = "#e53e3e" if "❄️" in j['risk'] or "💨" in j['risk'] or "🌧️" in j['risk'] else "#38a169"
+                prev_rows += f"""
+        <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{site}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['jour']}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['tmin']}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['tmax']}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['pluie']}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{risk_color};">{j['risk']}</td>
+        </tr>"""
 
-    html_body += """
-        </table>
-        
-        <p style="margin-top: 30px; font-size: 12px; color: #666;">
-            ✅ Rapport généré automatiquement - Fichier Excel détaillé en pièce jointe
-        </p>
-    </body>
-    </html>
-    """
+    from datetime import datetime as _dt
+    now_str = _dt.now().strftime('%d/%m/%Y %H:%M')
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="max-width:620px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+
+  <!-- Header -->
+  <div style="background:#2c3e50;padding:20px 24px;">
+    <div style="font-size:11px;color:#a0aec0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Mah Météo</div>
+    <h1 style="margin:0;font-size:18px;color:#fff;font-weight:600;">📊 Rapport Hebdomadaire des Risques Météo</h1>
+    <p style="margin:6px 0 0 0;font-size:13px;color:#90cdf4;">Semaine du {semaine_debut} au {semaine_fin}</p>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:24px;">
+
+    <!-- KPIs -->
+    {kpi_html}
+
+    <!-- Risques par type -->
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">⚠️ Risques par type</h3>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
+      <thead>
+        <tr style="background:#f7fafc;">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Type de risque</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Occurrences</th>
+        </tr>
+      </thead>
+      <tbody>{risques_rows if risques_rows else '<tr><td colspan="2" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucun risque détecté</td></tr>'}</tbody>
+    </table>
+
+    <!-- Zones -->
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">🗺️ Zones les plus affectées</h3>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
+      <thead>
+        <tr style="background:#f7fafc;">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Zone</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Alertes</th>
+        </tr>
+      </thead>
+      <tbody>{zones_rows if zones_rows else '<tr><td colspan="2" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucune zone affectée</td></tr>'}</tbody>
+    </table>
+
+    <!-- Prévisions -->
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">🔮 Prévisions 5 jours</h3>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
+      <thead>
+        <tr style="background:#f7fafc;">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Site</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Jour</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Tmin</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Tmax</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Pluie</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Risques</th>
+        </tr>
+      </thead>
+      <tbody>{prev_rows if prev_rows else '<tr><td colspan="6" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucune prévision disponible</td></tr>'}</tbody>
+    </table>
+
+    <p style="margin-top:20px;font-size:12px;color:#a0aec0;">📎 Rapport Excel détaillé en pièce jointe.</p>
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:14px 24px;background:#f7fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;">
+    Envoyé automatiquement par Mah Météo — {now_str}<br>Ne pas répondre à cet email.
+  </div>
+
+</div>
+</body>
+</html>"""
     
     # Créer le message
     msg = MIMEMultipart()
