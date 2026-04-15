@@ -38,6 +38,27 @@ SITES = {
     "Le Meux 🏣": {"lat": 49.378829, "lon": 2.750393},
     "Clairoix 🏣": {"lat": 49.4194, "lon": 2.8328},
 }
+VOISINS = {
+    "Compiègne": {"lat": 49.4176, "lon": 2.8261},
+    "Creil": {"lat": 49.2561, "lon": 2.4834},
+    "Beauvais": {"lat": 49.4304, "lon": 2.0876},
+    "Chantilly": {"lat": 49.1931, "lon": 2.4714},
+    "Noyon": {"lat": 49.5786, "lon": 3.0017},
+    "Senlis": {"lat": 49.2079, "lon": 2.5849},
+    "Méru": {"lat": 49.2335, "lon": 2.1293},
+    "Nogent-sur-Oise": {"lat": 49.2661, "lon": 2.4706},
+    "Clermont": {"lat": 49.3763, "lon": 2.4151},
+    "Montataire": {"lat": 49.2641, "lon": 2.4436},
+    "Liancourt": {"lat": 49.3334, "lon": 2.4573},
+    "Chaumont-en-Vexin": {"lat": 49.2761, "lon": 1.8759},
+    "Formerie": {"lat": 49.65, "lon": 1.73},
+    "Breteuil": {"lat": 49.633331, "lon": 2.3},
+    "St Just en Chaussée": {"lat": 49.5, "lon": 2.43333},
+    "Trosly-Breuil": {"lat": 49.400002, "lon": 2.96667},
+    "Crépy-en-Valois": {"lat": 49.23333, "lon": 2.9},
+    "Saint-Maximin": {"lat": 49.216671, "lon": 2.45},
+    "Nanteuil-le-Haudouin": {"lat": 49.133331, "lon": 2.8},
+}
 
 def charger_historique():
     """Charger l'historique des alertes depuis l'API Render."""
@@ -188,7 +209,48 @@ def fetch_previsions_5j(sites, jours=5):
             print(f"⚠️ Erreur récupération prévisions pour {site}: {e}")
     return result
 
-def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file, previsions=None, dry_run=False):
+def _build_zone_card(zone_name, jours, is_site=False):
+    """Génère une carte HTML prévision pour une zone (style dashboard)."""
+    icon = "🏣" if is_site else "📍"
+    bg = "#edf7f1" if is_site else "#f7fafc"
+
+    days_html = ""
+    for j in jours:
+        # Couleur du badge risque
+        risk_text = j['risk']
+        if "❄️" in risk_text or "Verglas" in risk_text:
+            rbg, rcol = "#eef4fb", "#1a4a7a"
+        elif "💨" in risk_text or "Vent" in risk_text:
+            rbg, rcol = "#fdf6ec", "#b8660a"
+        elif "🌧️" in risk_text or "pluie" in risk_text.lower():
+            rbg, rcol = "#ebf8ff", "#2b6cb0"
+        elif "🔥" in risk_text or "UV" in risk_text:
+            rbg, rcol = "#fdf0ee", "#c0392b"
+        else:
+            rbg, rcol = "#edf7f1", "#1a6b3a"
+
+        days_html += f"""
+        <td style="padding:10px 6px;text-align:center;border-right:1px solid #e2e8f0;vertical-align:top;width:20%;">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#a0aec0;margin-bottom:6px;">{j['jour']}</div>
+          <div style="font-size:13px;margin-bottom:4px;"><span style="color:#c0392b;font-weight:500;">{j['tmax']}</span> <span style="color:#ccc;">/</span> <span style="color:#2b6cb0;">{j['tmin']}</span></div>
+          <div style="font-size:11px;color:#a0aec0;margin-bottom:3px;">🌧 {j['pluie']}</div>
+          <div style="font-size:11px;color:#a0aec0;margin-bottom:6px;">☀️ UV {j['uv']}</div>
+          <div style="display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:500;background:{rbg};color:{rcol};">{risk_text}</div>
+        </td>"""
+
+    return f"""
+    <div style="background:#fff;border:1px solid #dce1e8;border-radius:6px;margin-bottom:10px;overflow:hidden;">
+      <div style="padding:8px 14px;background:{bg};border-bottom:1px solid #dce1e8;font-weight:600;font-size:13px;color:#2d3748;">
+        {icon} {zone_name}
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>{days_html}</tr>
+      </table>
+    </div>"""
+
+
+def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file,
+                          previsions_sites=None, previsions_voisins=None, dry_run=False):
     """Envoyer le rapport par email"""
     
     # --- KPI cards ---
@@ -227,21 +289,18 @@ def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file, previ
             <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:#3182ce;">{count}</td>
         </tr>"""
 
-    # --- Tableau prévisions ---
-    prev_rows = ""
-    if previsions:
-        for site, jours in previsions.items():
-            for j in jours:
-                risk_color = "#e53e3e" if "❄️" in j['risk'] or "💨" in j['risk'] or "🌧️" in j['risk'] else "#38a169"
-                prev_rows += f"""
-        <tr>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{site}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['jour']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['tmin']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['tmax']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{j['pluie']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{risk_color};">{j['risk']}</td>
-        </tr>"""
+    # --- Prévisions visuelles (cartes par zone comme le dashboard) ---
+    prev_sites_html = ""
+    if previsions_sites:
+        for site, jours in previsions_sites.items():
+            if jours:
+                prev_sites_html += _build_zone_card(site, jours, is_site=True)
+
+    prev_voisins_html = ""
+    if previsions_voisins:
+        for voisin, jours in previsions_voisins.items():
+            if jours:
+                prev_voisins_html += _build_zone_card(voisin, jours, is_site=False)
 
     from datetime import datetime as _dt
     now_str = _dt.now().strftime('%d/%m/%Y %H:%M')
@@ -289,21 +348,13 @@ def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file, previ
       <tbody>{zones_rows if zones_rows else '<tr><td colspan="2" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucune zone affectée</td></tr>'}</tbody>
     </table>
 
-    <!-- Prévisions -->
-    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">🔮 Prévisions 5 jours</h3>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
-      <thead>
-        <tr style="background:#f7fafc;">
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Site</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Jour</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Tmin</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Tmax</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Pluie</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Risques</th>
-        </tr>
-      </thead>
-      <tbody>{prev_rows if prev_rows else '<tr><td colspan="6" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucune prévision disponible</td></tr>'}</tbody>
-    </table>
+    <!-- Prévisions Sites -->
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">🏣 Prévisions 5 jours — Sites</h3>
+    {prev_sites_html if prev_sites_html else '<p style="font-size:13px;color:#a0aec0;">Aucune prévision disponible</p>'}
+
+    <!-- Prévisions Voisins -->
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">📍 Prévisions 5 jours — Villes voisines</h3>
+    {prev_voisins_html if prev_voisins_html else '<p style="font-size:13px;color:#a0aec0;">Aucune prévision disponible</p>'}
 
     <p style="margin-top:20px;font-size:12px;color:#a0aec0;">📎 Rapport Excel détaillé en pièce jointe.</p>
   </div>
@@ -489,18 +540,23 @@ def main(dry_run=False, force_send=False):
     stats = generer_statistiques(alertes_semaine)
     # Récupérer prévisions 5 jours pour affichage dans le rapport
     print("\n🔎 Récupération des prévisions 5 jours...")
-    previsions = fetch_previsions_5j(SITES, jours=5)
+    previsions_sites = fetch_previsions_5j(SITES, jours=5)
+    previsions_voisins = fetch_previsions_5j(VOISINS, jours=5)
     
     # Générer Excel
     print("\n📄 Génération du rapport Excel...")
     generer_excel(alertes_semaine, stats)
-    # ajouter un export séparé pour les prévisions
-    previsions_file = generer_excel_previsions(previsions)
+    # ajouter un export séparé pour les prévisions (sites + voisins)
+    all_previsions = {**previsions_sites, **previsions_voisins}
+    previsions_file = generer_excel_previsions(all_previsions)
     
     # Envoyer par email
     print("\n📧 Envoi du rapport par email...")
     # joindre aussi le fichier prévisions si disponible
-    envoyer_rapport_email(lundi, dimanche, stats, RAPPORT_FILE, previsions=previsions, dry_run=dry_run)
+    envoyer_rapport_email(lundi, dimanche, stats, RAPPORT_FILE,
+                         previsions_sites=previsions_sites,
+                         previsions_voisins=previsions_voisins,
+                         dry_run=dry_run)
     
     print("\n" + "=" * 60)
     print("✅ Rapport hebdomadaire terminé")
