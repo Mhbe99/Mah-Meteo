@@ -242,6 +242,12 @@ def init_clients_from_json(json_path):
             # Vérifier si le client existe déjà
             existing = db.query(Client).filter(Client.username == client_dict["username"]).first()
             if existing:
+                # Mettre à jour le plan si différent
+                new_plan = client_dict.get("plan", "free")
+                if existing.plan != new_plan:
+                    existing.plan = new_plan
+                    db.commit()
+                    print(f"✅ Plan mis à jour pour {client_dict['username']}: {new_plan}")
                 # Sync zones manquantes pour le client existant
                 zones_data = client_dict.get("zones", {})
                 added = 0
