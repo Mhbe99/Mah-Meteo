@@ -102,16 +102,10 @@ def get_icon(category: int) -> str:
     return icons.get(category, "[OTHER]")
 
 
-def send_email_trafic(incident: dict):
+def send_email_trafic_batch(incidents: list):
     """
-    Envoie un email d'alerte pour un incident trafic grave (HIGH severity).
-    Implémente un cooldown de 1h par route pour éviter le spam.
-    
-    Args:
-        incident : dict incident avec clés route, description, severity, delay_minutes, zone_source
-    
-    Returns:
-        None (logs l'envoi ou l'erreur)
+    Envoie UN SEUL email récapitulatif groupé par type (accidents, bouchons, travaux, etc.).
+    Cooldown global de 1h pour éviter le spam.
     """
     sender = os.getenv("SENDER_EMAIL")
     password = os.getenv("GMAIL_PASSWORD")
@@ -123,12 +117,12 @@ def send_email_trafic(incident: dict):
     if not sender or not password or not receivers:
         print("[TRAFIC] Credentials email manquants ou RECEIVER_EMAILS vide")
         return
-
-    # Circuit-breaker: si SMTP déjà échoué ce cycle, ne pas retenter
     if _smtp_unreachable:
         return
+    if not incidents:
+        return
 
-    # Gestion cooldown 1h par route
+    # Cooldown global de 1h (pas par route)
     COOLDOWN_FILE = "exports/last_trafic_alerts.json"
     try:
         state = {}
@@ -136,71 +130,109 @@ def send_email_trafic(incident: dict):
             with open(COOLDOWN_FILE, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-        key = incident["route"][:50]
-        if key in state:
-            last_time = datetime.datetime.fromisoformat(state[key])
-            delta_sec = (datetime.datetime.now() - last_time).total_seconds()
-            if delta_sec < 3600:  # Cooldown 1h
-                print(f"[TRAFIC] Cooldown actif pour {key} ({int(delta_sec)}s/3600s)")
+        last_batch = state.get("_last_batch")
+        if last_batch:
+            delta_sec = (datetime.datetime.now() - datetime.datetime.fromisoformat(last_batch)).total_seconds()
+            if delta_sec < 3600:
+                print(f"[TRAFIC] Cooldown batch actif ({int(delta_sec)}s/3600s)")
                 return
     except Exception:
         state = {}
 
-    # Construire l'email HTML (même trame que le rapport hebdomadaire)
-    subject = f"[MAH METEO] Alerte trafic : {incident['route']}"
     now_str = datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')
 
-    severity = incident['severity'].upper()
-    sev_colors = {"HIGH": "#e53e3e", "MEDIUM": "#dd6b20", "LOW": "#d69e2e"}
-    sev_color = sev_colors.get(severity, "#718096")
-    sev_labels = {"HIGH": "🔴 Élevée", "MEDIUM": "🟠 Moyenne", "LOW": "🟡 Faible"}
-    sev_label = sev_labels.get(severity, severity)
+    # --- Grouper les incidents par type (icon) ---
+    from collections import defaultdict
+    groups = defaultdict(list)
+    type_labels = {
+        "[CRASH]": "🚗 Accidents",
+        "[TRAFFIC]": "🚦 Bouchons / Congestion",
+        "[WORK]": "🚧 Travaux",
+        "[CLOSED]": "⛔ Routes fermées",
+        "[HAZARD]": "⚠️ Dangers",
+        "[OTHER]": "📌 Autres incidents",
+    }
+    for inc in incidents:
+        groups[inc.get("icon", "[OTHER]")].append(inc)
+
+    # --- KPIs ---
+    total = len(incidents)
+    high_count = sum(1 for i in incidents if i["severity"] == "high")
+    retard_max = max((i["delay_minutes"] for i in incidents), default=0)
+
+    kpi_html = f"""
+    <div style="display:flex;gap:10px;margin-bottom:18px;">
+      <div style="flex:1;padding:12px;border-radius:6px;border-left:4px solid #e53e3e;background:#fff5f5;">
+        <div style="font-size:22px;font-weight:700;color:#e53e3e;">{high_count}</div>
+        <div style="font-size:11px;color:#718096;">Sévères</div>
+      </div>
+      <div style="flex:1;padding:12px;border-radius:6px;border-left:4px solid #3182ce;background:#ebf8ff;">
+        <div style="font-size:22px;font-weight:700;color:#3182ce;">{total}</div>
+        <div style="font-size:11px;color:#718096;">Total incidents</div>
+      </div>
+      <div style="flex:1;padding:12px;border-radius:6px;border-left:4px solid #dd6b20;background:#fffaf0;">
+        <div style="font-size:22px;font-weight:700;color:#dd6b20;">+{retard_max} min</div>
+        <div style="font-size:11px;color:#718096;">Retard max</div>
+      </div>
+    </div>"""
+
+    # --- Sections par type ---
+    sev_colors = {"high": "#e53e3e", "med": "#dd6b20", "low": "#d69e2e"}
+    sev_labels = {"high": "🔴 Élevée", "med": "🟠 Moyenne", "low": "🟡 Faible"}
+
+    sections_html = ""
+    for icon_key, label in type_labels.items():
+        inc_list = groups.get(icon_key)
+        if not inc_list:
+            continue
+
+        rows = ""
+        for idx, inc in enumerate(inc_list):
+            bg = "background:#f7fafc;" if idx % 2 == 0 else ""
+            sev = inc["severity"]
+            badge = f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:{sev_colors.get(sev,"#718096")};color:#fff;font-size:11px;">{sev_labels.get(sev, sev)}</span>'
+            rows += f"""<tr style="{bg}">
+              <td style="padding:8px 12px;font-size:12px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{inc['route']}</td>
+              <td style="padding:8px 12px;font-size:12px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{inc['description']}</td>
+              <td style="padding:8px 12px;font-size:12px;color:#2d3748;border-bottom:1px solid #e2e8f0;text-align:center;">+{inc['delay_minutes']} min</td>
+              <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:center;">{badge}</td>
+              <td style="padding:8px 12px;font-size:11px;color:#718096;border-bottom:1px solid #e2e8f0;">{inc.get('zone_source','')}</td>
+            </tr>"""
+
+        sections_html += f"""
+        <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">{label} ({len(inc_list)})</h3>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
+          <thead>
+            <tr style="background:#edf2f7;">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;">Route</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;">Description</th>
+              <th style="padding:8px 12px;text-align:center;font-size:11px;color:#4a5568;">Retard</th>
+              <th style="padding:8px 12px;text-align:center;font-size:11px;color:#4a5568;">Sévérité</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;">Zone</th>
+            </tr>
+          </thead>
+          <tbody>{rows}</tbody>
+        </table>"""
+
+    subject = f"[MAH METEO] 🚨 Synthèse trafic — {total} incident(s) dont {high_count} sévère(s)"
 
     body = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
-<div style="max-width:620px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+<div style="max-width:680px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
 
   <!-- Header -->
   <div style="background:#2c3e50;padding:20px 24px;">
     <div style="font-size:11px;color:#a0aec0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Mah Météo</div>
-    <h1 style="margin:0;font-size:18px;color:#fff;font-weight:600;">🚨 Alerte Trafic</h1>
-    <p style="margin:6px 0 0 0;font-size:13px;color:#90cdf4;">Incident détecté le {now_str}</p>
+    <h1 style="margin:0;font-size:18px;color:#fff;font-weight:600;">🚨 Synthèse Trafic</h1>
+    <p style="margin:6px 0 0 0;font-size:13px;color:#90cdf4;">{total} incident(s) détecté(s) le {now_str}</p>
   </div>
 
   <!-- Body -->
   <div style="padding:24px;">
-
-    <!-- Sévérité badge -->
-    <div style="display:inline-block;padding:6px 14px;border-radius:20px;background:{sev_color};color:#fff;font-size:13px;font-weight:600;margin-bottom:16px;">
-      {sev_label}
-    </div>
-
-    <!-- Détails incident -->
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;margin-top:12px;">
-      <tr style="background:#f7fafc;">
-        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;width:130px;border-bottom:1px solid #e2e8f0;">🛣️ Route</td>
-        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{incident['route']}</td>
-      </tr>
-      <tr>
-        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;border-bottom:1px solid #e2e8f0;">📌 Type</td>
-        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{incident['icon']} {incident['description']}</td>
-      </tr>
-      <tr style="background:#f7fafc;">
-        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;border-bottom:1px solid #e2e8f0;">⏱️ Retard</td>
-        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;font-weight:600;">+{incident['delay_minutes']} min</td>
-      </tr>
-      <tr>
-        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;border-bottom:1px solid #e2e8f0;">📍 Zone</td>
-        <td style="padding:10px 14px;font-size:13px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{incident.get('zone_source', 'N/A')}</td>
-      </tr>
-      <tr style="background:#f7fafc;">
-        <td style="padding:10px 14px;font-size:12px;color:#4a5568;font-weight:600;">🌐 Coordonnées</td>
-        <td style="padding:10px 14px;font-size:13px;color:#2d3748;">{incident['lat']}, {incident['lon']}</td>
-      </tr>
-    </table>
-
+    {kpi_html}
+    {sections_html}
   </div>
 
   <!-- Footer -->
@@ -224,10 +256,9 @@ def send_email_trafic(incident: dict):
             server.login(sender, password)
             server.sendmail(sender, receivers, msg.as_string())
 
-        print(f"[TRAFIC] Email alerte envoye pour {incident['route']}")
+        print(f"[TRAFIC] Email synthese envoye ({total} incidents)")
 
-        # Sauvegarder timestamp cooldown
-        state[incident["route"][:50]] = datetime.datetime.now().isoformat()
+        state["_last_batch"] = datetime.datetime.now().isoformat()
         os.makedirs("exports", exist_ok=True)
         with open(COOLDOWN_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
@@ -492,12 +523,12 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
             key=lambda x: order.get(x["severity"], 3)
         )
 
-        # Envoyer emails pour incidents HIGH severity
+        # Envoyer UN email synthèse si incidents HIGH severity
         global _smtp_unreachable
         _smtp_unreachable = False  # Reset pour ce cycle
-        for inc in incidents_list:
-            if inc["severity"] == "high" and not _smtp_unreachable:
-                send_email_trafic(inc)
+        high_incidents = [inc for inc in incidents_list if inc["severity"] == "high"]
+        if high_incidents and not _smtp_unreachable:
+            send_email_trafic_batch(high_incidents)
 
         # Archiver incidents dans JSON historique
         if incidents_list:
