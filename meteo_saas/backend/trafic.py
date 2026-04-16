@@ -133,111 +133,104 @@ def send_email_trafic_batch(incidents: list):
         last_batch = state.get("_last_batch")
         if last_batch:
             delta_sec = (datetime.datetime.now() - datetime.datetime.fromisoformat(last_batch)).total_seconds()
-            if delta_sec < 3600:
-                print(f"[TRAFIC] Cooldown batch actif ({int(delta_sec)}s/3600s)")
+            if delta_sec < 1200:  # Cooldown 20 min
+                print(f"[TRAFIC] Cooldown batch actif ({int(delta_sec)}s/1200s)")
                 return
     except Exception:
         state = {}
 
     now_str = datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')
 
-    # --- Grouper les incidents par type (icon) ---
+    # --- Grouper par type ---
     from collections import defaultdict
     groups = defaultdict(list)
     type_labels = {
-        "[CRASH]": "🚗 Accidents",
-        "[TRAFFIC]": "🚦 Bouchons / Congestion",
-        "[WORK]": "🚧 Travaux",
-        "[CLOSED]": "⛔ Routes fermées",
-        "[HAZARD]": "⚠️ Dangers",
-        "[OTHER]": "📌 Autres incidents",
+        "[CRASH]": ("Accidents", "#e53e3e", "🚗"),
+        "[TRAFFIC]": ("Congestion", "#dd6b20", "🚦"),
+        "[WORK]": ("Travaux", "#3182ce", "🚧"),
+        "[CLOSED]": ("Routes fermées", "#6b21a8", "⛔"),
+        "[HAZARD]": ("Dangers", "#b45309", "⚠️"),
+        "[OTHER]": ("Autres", "#718096", "📌"),
     }
     for inc in incidents:
         groups[inc.get("icon", "[OTHER]")].append(inc)
 
-    # --- KPIs ---
     total = len(incidents)
     high_count = sum(1 for i in incidents if i["severity"] == "high")
+    med_count = sum(1 for i in incidents if i["severity"] == "med")
     retard_max = max((i["delay_minutes"] for i in incidents), default=0)
 
-    kpi_html = f"""
-    <div style="display:flex;gap:10px;margin-bottom:18px;">
-      <div style="flex:1;padding:12px;border-radius:6px;border-left:4px solid #e53e3e;background:#fff5f5;">
-        <div style="font-size:22px;font-weight:700;color:#e53e3e;">{high_count}</div>
-        <div style="font-size:11px;color:#718096;">Sévères</div>
-      </div>
-      <div style="flex:1;padding:12px;border-radius:6px;border-left:4px solid #3182ce;background:#ebf8ff;">
-        <div style="font-size:22px;font-weight:700;color:#3182ce;">{total}</div>
-        <div style="font-size:11px;color:#718096;">Total incidents</div>
-      </div>
-      <div style="flex:1;padding:12px;border-radius:6px;border-left:4px solid #dd6b20;background:#fffaf0;">
-        <div style="font-size:22px;font-weight:700;color:#dd6b20;">+{retard_max} min</div>
-        <div style="font-size:11px;color:#718096;">Retard max</div>
-      </div>
-    </div>"""
+    sev_dot = {"high": "🔴", "med": "🟠", "low": "🟡"}
 
-    # --- Sections par type ---
-    sev_colors = {"high": "#e53e3e", "med": "#dd6b20", "low": "#d69e2e"}
-    sev_labels = {"high": "🔴 Élevée", "med": "🟠 Moyenne", "low": "🟡 Faible"}
-
+    # --- Construire les cartes par incident ---
     sections_html = ""
-    for icon_key, label in type_labels.items():
+    for icon_key, (label, color, emoji) in type_labels.items():
         inc_list = groups.get(icon_key)
         if not inc_list:
             continue
 
-        rows = ""
-        for idx, inc in enumerate(inc_list):
-            bg = "background:#f7fafc;" if idx % 2 == 0 else ""
-            sev = inc["severity"]
-            badge = f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:{sev_colors.get(sev,"#718096")};color:#fff;font-size:11px;">{sev_labels.get(sev, sev)}</span>'
-            rows += f"""<tr style="{bg}">
-              <td style="padding:8px 12px;font-size:12px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{inc['route']}</td>
-              <td style="padding:8px 12px;font-size:12px;color:#2d3748;border-bottom:1px solid #e2e8f0;">{inc['description']}</td>
-              <td style="padding:8px 12px;font-size:12px;color:#2d3748;border-bottom:1px solid #e2e8f0;text-align:center;">+{inc['delay_minutes']} min</td>
-              <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:center;">{badge}</td>
-              <td style="padding:8px 12px;font-size:11px;color:#718096;border-bottom:1px solid #e2e8f0;">{inc.get('zone_source','')}</td>
-            </tr>"""
+        cards = ""
+        for inc in inc_list:
+            dot = sev_dot.get(inc["severity"], "⚪")
+            delay_txt = f"+{inc['delay_minutes']} min" if inc["delay_minutes"] > 0 else "—"
+            cards += f"""
+            <div style="padding:12px 16px;border-bottom:1px solid #edf2f7;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:#1a202c;">{inc['route']}</div>
+                  <div style="font-size:12px;color:#4a5568;margin-top:3px;">{inc['description']}</div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;margin-left:12px;">
+                  <div style="font-size:13px;font-weight:700;color:#e53e3e;">{delay_txt}</div>
+                  <div style="font-size:11px;color:#718096;">{dot} {inc.get('zone_source','')}</div>
+                </div>
+              </div>
+            </div>"""
 
         sections_html += f"""
-        <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">{label} ({len(inc_list)})</h3>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
-          <thead>
-            <tr style="background:#edf2f7;">
-              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;">Route</th>
-              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;">Description</th>
-              <th style="padding:8px 12px;text-align:center;font-size:11px;color:#4a5568;">Retard</th>
-              <th style="padding:8px 12px;text-align:center;font-size:11px;color:#4a5568;">Sévérité</th>
-              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;">Zone</th>
-            </tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>"""
+        <div style="margin-bottom:16px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+          <div style="background:{color};padding:8px 16px;color:#fff;font-size:13px;font-weight:600;">
+            {emoji} {label} ({len(inc_list)})
+          </div>
+          {cards}
+        </div>"""
 
-    subject = f"[MAH METEO] 🚨 Synthèse trafic — {total} incident(s) dont {high_count} sévère(s)"
+    subject = f"Trafic — {total} incident(s)"
+    if high_count:
+        subject = f"Trafic — {high_count} incident(s) sévère(s) / {total} au total"
 
     body = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
-<div style="max-width:680px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
 
-  <!-- Header -->
-  <div style="background:#2c3e50;padding:20px 24px;">
-    <div style="font-size:11px;color:#a0aec0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Mah Météo</div>
-    <h1 style="margin:0;font-size:18px;color:#fff;font-weight:600;">🚨 Synthèse Trafic</h1>
-    <p style="margin:6px 0 0 0;font-size:13px;color:#90cdf4;">{total} incident(s) détecté(s) le {now_str}</p>
+  <div style="background:#2c3e50;padding:18px 20px;">
+    <div style="font-size:10px;color:#a0aec0;text-transform:uppercase;letter-spacing:1px;">Mah Météo — Surveillance trafic</div>
+    <div style="font-size:16px;color:#fff;font-weight:600;margin-top:4px;">Point trafic du {now_str}</div>
   </div>
 
-  <!-- Body -->
-  <div style="padding:24px;">
-    {kpi_html}
+  <div style="padding:16px 20px 8px 20px;display:flex;gap:8px;border-bottom:1px solid #edf2f7;">
+    <div style="flex:1;text-align:center;padding:10px 0;">
+      <div style="font-size:24px;font-weight:700;color:#2d3748;">{total}</div>
+      <div style="font-size:10px;color:#718096;text-transform:uppercase;">incidents</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:10px 0;border-left:1px solid #edf2f7;border-right:1px solid #edf2f7;">
+      <div style="font-size:24px;font-weight:700;color:#e53e3e;">{high_count}</div>
+      <div style="font-size:10px;color:#718096;text-transform:uppercase;">sévères</div>
+    </div>
+    <div style="flex:1;text-align:center;padding:10px 0;">
+      <div style="font-size:24px;font-weight:700;color:#dd6b20;">+{retard_max}<span style="font-size:12px;"> min</span></div>
+      <div style="font-size:10px;color:#718096;text-transform:uppercase;">retard max</div>
+    </div>
+  </div>
+
+  <div style="padding:16px 20px;">
     {sections_html}
   </div>
 
-  <!-- Footer -->
-  <div style="padding:14px 24px;background:#f7fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;">
-    Envoyé automatiquement par Mah Météo — {now_str}<br>Ne pas répondre à cet email.
+  <div style="padding:12px 20px;background:#f7fafc;border-top:1px solid #edf2f7;font-size:10px;color:#a0aec0;">
+    Mah Météo — {now_str} · Ne pas répondre
   </div>
 
 </div>
@@ -523,12 +516,11 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
             key=lambda x: order.get(x["severity"], 3)
         )
 
-        # Envoyer UN email synthèse si incidents HIGH severity
+        # Envoyer UN email synthèse avec TOUS les incidents
         global _smtp_unreachable
         _smtp_unreachable = False  # Reset pour ce cycle
-        high_incidents = [inc for inc in incidents_list if inc["severity"] == "high"]
-        if high_incidents and not _smtp_unreachable:
-            send_email_trafic_batch(high_incidents)
+        if incidents_list and not _smtp_unreachable:
+            send_email_trafic_batch(incidents_list)
 
         # Archiver incidents dans JSON historique
         if incidents_list:
