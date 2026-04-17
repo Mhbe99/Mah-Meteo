@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1353,11 +1353,38 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                         <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
                             <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">📊 Alertes par zone (top 10)</h4>
-                            <canvas id="chart-zones" height="240"></canvas>
+                            <div id="chart-zones" style="min-height:260px"></div>
                         </div>
                         <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
                             <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">🥧 Répartition par type</h4>
-                            <canvas id="chart-types" height="240"></canvas>
+                            <div id="chart-types" style="min-height:260px"></div>
+                        </div>
+                    </div>
+                    <!-- Graphiques interactifs -->
+                    <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
+                        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:4px;color:#2d3748">🌡️ Température — Dernières 48h</h4>
+                            <p style="font-size:11px;color:#a0aec0;margin-bottom:12px">Zoomez et survolez pour les détails</p>
+                            <div id="chart-temp24" style="min-height:300px"></div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+                        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:4px;color:#2d3748">🌧️ Pluie & Vent — 7 jours</h4>
+                            <p style="font-size:11px;color:#a0aec0;margin-bottom:12px">Prévisions quotidiennes</p>
+                            <div id="chart-pluievent" style="min-height:280px"></div>
+                        </div>
+                        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:4px;color:#2d3748">☀️ Indice UV — 7 jours</h4>
+                            <p style="font-size:11px;color:#a0aec0;margin-bottom:12px">Couleur selon le niveau de risque</p>
+                            <div id="chart-uv" style="min-height:280px"></div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
+                        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:4px;color:#2d3748">🗺️ Niveau de risque par zone</h4>
+                            <p style="font-size:11px;color:#a0aec0;margin-bottom:12px">Score basé sur température, vent, pluie et UV</p>
+                            <div id="chart-heatmap" style="min-height:200px"></div>
                         </div>
                     </div>
                 </div>
@@ -2771,118 +2798,160 @@
     })();
 
         // ======================================================
-        // ONGLET RAPPORT
+        // ONGLET RAPPORT — ApexCharts interactifs
         // ======================================================
-        let _chartZones = null;
-        let _chartTypes = null;
+        let _apexZones = null, _apexTypes = null, _apexTemp = null, _apexPV = null, _apexUV = null, _apexHeat = null;
 
         async function loadRapport() {
-            // Mode démo : données synthétiques
-            if (!CLIENT_ID || !TOKEN) {
-                _renderRapportCharts([
-                    {zone_name:'Le Meux', message:'Verglas détecté'},
-                    {zone_name:'Le Meux', message:'Verglas détecté'},
-                    {zone_name:'Le Meux', message:'Vent fort'},
-                    {zone_name:'Clairoix', message:'Pluie forte'},
-                    {zone_name:'Clairoix', message:'Verglas détecté'},
-                    {zone_name:'Senlis', message:'Vent fort'},
-                    {zone_name:'Senlis', message:'Trafic perturbé'},
-                    {zone_name:'Compiègne', message:'UV fort'},
-                    {zone_name:'Compiègne', message:'Pluie forte'},
-                    {zone_name:'Saint-Maximin', message:'Verglas détecté'},
-                    {zone_name:'Clermont', message:'Vent fort'},
-                    {zone_name:'Liancourt', message:'Pluie forte'},
-                    {zone_name:'Le Meux', message:'Combinée'},
-                    {zone_name:'Clairoix', message:'UV fort'},
-                ]);
-                return;
-            }
+            if (!CLIENT_ID || !TOKEN) return;
             try {
-                const res = await fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=500`, {
-                    headers: { 'Authorization': 'Bearer ' + TOKEN }
-                });
-                if (!res.ok) return;
-                _renderRapportCharts(await res.json());
-            } catch(e) {
-                console.error('Erreur loadRapport', e);
-            }
+                const [resA, resC] = await Promise.all([
+                    fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=500`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
+                    fetch(`${API_URL}/api/charts/${CLIENT_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+                ]);
+                const alertes = resA.ok ? await resA.json() : [];
+                const charts = resC.ok ? await resC.json() : {};
+                _renderRapportCharts(alertes, charts);
+            } catch(e) { console.error('Erreur loadRapport', e); }
         }
 
-        function _renderRapportCharts(alertes) {
+        function _renderRapportCharts(alertes, charts) {
+            // KPIs
             document.getElementById('rpt-total').textContent = alertes.length;
-
             const zonesCount = {};
-            alertes.forEach(a => {
-                const z = a.zone_name || a.zone || 'Inconnue';
-                zonesCount[z] = (zonesCount[z] || 0) + 1;
-            });
+            alertes.forEach(a => { const z = a.zone_name || a.zone || 'Inconnue'; zonesCount[z] = (zonesCount[z] || 0) + 1; });
             document.getElementById('rpt-zones').textContent = Object.keys(zonesCount).length;
 
             const typesCount = {};
             const keywords = ['Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic', 'Combinée'];
             alertes.forEach(a => {
                 const msg = (a.message || a.type || '');
-                keywords.forEach(k => {
-                    if (msg.toLowerCase().includes(k.toLowerCase()))
-                        typesCount[k] = (typesCount[k] || 0) + 1;
-                });
-                if (!keywords.some(k => msg.toLowerCase().includes(k.toLowerCase())))
-                    typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
+                let matched = false;
+                keywords.forEach(k => { if (msg.toLowerCase().includes(k.toLowerCase())) { typesCount[k] = (typesCount[k] || 0) + 1; matched = true; } });
+                if (!matched) typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
             });
             document.getElementById('rpt-types').textContent = Object.keys(typesCount).length;
 
+            // --- 1. Alertes par zone (bar horizontal) ---
             const topZones = Object.entries(zonesCount).sort((a,b) => b[1]-a[1]).slice(0,10);
-            if (_chartZones) _chartZones.destroy();
-            _chartZones = new Chart(document.getElementById('chart-zones'), {
-                type: 'bar',
-                data: {
-                    labels: topZones.map(z => z[0]),
-                    datasets: [{
-                        label: 'Alertes',
-                        data: topZones.map(z => z[1]),
-                        backgroundColor: topZones.map((_,i) => `hsla(${210 + i*8},70%,${55-i*2}%,0.85)`),
-                        borderColor: topZones.map((_,i) => `hsla(${210 + i*8},70%,${45-i*2}%,1)`),
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} alerte${ctx.parsed.y > 1 ? 's' : ''}` } }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0, color: '#718096' }, grid: { color: '#edf2f7' } },
-                        x: { ticks: { color: '#4a5568', font: { size: 11 } }, grid: { display: false } }
-                    }
-                }
+            if (_apexZones) _apexZones.destroy();
+            _apexZones = new ApexCharts(document.getElementById('chart-zones'), {
+                chart: { type: 'bar', height: 260, toolbar: { show: false }, fontFamily: 'IBM Plex Sans' },
+                series: [{ name: 'Alertes', data: topZones.map(z => z[1]) }],
+                xaxis: { categories: topZones.map(z => z[0]), labels: { style: { fontSize: '11px', colors: '#4a5568' } } },
+                yaxis: { labels: { style: { colors: '#718096' } } },
+                plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true } },
+                colors: topZones.map((_,i) => `hsl(${210 + i*12}, 70%, ${55-i*3}%)`),
+                legend: { show: false },
+                dataLabels: { enabled: false },
+                grid: { borderColor: '#edf2f7' },
+                tooltip: { y: { formatter: v => v + ' alerte' + (v > 1 ? 's' : '') } }
             });
+            _apexZones.render();
 
+            // --- 2. Répartition par type (donut) ---
             const typeEntries = Object.entries(typesCount);
-            const colors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096','#dd6b20'];
-            if (_chartTypes) _chartTypes.destroy();
-            _chartTypes = new Chart(document.getElementById('chart-types'), {
-                type: 'doughnut',
-                data: {
-                    labels: typeEntries.map(t => t[0]),
-                    datasets: [{
-                        data: typeEntries.map(t => t[1]),
-                        backgroundColor: colors.slice(0, typeEntries.length),
-                        borderWidth: 2,
-                        borderColor: '#fff',
-                        hoverOffset: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    cutout: '60%',
-                    plugins: {
-                        legend: { position: 'bottom', labels: { padding: 14, font: { size: 12 }, usePointStyle: true } },
-                        tooltip: { callbacks: { label: ctx => ` ${ctx.label} : ${ctx.parsed} alerte${ctx.parsed > 1 ? 's' : ''}` } }
-                    }
-                }
+            const typeColors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096','#dd6b20'];
+            if (_apexTypes) _apexTypes.destroy();
+            _apexTypes = new ApexCharts(document.getElementById('chart-types'), {
+                chart: { type: 'donut', height: 280, fontFamily: 'IBM Plex Sans' },
+                series: typeEntries.map(t => t[1]),
+                labels: typeEntries.map(t => t[0]),
+                colors: typeColors.slice(0, typeEntries.length),
+                plotOptions: { pie: { donut: { size: '62%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '14px', color: '#2d3748', formatter: w => w.globals.seriesTotals.reduce((a,b) => a+b, 0) } } } } },
+                legend: { position: 'bottom', fontSize: '12px', markers: { radius: 2 } },
+                dataLabels: { enabled: false },
+                stroke: { width: 2, colors: ['#fff'] },
+                tooltip: { y: { formatter: v => v + ' alerte' + (v > 1 ? 's' : '') } }
             });
+            _apexTypes.render();
+
+            if (!charts || !charts.hourly) return;
+
+            // --- 3. Courbe température 48h (zoomable) ---
+            const h = charts.hourly || [];
+            if (_apexTemp) _apexTemp.destroy();
+            _apexTemp = new ApexCharts(document.getElementById('chart-temp24'), {
+                chart: { type: 'area', height: 300, zoom: { enabled: true, type: 'x' }, toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: false } }, fontFamily: 'IBM Plex Sans', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+                series: [{ name: 'Température', data: h.map(p => [new Date(p.time).getTime(), p.temp]) }],
+                xaxis: { type: 'datetime', labels: { datetimeUTC: false, style: { colors: '#718096', fontSize: '10px' } } },
+                yaxis: { labels: { formatter: v => v.toFixed(1) + '°C', style: { colors: '#718096' } }, title: { text: '°C', style: { color: '#a0aec0', fontSize: '12px' } } },
+                colors: ['#e53e3e'],
+                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 90, 100] } },
+                stroke: { curve: 'smooth', width: 2.5 },
+                dataLabels: { enabled: false },
+                grid: { borderColor: '#edf2f7', strokeDashArray: 4 },
+                tooltip: { x: { format: 'dd MMM HH:mm' }, y: { formatter: v => v.toFixed(1) + '°C' } },
+                annotations: { yaxis: [{ y: 0, borderColor: '#3182ce', strokeDashArray: 3, label: { text: '0°C', style: { color: '#3182ce', fontSize: '10px' } } }] }
+            });
+            _apexTemp.render();
+
+            // --- 4. Pluie & Vent 7 jours (mixed bar + line) ---
+            const d = charts.daily || [];
+            const joursFr = d.map(p => { const dt = new Date(p.date); return dt.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); });
+            if (_apexPV) _apexPV.destroy();
+            _apexPV = new ApexCharts(document.getElementById('chart-pluievent'), {
+                chart: { type: 'bar', height: 280, stacked: false, toolbar: { show: false }, fontFamily: 'IBM Plex Sans' },
+                series: [
+                    { name: 'Pluie (mm)', type: 'bar', data: d.map(p => p.precip) },
+                    { name: 'Vent max (km/h)', type: 'line', data: d.map(p => p.wind) }
+                ],
+                xaxis: { categories: joursFr, labels: { style: { fontSize: '11px', colors: '#4a5568' } } },
+                yaxis: [
+                    { title: { text: 'Pluie (mm)', style: { color: '#3182ce', fontSize: '12px' } }, labels: { style: { colors: '#3182ce' }, formatter: v => v.toFixed(1) }, min: 0 },
+                    { opposite: true, title: { text: 'Vent (km/h)', style: { color: '#dd6b20', fontSize: '12px' } }, labels: { style: { colors: '#dd6b20' }, formatter: v => Math.round(v) }, min: 0 }
+                ],
+                colors: ['#3182ce', '#dd6b20'],
+                plotOptions: { bar: { borderRadius: 4, columnWidth: '45%' } },
+                stroke: { width: [0, 3], curve: 'smooth' },
+                fill: { opacity: [0.85, 1] },
+                grid: { borderColor: '#edf2f7' },
+                legend: { position: 'top', fontSize: '12px' },
+                tooltip: { shared: true, intersect: false }
+            });
+            _apexPV.render();
+
+            // --- 5. UV 7 jours (barres colorées par niveau) ---
+            const uvColors = d.map(p => p.uv >= 8 ? '#e53e3e' : p.uv >= 6 ? '#dd6b20' : p.uv >= 3 ? '#ecc94b' : '#38a169');
+            if (_apexUV) _apexUV.destroy();
+            _apexUV = new ApexCharts(document.getElementById('chart-uv'), {
+                chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'IBM Plex Sans' },
+                series: [{ name: 'UV max', data: d.map(p => p.uv) }],
+                xaxis: { categories: joursFr, labels: { style: { fontSize: '11px', colors: '#4a5568' } } },
+                yaxis: { max: 12, labels: { style: { colors: '#718096' } }, title: { text: 'Indice UV', style: { color: '#a0aec0', fontSize: '12px' } } },
+                plotOptions: { bar: { borderRadius: 5, columnWidth: '50%', distributed: true } },
+                colors: uvColors,
+                legend: { show: false },
+                dataLabels: { enabled: true, style: { fontSize: '13px', fontWeight: 700, colors: ['#fff'] }, formatter: v => v.toFixed(1) },
+                grid: { borderColor: '#edf2f7' },
+                tooltip: { y: { formatter: v => 'UV ' + v.toFixed(1) + (v >= 8 ? ' — Danger!' : v >= 6 ? ' — Élevé' : v >= 3 ? ' — Modéré' : ' — Faible') } },
+                annotations: { yaxis: [
+                    { y: 6, y2: 8, fillColor: '#feebc8', opacity: 0.3, label: { text: 'Élevé', style: { fontSize: '10px', color: '#dd6b20' } } },
+                    { y: 8, y2: 12, fillColor: '#fed7d7', opacity: 0.3, label: { text: 'Danger', style: { fontSize: '10px', color: '#e53e3e' } } }
+                ] }
+            });
+            _apexUV.render();
+
+            // --- 6. Carte chaleur risques par zone (treemap) ---
+            const zr = charts.zones_risks || [];
+            if (zr.length > 0) {
+                const riskColors = v => v >= 5 ? '#e53e3e' : v >= 3 ? '#dd6b20' : v >= 1 ? '#ecc94b' : '#38a169';
+                if (_apexHeat) _apexHeat.destroy();
+                _apexHeat = new ApexCharts(document.getElementById('chart-heatmap'), {
+                    chart: { type: 'treemap', height: 220, toolbar: { show: false }, fontFamily: 'IBM Plex Sans' },
+                    series: [{ data: zr.map(z => ({ x: z.name + (z.type === 'site' ? ' 🏣' : ''), y: z.score })) }],
+                    plotOptions: { treemap: { distributed: true, enableShades: false, colorScale: { ranges: [
+                        { from: 0, to: 0, color: '#38a169', name: 'RAS' },
+                        { from: 1, to: 2, color: '#ecc94b', name: 'Faible' },
+                        { from: 3, to: 4, color: '#dd6b20', name: 'Modéré' },
+                        { from: 5, to: 10, color: '#e53e3e', name: 'Élevé' }
+                    ] } } },
+                    dataLabels: { enabled: true, style: { fontSize: '12px' }, formatter: (text, op) => [text, 'Score: ' + op.value] },
+                    tooltip: { y: { formatter: v => 'Score risque: ' + v + '/10' } },
+                    legend: { show: true, position: 'bottom' }
+                });
+                _apexHeat.render();
+            }
         }
 
 
