@@ -668,7 +668,6 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
         return {"hourly": [], "daily": [], "zone_name": ""}
 
     try:
-        import requests as req
         url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={ref.lat}&longitude={ref.lon}"
@@ -677,7 +676,9 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
             f"&past_days=1&forecast_days=7"
             f"&timezone=auto"
         )
-        r = req.get(url, timeout=15)
+        print(f"[CHARTS] Calling Open-Meteo for {ref.name} lat={ref.lat} lon={ref.lon}")
+        r = httpx.get(url, timeout=15)
+        print(f"[CHARTS] Response status: {r.status_code}")
         r.raise_for_status()
         data = r.json()
         print(f"[CHARTS] Open-Meteo OK: hourly={len(data.get('hourly',{}).get('time',[]))} daily={len(data.get('daily',{}).get('time',[]))}")
@@ -753,10 +754,42 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
             if z.temperature is not None and z.temperature >= 35: score += 3
             if z.uv_index and z.uv_index >= 8: score += 2
             zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
-        return {"hourly": [], "daily": [], "zone_name": ref.name, "zones_risks": zones_risks}
+        return {"hourly": [], "daily": [], "zone_name": ref.name, "zones_risks": zones_risks, "error": str(e)}
 
 
-# ============ ROUTES SERVICE (pour meteo_open.py) ============
+@app.get("/api/debug/charts/{client_id}")
+def debug_charts(client_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Debug endpoint temporaire pour diagnostiquer l'erreur charts"""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    zones = db.query(Zone).filter(Zone.client_id == client_id).all()
+    sites = [z for z in zones if z.type == "site"]
+    ref = sites[0] if sites else (zones[0] if zones else None)
+    if not ref:
+        return {"error": "no ref zone"}
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={ref.lat}&longitude={ref.lon}"
+            f"&hourly=temperature_2m,precipitation,windspeed_10m,cloudcover"
+            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max"
+            f"&past_days=1&forecast_days=7"
+            f"&timezone=auto"
+        )
+        r = httpx.get(url, timeout=15)
+        return {
+            "status": r.status_code,
+            "ref_name": ref.name,
+            "ref_lat": ref.lat,
+            "ref_lon": ref.lon,
+            "url": url,
+            "hourly_keys": list(r.json().get("hourly", {}).keys()),
+            "hourly_count": len(r.json().get("hourly", {}).get("time", [])),
+            "daily_count": len(r.json().get("daily", {}).get("time", [])),
+        }
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc(), "ref_name": ref.name, "ref_lat": ref.lat, "ref_lon": ref.lon}
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
 @app.api_route("/api/service/token", methods=["GET", "POST"])
