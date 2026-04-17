@@ -1465,7 +1465,13 @@
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("dashboard").style.display = "flex";
         document.getElementById("company-name").textContent = COMPANY_NAME;
-        refreshData();
+
+        // Rafraîchir les données météo en direct depuis Open-Meteo puis charger le dashboard
+        fetch(`/api/refresh/${CLIENT_ID}`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${TOKEN}` }
+        }).then(() => refreshData()).catch(() => refreshData());
+
         setInterval(refreshData, 15 * 60 * 1000);  // Refresh tous les 15 min
 
         // Vérifier expiration JWT toutes les 5 min — déconnexion auto

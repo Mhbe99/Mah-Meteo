@@ -545,6 +545,111 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
     }
 
 
+# ============ REFRESH MÉTÉO EN DIRECT ============
+
+import math
+
+def _wind_direction_label(deg):
+    dirs = ["N","NE","E","SE","S","SO","O","NO"]
+    return dirs[round(deg / 45) % 8]
+
+def _ciel_icon(precip, cloud, wind):
+    if precip > 0: return "🌧️"
+    if cloud > 75: return "☁️"
+    if cloud > 40: return "🌤️"
+    if wind > 30: return "🌬️"
+    return "☀️"
+
+def _risk_text(temp, wind, precip, uv):
+    r = []
+    if temp >= 35: r.append("🔴 Canicule")
+    elif temp <= -5: r.append("🔴 Gel sévère")
+    elif temp <= 0: r.append("🟠 Gel")
+    if wind >= 80: r.append("🔴 Tempête")
+    elif wind >= 50: r.append("🟠 Vent fort")
+    if precip >= 10: r.append("🔴 Fortes pluies")
+    elif precip >= 3: r.append("🟠 Pluie modérée")
+    if uv >= 8: r.append("🔴 UV extrême")
+    elif uv >= 6: r.append("🟠 UV élevé")
+    return " | ".join(r) if r else "✅ RAS"
+
+@app.post("/api/refresh/{client_id}")
+def refresh_meteo(client_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """
+    Rafraîchit les données météo en direct depuis Open-Meteo pour toutes les zones du client.
+    Appelé au login du dashboard pour avoir des données fraîches.
+    """
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    zones = db.query(Zone).filter(Zone.client_id == client_id).all()
+    if not zones:
+        return {"status": "ok", "updated": 0}
+
+    updated = 0
+    for zone in zones:
+        try:
+            url = (
+                f"https://api.open-meteo.com/v1/forecast?"
+                f"latitude={zone.lat}&longitude={zone.lon}"
+                f"&current_weather=true"
+                f"&hourly=precipitation,cloudcover"
+                f"&daily=uv_index_max"
+                f"&timezone=auto"
+            )
+            r = httpx.get(url, timeout=8)
+            r.raise_for_status()
+            data = r.json()
+
+            current = data.get("current_weather", {})
+            hourly = data.get("hourly", {})
+
+            # Pluie actuelle
+            precip = 0
+            from datetime import datetime as _dt
+            now_str = _dt.now().replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:00")
+            if now_str in hourly.get("time", []):
+                idx = hourly["time"].index(now_str)
+                precip = hourly.get("precipitation", [0])[idx]
+
+            # Couverture nuageuse
+            cloud = 0
+            if now_str in hourly.get("time", []):
+                idx = hourly["time"].index(now_str)
+                cloud = hourly.get("cloudcover", [0])[idx]
+
+            # UV du jour
+            uv = 0
+            daily_uv = data.get("daily", {}).get("uv_index_max", [])
+            if daily_uv:
+                uv = daily_uv[0]
+
+            temp = current.get("temperature", 0)
+            wind = current.get("windspeed", 0)
+            direction = _wind_direction_label(current.get("winddirection", 0))
+            ciel = _ciel_icon(precip, cloud, wind)
+            risques = _risk_text(temp, wind, precip, uv)
+
+            zone.temperature = temp
+            zone.windspeed = wind
+            zone.wind_direction = direction
+            zone.precipitation = precip
+            zone.cloudcover = cloud
+            zone.uv_index = uv
+            zone.ciel = ciel
+            zone.risques = risques
+            zone.updated_at = _dt.utcnow()
+            updated += 1
+
+        except Exception as e:
+            print(f"[REFRESH] Erreur {zone.name}: {e}")
+            continue
+
+    db.commit()
+    print(f"[REFRESH] {updated}/{len(zones)} zones mises à jour pour client {client_id}")
+    return {"status": "ok", "updated": updated, "total": len(zones)}
+
+
 # ============ ROUTES SERVICE (pour meteo_open.py) ============
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
