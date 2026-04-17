@@ -668,6 +668,7 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
         return {"hourly": [], "daily": [], "zone_name": ""}
 
     try:
+        import requests as req
         url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={ref.lat}&longitude={ref.lon}"
@@ -676,9 +677,10 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
             f"&past_days=1&forecast_days=7"
             f"&timezone=auto"
         )
-        r = httpx.get(url, timeout=10)
+        r = req.get(url, timeout=15)
         r.raise_for_status()
         data = r.json()
+        print(f"[CHARTS] Open-Meteo OK: hourly={len(data.get('hourly',{}).get('time',[]))} daily={len(data.get('daily',{}).get('time',[]))}")
 
         hourly = data.get("hourly", {})
         daily = data.get("daily", {})
@@ -736,8 +738,22 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
         }
 
     except Exception as e:
+        import traceback
         print(f"[CHARTS] Erreur: {e}")
-        return {"hourly": [], "daily": [], "zone_name": ref.name, "zones_risks": []}
+        traceback.print_exc()
+        # Même en cas d'erreur API, retourner les zones_risks depuis la DB
+        zones_risks = []
+        for z in zones:
+            score = 0
+            if z.precipitation and z.precipitation >= 10: score += 3
+            elif z.precipitation and z.precipitation >= 3: score += 2
+            if z.windspeed and z.windspeed >= 80: score += 3
+            elif z.windspeed and z.windspeed >= 50: score += 2
+            if z.temperature is not None and z.temperature <= 0: score += 2
+            if z.temperature is not None and z.temperature >= 35: score += 3
+            if z.uv_index and z.uv_index >= 8: score += 2
+            zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
+        return {"hourly": [], "daily": [], "zone_name": ref.name, "zones_risks": zones_risks}
 
 
 # ============ ROUTES SERVICE (pour meteo_open.py) ============
