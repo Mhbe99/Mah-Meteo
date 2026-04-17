@@ -604,25 +604,23 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
             current = data.get("current_weather", {})
             hourly = data.get("hourly", {})
 
-            # Pluie actuelle
-            precip = 0
-            from datetime import datetime as _dt
-            now_str = _dt.now().replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:00")
-            if now_str in hourly.get("time", []):
-                idx = hourly["time"].index(now_str)
-                precip = hourly.get("precipitation", [0])[idx]
+            # Heure courante depuis current_weather (timezone-aware)
+            current_time = current.get("time", "")  # ex: "2026-04-17T11:00"
+            times = hourly.get("time", [])
 
-            # Couverture nuageuse
-            cloud = 0
-            if now_str in hourly.get("time", []):
-                idx = hourly["time"].index(now_str)
-                cloud = hourly.get("cloudcover", [0])[idx]
+            # Pluie et nuages à l'heure courante
+            precip = 0.0
+            cloud = 0.0
+            if current_time in times:
+                idx = times.index(current_time)
+                precip = hourly.get("precipitation", [0.0])[idx] or 0.0
+                cloud = hourly.get("cloudcover", [0.0])[idx] or 0.0
 
             # UV du jour
-            uv = 0
+            uv = 0.0
             daily_uv = data.get("daily", {}).get("uv_index_max", [])
             if daily_uv:
-                uv = daily_uv[0]
+                uv = daily_uv[0] or 0.0
 
             temp = current.get("temperature", 0)
             wind = current.get("windspeed", 0)
@@ -638,6 +636,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
             zone.uv_index = uv
             zone.ciel = ciel
             zone.risques = risques
+            from datetime import datetime as _dt
             zone.updated_at = _dt.utcnow()
             updated += 1
 
