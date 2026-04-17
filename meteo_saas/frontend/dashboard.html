@@ -1504,6 +1504,9 @@
             headers: { "Authorization": `Bearer ${TOKEN}` }
         }).then(() => refreshData()).catch(() => refreshData());
 
+        // Pré-charger les statistiques alertes
+        setTimeout(() => loadRapport(), 500);
+
         setInterval(refreshData, 15 * 60 * 1000);  // Refresh tous les 15 min
 
         // Vérifier expiration JWT toutes les 5 min — déconnexion auto
@@ -2810,17 +2813,21 @@
         let _activeFilter = null; // { type: 'zone'|'type', value: 'Le Meux' }
 
         async function loadRapport() {
-            if (!CLIENT_ID || !TOKEN) return;
+            console.log('[loadRapport] START — CLIENT_ID:', CLIENT_ID, 'TOKEN:', !!TOKEN);
+            if (!CLIENT_ID || !TOKEN) { console.warn('[loadRapport] SKIP — pas de credentials'); return; }
             try {
                 const [resA, resC] = await Promise.all([
                     fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=500`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
                     fetch(`${API_URL}/api/charts/${CLIENT_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
                 ]);
+                console.log('[loadRapport] alertes status:', resA.status, '| charts status:', resC.status);
                 _allAlertes = resA.ok ? await resA.json() : [];
                 _allCharts = resC.ok ? await resC.json() : {};
+                console.log('[loadRapport] alertes count:', _allAlertes.length, '| charts hourly:', (_allCharts.hourly||[]).length);
                 _activeFilter = null;
                 _renderRapportCharts(_allAlertes, _allCharts);
-            } catch(e) { console.error('Erreur loadRapport', e); }
+                console.log('[loadRapport] DONE');
+            } catch(e) { console.error('[loadRapport] ERREUR:', e); }
         }
 
         function _applyFilter(kind, value) {
