@@ -2865,12 +2865,12 @@
             document.getElementById('rpt-zones').textContent = Object.keys(zonesCount).length;
 
             const typesCount = {};
-            const keywords = ['Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic', 'Combinée'];
+            const keywords = ['Combinée', 'Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic'];
             alertes.forEach(a => {
-                const msg = (a.message || a.type || '');
-                let matched = false;
-                keywords.forEach(k => { if (msg.toLowerCase().includes(k.toLowerCase())) { typesCount[k] = (typesCount[k] || 0) + 1; matched = true; } });
-                if (!matched) typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
+                const msg = (a.message || a.type || '').toLowerCase();
+                const found = keywords.find(k => msg.includes(k.toLowerCase()));
+                if (found) typesCount[found] = (typesCount[found] || 0) + 1;
+                else typesCount['Autre'] = (typesCount['Autre'] || 0) + 1;
             });
             document.getElementById('rpt-types').textContent = Object.keys(typesCount).length;
 
