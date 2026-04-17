@@ -1350,13 +1350,18 @@
                             <div id="rpt-types" style="font-size:32px;font-weight:800;color:#2b6cb0;margin-top:6px">—</div>
                         </div>
                     </div>
+                    <!-- Bandeau filtre actif -->
+                    <div id="filter-banner" style="display:none;background:linear-gradient(135deg,#ebf8ff,#bee3f8);border-radius:10px;padding:10px 18px;margin-bottom:14px;align-items:center;justify-content:space-between;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
+                        <span style="font-size:13px;color:#2b6cb0;font-weight:600">🔍 Filtre actif : <span id="filter-label" style="font-weight:800"></span></span>
+                        <button onclick="_clearFilter()" style="background:#e53e3e;color:#fff;border:none;padding:5px 14px;border-radius:16px;cursor:pointer;font-size:11px;font-weight:700;margin-left:12px">✕ Réinitialiser</button>
+                    </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                         <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-                            <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">📊 Alertes par zone (top 10)</h4>
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">📊 Alertes par zone (top 10) <span style="font-size:10px;color:#a0aec0;font-weight:400">— cliquez pour filtrer</span></h4>
                             <div id="chart-zones" style="min-height:260px"></div>
                         </div>
                         <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-                            <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">🥧 Répartition par type</h4>
+                            <h4 style="font-size:13px;font-weight:700;margin-bottom:16px;color:#2d3748">🥧 Répartition par type <span style="font-size:10px;color:#a0aec0;font-weight:400">— cliquez pour filtrer</span></h4>
                             <div id="chart-types" style="min-height:260px"></div>
                         </div>
                     </div>
@@ -2798,9 +2803,11 @@
     })();
 
         // ======================================================
-        // ONGLET RAPPORT — ApexCharts interactifs
+        // ONGLET RAPPORT — ApexCharts interactifs + cross-filter
         // ======================================================
         let _apexZones = null, _apexTypes = null, _apexTemp = null, _apexPV = null, _apexUV = null, _apexHeat = null;
+        let _allAlertes = [], _allCharts = {};
+        let _activeFilter = null; // { type: 'zone'|'type', value: 'Le Meux' }
 
         async function loadRapport() {
             if (!CLIENT_ID || !TOKEN) return;
@@ -2809,10 +2816,38 @@
                     fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=500`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
                     fetch(`${API_URL}/api/charts/${CLIENT_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
                 ]);
-                const alertes = resA.ok ? await resA.json() : [];
-                const charts = resC.ok ? await resC.json() : {};
-                _renderRapportCharts(alertes, charts);
+                _allAlertes = resA.ok ? await resA.json() : [];
+                _allCharts = resC.ok ? await resC.json() : {};
+                _activeFilter = null;
+                _renderRapportCharts(_allAlertes, _allCharts);
             } catch(e) { console.error('Erreur loadRapport', e); }
+        }
+
+        function _applyFilter(kind, value) {
+            if (_activeFilter && _activeFilter.kind === kind && _activeFilter.value === value) {
+                _clearFilter(); return;
+            }
+            _activeFilter = { kind, value };
+            const keywords = ['Verglas', 'Vent fort', 'Pluie', 'UV fort', 'Trafic', 'Combinée'];
+            let filtered;
+            if (kind === 'zone') {
+                filtered = _allAlertes.filter(a => (a.zone_name || a.zone || 'Inconnue') === value);
+            } else {
+                filtered = _allAlertes.filter(a => {
+                    const msg = (a.message || a.type || '').toLowerCase();
+                    if (value === 'Autre') return !keywords.some(k => msg.includes(k.toLowerCase()));
+                    return msg.includes(value.toLowerCase());
+                });
+            }
+            document.getElementById('filter-banner').style.display = 'flex';
+            document.getElementById('filter-label').textContent = (kind === 'zone' ? '📍 ' : '⚡ ') + value + ' (' + filtered.length + ' alerte' + (filtered.length > 1 ? 's' : '') + ')';
+            _renderRapportCharts(filtered, _allCharts);
+        }
+
+        function _clearFilter() {
+            _activeFilter = null;
+            document.getElementById('filter-banner').style.display = 'none';
+            _renderRapportCharts(_allAlertes, _allCharts);
         }
 
         function _renderRapportCharts(alertes, charts) {
@@ -2832,16 +2867,27 @@
             });
             document.getElementById('rpt-types').textContent = Object.keys(typesCount).length;
 
-            // --- 1. Alertes par zone (bar horizontal) ---
+            // --- 1. Alertes par zone (bar) — clickable ---
             const topZones = Object.entries(zonesCount).sort((a,b) => b[1]-a[1]).slice(0,10);
             if (_apexZones) _apexZones.destroy();
             _apexZones = new ApexCharts(document.getElementById('chart-zones'), {
-                chart: { type: 'bar', height: 260, toolbar: { show: false }, fontFamily: 'IBM Plex Sans' },
+                chart: { type: 'bar', height: 260, toolbar: { show: false }, fontFamily: 'IBM Plex Sans',
+                    events: { dataPointSelection: function(e, ctx, config) {
+                        const zoneName = topZones[config.dataPointIndex][0];
+                        _applyFilter('zone', zoneName);
+                    }}
+                },
                 series: [{ name: 'Alertes', data: topZones.map(z => z[1]) }],
                 xaxis: { categories: topZones.map(z => z[0]), labels: { style: { fontSize: '11px', colors: '#4a5568' } } },
                 yaxis: { labels: { style: { colors: '#718096' } } },
                 plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true } },
-                colors: topZones.map((_,i) => `hsl(${210 + i*12}, 70%, ${55-i*3}%)`),
+                colors: topZones.map((_,i) => {
+                    const active = _activeFilter && _activeFilter.kind === 'zone';
+                    if (active && topZones[i][0] === _activeFilter.value) return '#2c5282';
+                    if (active) return '#cbd5e0';
+                    return `hsl(${210 + i*12}, 70%, ${55-i*3}%)`;
+                }),
+                states: { hover: { filter: { type: 'darken', value: 0.15 } } },
                 legend: { show: false },
                 dataLabels: { enabled: false },
                 grid: { borderColor: '#edf2f7' },
@@ -2849,15 +2895,24 @@
             });
             _apexZones.render();
 
-            // --- 2. Répartition par type (donut) ---
+            // --- 2. Répartition par type (donut) — clickable ---
             const typeEntries = Object.entries(typesCount);
             const typeColors = ['#e53e3e','#ed8936','#ecc94b','#38a169','#3182ce','#805ad5','#718096','#dd6b20'];
             if (_apexTypes) _apexTypes.destroy();
             _apexTypes = new ApexCharts(document.getElementById('chart-types'), {
-                chart: { type: 'donut', height: 280, fontFamily: 'IBM Plex Sans' },
+                chart: { type: 'donut', height: 280, fontFamily: 'IBM Plex Sans',
+                    events: { dataPointSelection: function(e, ctx, config) {
+                        const typeName = typeEntries[config.dataPointIndex][0];
+                        _applyFilter('type', typeName);
+                    }}
+                },
                 series: typeEntries.map(t => t[1]),
                 labels: typeEntries.map(t => t[0]),
-                colors: typeColors.slice(0, typeEntries.length),
+                colors: typeEntries.map((t, i) => {
+                    const active = _activeFilter && _activeFilter.kind === 'type';
+                    if (active && t[0] !== _activeFilter.value) return '#e2e8f0';
+                    return typeColors[i % typeColors.length];
+                }),
                 plotOptions: { pie: { donut: { size: '62%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '14px', color: '#2d3748', formatter: w => w.globals.seriesTotals.reduce((a,b) => a+b, 0) } } } } },
                 legend: { position: 'bottom', fontSize: '12px', markers: { radius: 2 } },
                 dataLabels: { enabled: false },
@@ -2935,10 +2990,14 @@
             // --- 6. Carte chaleur risques par zone (treemap) ---
             const zr = charts.zones_risks || [];
             if (zr.length > 0) {
-                const riskColors = v => v >= 5 ? '#e53e3e' : v >= 3 ? '#dd6b20' : v >= 1 ? '#ecc94b' : '#38a169';
                 if (_apexHeat) _apexHeat.destroy();
                 _apexHeat = new ApexCharts(document.getElementById('chart-heatmap'), {
-                    chart: { type: 'treemap', height: 220, toolbar: { show: false }, fontFamily: 'IBM Plex Sans' },
+                    chart: { type: 'treemap', height: 220, toolbar: { show: false }, fontFamily: 'IBM Plex Sans',
+                        events: { dataPointSelection: function(e, ctx, config) {
+                            const raw = zr[config.dataPointIndex];
+                            if (raw) _applyFilter('zone', raw.name);
+                        }}
+                    },
                     series: [{ data: zr.map(z => ({ x: z.name + (z.type === 'site' ? ' 🏣' : ''), y: z.score })) }],
                     plotOptions: { treemap: { distributed: true, enableShades: false, colorScale: { ranges: [
                         { from: 0, to: 0, color: '#38a169', name: 'RAS' },
