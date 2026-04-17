@@ -1407,6 +1407,7 @@
     let COMPANY_NAME = null;
     let map = null;
     let markers = [];
+    let traficMarkers = [];
     // Cache global des données pour le module Tournées
     let _cachedMeteo = [];
     let _cachedTrafic = null;
@@ -1926,7 +1927,11 @@
         }
 
         // Ajouter marqueurs trafic sur la carte
-        if (window.map && typeof window.map.addLayer === 'function' && incidents.length > 0) {
+        // Effacer anciens marqueurs trafic
+        traficMarkers.forEach(m => { if (map) map.removeLayer(m); });
+        traficMarkers = [];
+
+        if (map && typeof map.addLayer === 'function' && incidents.length > 0) {
             incidents.forEach(inc => {
                 if (inc.lat && inc.lon) {
                     // Emoji par type
@@ -1944,9 +1949,10 @@
                         popupAnchor: [0, -12],
                         className: 'custom-icon'
                     });
-                    L.marker([inc.lat, inc.lon], { icon })
-                        .addTo(window.map)
+                    const m = L.marker([inc.lat, inc.lon], { icon })
+                        .addTo(map)
                         .bindPopup(`<b>${inc.route}</b><br>${inc.description}<br>Retard : +${inc.delay_minutes} min`);
+                    traficMarkers.push(m);
                 }
             });
         }
