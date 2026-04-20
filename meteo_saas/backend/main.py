@@ -761,8 +761,8 @@ class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str
 
-@app.post("/api/account/{client_id}/password")
 @limiter.limit("5/minute")
+@app.post("/api/account/{client_id}/password")
 def change_password(client_id: int, data: PasswordChangeRequest, request: Request, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """Change le mot de passe du client authentifié."""
     if client_id != current_client:
@@ -807,8 +807,8 @@ def get_connections(client_id: int, limit: int = Query(default=50, ge=1, le=200)
 class PinRequest(BaseModel):
     pin: str
 
-@app.post("/api/admin/verify-pin")
 @limiter.limit("5/minute")
+@app.post("/api/admin/verify-pin")
 def verify_admin_pin(data: PinRequest, request: Request, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """Vérifie le PIN admin et retourne si l'utilisateur est admin."""
     client = db.query(Client).filter(Client.id == current_client).first()
