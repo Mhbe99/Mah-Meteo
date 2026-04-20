@@ -252,15 +252,18 @@ def init_db():
             db.execute(text("ALTER TABLE clients ADD COLUMN is_admin INTEGER DEFAULT 0"))
             db.commit()
             print("  ✅ Colonne is_admin ajoutée à clients")
-        except Exception:
+        except Exception as e:
             db.rollback()
+            print(f"  ℹ️ is_admin migration: {e}")
 
-        # S'assurer que le premier client (geodis-lemeux) est admin
+        # S'assurer que le premier client est admin
         try:
-            db.execute(text("UPDATE clients SET is_admin = 1 WHERE id = 1"))
+            db.execute(text("UPDATE clients SET is_admin = 1 WHERE id = (SELECT MIN(id) FROM clients)"))
             db.commit()
-        except Exception:
+            print("  ✅ Premier client mis en admin")
+        except Exception as e:
             db.rollback()
+            print(f"  ℹ️ admin update: {e}")
         
         db.close()
     except Exception as e:

@@ -907,19 +907,30 @@ def get_all_connections(limit: int = 100, current_client: int = Depends(require_
 
 @app.get("/api/debug/db-check")
 def debug_db_check(db: Session = Depends(get_db)):
-    """Endpoint temporaire pour vérifier l'état de la DB."""
+    """Endpoint temporaire pour vérifier l'état de la DB et appliquer migrations manquantes."""
     from sqlalchemy import text, inspect
     try:
         inspector = inspect(db.bind)
         columns = [c["name"] for c in inspector.get_columns("clients")]
-        client = db.execute(text("SELECT id, username, active FROM clients LIMIT 1")).fetchone()
         has_is_admin = "is_admin" in columns
+        
+        # Auto-migration si colonne manquante
+        if not has_is_admin:
+            db.execute(text("ALTER TABLE clients ADD COLUMN is_admin INTEGER DEFAULT 0"))
+            db.execute(text("UPDATE clients SET is_admin = 1 WHERE id = (SELECT MIN(id) FROM clients)"))
+            db.commit()
+            columns.append("is_admin")
+            has_is_admin = True
+        
+        client = db.execute(text("SELECT id, username, active FROM clients LIMIT 1")).fetchone()
         return {
             "columns": columns,
             "has_is_admin": has_is_admin,
+            "migrated": True,
             "first_client": {"id": client[0], "username": client[1], "active": client[2]} if client else None
         }
     except Exception as e:
+        db.rollback()
         return {"error": str(e)}
 
 @app.get("/", response_class=HTMLResponse)
