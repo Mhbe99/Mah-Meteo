@@ -137,8 +137,12 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
     Retourne un JWT valide 24h.
     Rate-limit : 10 tentatives/minute par IP.
     """
-    # Chercher le client
-    client = db.query(Client).filter(Client.username == login_data.username).first()
+    try:
+        # Chercher le client
+        client = db.query(Client).filter(Client.username == login_data.username).first()
+    except Exception as e:
+        print(f"[LOGIN ERROR] DB query failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur DB: {str(e)}")
     
     if not client or not verify_password(login_data.password, client.password_hash):
         raise HTTPException(
@@ -900,6 +904,23 @@ def get_all_connections(limit: int = 100, current_client: int = Depends(require_
 
 
 # ============ ROUTES FRONTEND ============
+
+@app.get("/api/debug/db-check")
+def debug_db_check(db: Session = Depends(get_db)):
+    """Endpoint temporaire pour vérifier l'état de la DB."""
+    from sqlalchemy import text, inspect
+    try:
+        inspector = inspect(db.bind)
+        columns = [c["name"] for c in inspector.get_columns("clients")]
+        client = db.execute(text("SELECT id, username, active FROM clients LIMIT 1")).fetchone()
+        has_is_admin = "is_admin" in columns
+        return {
+            "columns": columns,
+            "has_is_admin": has_is_admin,
+            "first_client": {"id": client[0], "username": client[1], "active": client[2]} if client else None
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
