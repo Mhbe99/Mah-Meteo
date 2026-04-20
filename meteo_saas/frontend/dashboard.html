@@ -1389,8 +1389,13 @@
                     <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
                         <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
                             <h4 style="font-size:13px;font-weight:700;margin-bottom:4px;color:#2d3748">🗺️ Niveau de risque par zone</h4>
-                            <p style="font-size:11px;color:#a0aec0;margin-bottom:12px">Score basé sur température, vent, pluie et UV</p>
+                            <p style="font-size:11px;color:#a0aec0;margin-bottom:12px">Score basé sur température, vent, pluie et UV — <b>cliquez sur une zone</b> pour voir ses détails</p>
                             <div id="chart-heatmap" style="min-height:200px"></div>
+                            <!-- Panneau détail zone au clic -->
+                            <div id="zone-detail-panel" style="display:none;margin-top:16px;padding:18px 20px;background:linear-gradient(135deg,#f7fafc,#edf2f7);border-radius:12px;border-left:4px solid #3182ce;position:relative">
+                                <button onclick="document.getElementById('zone-detail-panel').style.display='none'" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:#a0aec0" title="Fermer">&times;</button>
+                                <div id="zone-detail-content"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3334,7 +3339,10 @@
                     chart: { type: 'treemap', height: 220, toolbar: { show: false }, fontFamily: 'IBM Plex Sans',
                         events: { dataPointSelection: function(e, ctx, config) {
                             const raw = zr[config.dataPointIndex];
-                            if (raw) _applyFilter('zone', raw.name);
+                            if (raw) {
+                                _applyFilter('zone', raw.name);
+                                _showZoneDetail(raw.name, raw.score);
+                            }
                         }}
                     },
                     series: [{ data: zr.map(z => ({ x: z.name + (z.type === 'site' ? ' 🏣' : ''), y: allZero ? 1 : (z.score || 0.1) })) }],
@@ -3351,6 +3359,64 @@
                 });
                 _apexHeat.render();
             }
+        }
+
+        function _showZoneDetail(zoneName, score) {
+            const panel = document.getElementById('zone-detail-panel');
+            const content = document.getElementById('zone-detail-content');
+            // Chercher la zone dans les données météo en cache
+            const z = (_cachedMeteo || []).find(m => m.name && m.name.replace(/ 🏣/,'').replace(/ 🏠/,'') === zoneName);
+            if (!z) {
+                content.innerHTML = `<div style="font-weight:700;font-size:14px;color:#2d3748;margin-bottom:6px">📍 ${zoneName}</div><p style="color:#718096;font-size:12px">Données non disponibles — cliquez sur Actualiser</p>`;
+                panel.style.display = 'block';
+                return;
+            }
+            const temp = z.temp ?? z.temperature;
+            const wind = z.wind ?? z.windspeed;
+            const dir = z.direction ?? z.wind_direction ?? '';
+            const rain = z.precipitation ?? 0;
+            const uv = z.uv_index ?? z.uv ?? 0;
+            const ciel = z.ciel || '—';
+            const risques = z.risques || '✅ RAS';
+            const type = z.type === 'site' ? '🏣 Site GEODIS' : '🏘️ Zone voisine';
+            const scoreColor = score >= 5 ? '#e53e3e' : score >= 3 ? '#dd6b20' : score >= 1 ? '#ecc94b' : '#38a169';
+            const scoreLabel = score >= 5 ? 'Élevé' : score >= 3 ? 'Modéré' : score >= 1 ? 'Faible' : 'RAS';
+            
+            content.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+                    <div style="font-weight:800;font-size:16px;color:#2d3748">📍 ${zoneName}</div>
+                    <span style="background:#edf2f7;padding:3px 10px;border-radius:12px;font-size:11px;color:#4a5568">${type}</span>
+                    <span style="background:${scoreColor};color:#fff;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700">Score: ${score}/10 — ${scoreLabel}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
+                    <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">🌡️ Température</div>
+                        <div style="font-size:24px;font-weight:800;color:#e53e3e;margin-top:4px">${temp != null ? parseFloat(temp).toFixed(1) + '°C' : '—'}</div>
+                    </div>
+                    <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">💨 Vent</div>
+                        <div style="font-size:24px;font-weight:800;color:#3182ce;margin-top:4px">${wind != null ? parseFloat(wind).toFixed(1) : '—'}<span style="font-size:12px"> km/h</span></div>
+                        <div style="font-size:11px;color:#a0aec0">${dir}</div>
+                    </div>
+                    <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">🌧️ Pluie</div>
+                        <div style="font-size:24px;font-weight:800;color:#2b6cb0;margin-top:4px">${parseFloat(rain).toFixed(1)}<span style="font-size:12px"> mm</span></div>
+                    </div>
+                    <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">☀️ UV</div>
+                        <div style="font-size:24px;font-weight:800;color:${uv >= 8 ? '#e53e3e' : uv >= 6 ? '#dd6b20' : uv >= 3 ? '#ecc94b' : '#38a169'};margin-top:4px">${parseFloat(uv).toFixed(1)}</div>
+                    </div>
+                    <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">🌤️ Ciel</div>
+                        <div style="font-size:16px;font-weight:700;color:#4a5568;margin-top:6px">${ciel}</div>
+                    </div>
+                    <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">⚠️ Risques</div>
+                        <div style="font-size:13px;font-weight:700;color:#2d3748;margin-top:6px">${risques}</div>
+                    </div>
+                </div>`;
+            panel.style.display = 'block';
+            panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
         }
 
 
