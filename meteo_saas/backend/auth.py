@@ -83,7 +83,7 @@ def verify_token(token: str) -> dict:
 async def get_current_client(authorization: Optional[str] = Header(None)) -> int:
     """
     Dépendance FastAPI pour extraire et vérifier le client depuis le token JWT dans le header Authorization.
-    Retourne le client_id.
+    Retourne le client_id. Vérifie aussi que le client existe et est actif en DB.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -101,5 +101,18 @@ async def get_current_client(authorization: Optional[str] = Header(None)) -> int
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Client ID non trouvé dans le token",
         )
+
+    # Vérifier que le client existe et est actif en DB
+    from .database import SessionLocal, Client
+    db = SessionLocal()
+    try:
+        client = db.query(Client).filter(Client.id == client_id).first()
+        if not client or not client.active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Compte désactivé ou supprimé",
+            )
+    finally:
+        db.close()
     
     return client_id

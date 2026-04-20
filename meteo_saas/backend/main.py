@@ -7,7 +7,7 @@ import os
 import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +31,19 @@ from .trafic import get_incidents
 from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert
 
 load_dotenv()
+
+ADMIN_PIN = os.getenv("ADMIN_PIN", "1909")
+
+
+# ============ DÉPENDANCE ADMIN ============
+
+async def require_admin(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> int:
+    """Vérifie que l'utilisateur est authentifié ET admin (is_admin=1)."""
+    client_id = await get_current_client(authorization)
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.is_admin:
+        raise HTTPException(status_code=403, detail="Accès administrateur requis")
+    return client_id
 
 
 # ============ MODÈLES PYDANTIC ============
@@ -387,10 +400,10 @@ def add_meteo_snapshot(
     if client_id != current_client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
-    # Trouver la zone
+    # Trouver la zone (match exact insensible à la casse)
     zone = db.query(Zone).filter(
         Zone.client_id == client_id,
-        Zone.name.ilike(f"%{data.zone_name}%")
+        Zone.name.ilike(data.zone_name)
     ).first()
 
     if not zone:
@@ -483,7 +496,7 @@ def add_previsions(
     for prev in data:
         zone = db.query(Zone).filter(
             Zone.client_id == client_id,
-            Zone.name.ilike(f"%{prev.zone_name}%")
+            Zone.name.ilike(prev.zone_name)
         ).first()
         if not zone:
             continue
@@ -710,13 +723,22 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
 
 # ============ ROUTES SERVICE (pour meteo_open.py) ============
 
+SERVICE_SECRET = os.getenv("JWT_SECRET", "")
+
+def _verify_service_secret(request: Request):
+    """Vérifie que le header X-Service-Secret correspond au JWT_SECRET."""
+    secret = request.headers.get("X-Service-Secret", "")
+    if not secret or secret != SERVICE_SECRET:
+        raise HTTPException(status_code=403, detail="Service secret invalide")
+
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
 @app.api_route("/api/service/token", methods=["GET", "POST"])
-def get_service_token(client_id: int = 1, db: Session = Depends(get_db)):
+def get_service_token(request: Request, client_id: int = 1, db: Session = Depends(get_db)):
     """
     🔐 Génère un token JWT pour le service meteo_open.py
-    Accepte un client_id en paramètre (défaut=1 pour compatibilité).
+    Protégé par X-Service-Secret header.
     """
+    _verify_service_secret(request)
     client = db.query(Client).filter(Client.id == client_id).first()
     username = client.username if client else "service-meteo"
     token = create_token(
@@ -726,13 +748,12 @@ def get_service_token(client_id: int = 1, db: Session = Depends(get_db)):
 
 
 @app.get("/api/service/clients")
-def get_service_clients(db: Session = Depends(get_db)):
+def get_service_clients(request: Request, db: Session = Depends(get_db)):
     """
     📋 Retourne tous les clients actifs + leurs zones.
-    Utilisé par meteo_open.py pour collecter les données de TOUS les clients,
-    y compris ceux inscrits en self-service (pas dans clients.json).
-    Protégé par vérification JWT_SECRET dans le header.
+    Protégé par X-Service-Secret header.
     """
+    _verify_service_secret(request)
     clients = db.query(Client).filter(Client.active == 1).all()
     result = []
     for c in clients:
@@ -795,8 +816,26 @@ def get_connections(client_id: int, limit: int = 50, current_client: int = Depen
     ]
 
 
+# ============ ADMINISTRATION ============
+
+class PinRequest(BaseModel):
+    pin: str
+
+@app.post("/api/admin/verify-pin")
+def verify_admin_pin(data: PinRequest, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Vérifie le PIN admin et retourne si l'utilisateur est admin."""
+    client = db.query(Client).filter(Client.id == current_client).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client introuvable")
+    if data.pin != ADMIN_PIN:
+        raise HTTPException(status_code=403, detail="PIN incorrect")
+    if not client.is_admin:
+        raise HTTPException(status_code=403, detail="Accès administrateur requis")
+    return {"status": "ok", "admin": True}
+
+
 @app.get("/api/admin/pending")
-def get_pending_users(current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_pending_users(current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
     """Liste les comptes en attente d'approbation."""
     pending = db.query(Client).filter(Client.active == 0).all()
     return [
@@ -812,7 +851,7 @@ def get_pending_users(current_client: int = Depends(get_current_client), db: Ses
 
 
 @app.post("/api/admin/approve/{user_id}")
-def approve_user(user_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def approve_user(user_id: int, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
     """Approuve un compte en attente."""
     user = db.query(Client).filter(Client.id == user_id).first()
     if not user:
@@ -823,7 +862,7 @@ def approve_user(user_id: int, current_client: int = Depends(get_current_client)
 
 
 @app.post("/api/admin/reject/{user_id}")
-def reject_user(user_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def reject_user(user_id: int, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
     """Rejette et supprime un compte en attente."""
     user = db.query(Client).filter(Client.id == user_id).first()
     if not user:
@@ -834,7 +873,7 @@ def reject_user(user_id: int, current_client: int = Depends(get_current_client),
 
 
 @app.get("/api/admin/all-connections")
-def get_all_connections(limit: int = 100, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_all_connections(limit: int = 100, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
     """Retourne l'historique de connexions de TOUS les utilisateurs."""
     rows = (
         db.query(ConnectionLog, Client)

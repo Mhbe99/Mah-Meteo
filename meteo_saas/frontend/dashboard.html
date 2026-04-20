@@ -2104,19 +2104,29 @@
     }
     function unlockAdmin() {
         const pin = document.getElementById('admin-pin').value;
-        if (pin === '1909') {
-            _adminUnlocked = true;
-            document.getElementById('admin-gate').style.display = 'none';
-            document.getElementById('admin-content').style.display = 'block';
-            document.getElementById('admin-error').style.display = 'none';
-            document.getElementById('admin-pin').value = '';
-            loadConnections();
-            loadPendingUsers();
-        } else {
+        if (!pin) return;
+        fetch('/api/admin/verify-pin', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin })
+        }).then(r => {
+            if (r.ok) {
+                _adminUnlocked = true;
+                document.getElementById('admin-gate').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                document.getElementById('admin-error').style.display = 'none';
+                document.getElementById('admin-pin').value = '';
+                loadConnections();
+                loadPendingUsers();
+            } else {
+                document.getElementById('admin-error').style.display = 'block';
+                document.getElementById('admin-pin').value = '';
+                document.getElementById('admin-pin').focus();
+            }
+        }).catch(() => {
             document.getElementById('admin-error').style.display = 'block';
             document.getElementById('admin-pin').value = '';
-            document.getElementById('admin-pin').focus();
-        }
+        });
     }
     function lockAdmin() {
         _adminUnlocked = false;

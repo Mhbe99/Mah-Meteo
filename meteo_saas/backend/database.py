@@ -58,6 +58,7 @@ class Client(Base):
     email = Column(String)
     plan = Column(String, default="free")  # free, pro, enterprise
     active = Column(Integer, default=1)  # booléen stocké comme 0/1
+    is_admin = Column(Integer, default=0)  # 1 = administrateur
     zone_changes = Column(Integer, default=0)  # compteur de changements de zones
 
     # Relations
@@ -243,6 +244,21 @@ def init_db():
             db.execute(text("ALTER TABLE connection_logs ADD COLUMN location VARCHAR"))
             db.commit()
             print("  ✅ Colonne location ajoutée à connection_logs")
+        except Exception:
+            db.rollback()
+
+        # Migration: ajouter colonne is_admin à clients
+        try:
+            db.execute(text("ALTER TABLE clients ADD COLUMN is_admin INTEGER DEFAULT 0"))
+            db.commit()
+            print("  ✅ Colonne is_admin ajoutée à clients")
+        except Exception:
+            db.rollback()
+
+        # S'assurer que le premier client (geodis-lemeux) est admin
+        try:
+            db.execute(text("UPDATE clients SET is_admin = 1 WHERE id = 1"))
+            db.commit()
         except Exception:
             db.rollback()
         

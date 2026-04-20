@@ -45,7 +45,7 @@ def _charger_clients():
 
     # Priorité 1 : charger depuis l'API Render (inclut les clients self-service)
     try:
-        resp = requests.get(f"{RENDER_URL}/api/service/clients", timeout=10)
+        resp = requests.get(f"{RENDER_URL}/api/service/clients", headers={"X-Service-Secret": JWT_SECRET}, timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             api_clients = data.get("clients", [])
@@ -104,6 +104,7 @@ def get_jwt_token(client_id=1, username="geodis-lemeux"):
         response = requests.get(
             f"{RENDER_URL}/api/service/token",
             params={"client_id": client_id},
+            headers={"X-Service-Secret": JWT_SECRET},
             timeout=5
         )
         if response.status_code == 200:
