@@ -7,7 +7,7 @@ import os
 import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Header, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -160,10 +160,10 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
     device_type = "mobile" if any(k in ua_str.lower() for k in ["mobile", "android", "iphone"]) else "tablet" if "ipad" in ua_str.lower() else "desktop"
     browser = "Chrome" if "Chrome" in ua_str and "Edg" not in ua_str else "Edge" if "Edg" in ua_str else "Firefox" if "Firefox" in ua_str else "Safari" if "Safari" in ua_str else "Autre"
     os_info = "Windows" if "Windows" in ua_str else "Mac" if "Macintosh" in ua_str else "Linux" if "Linux" in ua_str else "iOS" if "iPhone" in ua_str else "Android" if "Android" in ua_str else "Autre"
-    # Géolocalisation IP
+    # Géolocalisation IP — FIX C2: HTTPS + timeout réduit à 1s
     location = ""
     try:
-        geo_r = httpx.get(f"http://ip-api.com/json/{ip}?fields=city,country,countryCode", timeout=3)
+        geo_r = httpx.get(f"https://ip-api.com/json/{ip}?fields=city,country,countryCode", timeout=1)
         if geo_r.status_code == 200:
             geo = geo_r.json()
             city = geo.get("city", "")
@@ -199,6 +199,10 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
     """Inscription d'un nouveau client avec plan."""
     if data.plan not in PLAN_LIMITS:
         raise HTTPException(status_code=400, detail="Plan invalide")
+
+    # FIX C3: Validation mot de passe non vide et min 8 caractères
+    if not data.password or len(data.password.strip()) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caractères")
 
     existing = db.query(Client).filter(Client.username == data.username).first()
     if existing:
@@ -364,7 +368,7 @@ def get_previsions_route(client_id: int, current_client: int = Depends(get_curre
 
 
 @app.get("/api/alertes/{client_id}", response_model=list[Alerte])
-def get_alertes_route(client_id: int, limit: int = 30, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_alertes_route(client_id: int, limit: int = Query(default=30, ge=1, le=200), current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """
     Récupère les dernières alertes du client.
     """
@@ -796,7 +800,7 @@ def change_password(client_id: int, data: PasswordChangeRequest, current_client:
 # ============ CONNEXIONS / SESSIONS ============
 
 @app.get("/api/connections/{client_id}")
-def get_connections(client_id: int, limit: int = 50, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_connections(client_id: int, limit: int = Query(default=50, ge=1, le=200), current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """Retourne l'historique des connexions du client."""
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
@@ -873,7 +877,7 @@ def reject_user(user_id: int, current_client: int = Depends(require_admin), db: 
 
 
 @app.get("/api/admin/all-connections")
-def get_all_connections(limit: int = 100, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
+def get_all_connections(limit: int = Query(default=100, ge=1, le=200), current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
     """Retourne l'historique de connexions de TOUS les utilisateurs."""
     rows = (
         db.query(ConnectionLog, Client)
