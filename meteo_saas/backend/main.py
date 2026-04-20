@@ -653,10 +653,8 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
 def get_charts_data(client_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """
     Données pour les graphiques interactifs du dashboard.
-    Appelle Open-Meteo pour la 1ère zone site du client :
-    - Températures horaires 24h (passé + futur)
-    - Pluie + vent 7 jours
-    - UV 7 jours
+    Retourne les zones_risks depuis la DB + coordonnées de référence.
+    Les données hourly/daily sont récupérées côté client (navigateur) directement depuis Open-Meteo.
     """
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
@@ -665,102 +663,27 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
     sites = [z for z in zones if z.type == "site"]
     ref = sites[0] if sites else (zones[0] if zones else None)
     if not ref:
-        return {"hourly": [], "daily": [], "zone_name": ""}
+        return {"zones_risks": [], "zone_name": "", "ref_lat": 0, "ref_lon": 0}
 
-    try:
-        url = (
-            f"https://api.open-meteo.com/v1/forecast?"
-            f"latitude={ref.lat}&longitude={ref.lon}"
-            f"&hourly=temperature_2m,precipitation,windspeed_10m,cloudcover"
-            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max"
-            f"&past_days=1&forecast_days=7"
-            f"&timezone=auto"
-        )
-        print(f"[CHARTS] Appel Open-Meteo pour {ref.name} ({ref.lat},{ref.lon})")
-        r = httpx.get(url, timeout=15)
-        print(f"[CHARTS] Status: {r.status_code}")
-        r.raise_for_status()
-        data = r.json()
-        
-        if "error" in data:
-            print(f"[CHARTS] Open-Meteo error: {data}")
-            raise ValueError(f"Open-Meteo: {data.get('reason', data.get('error'))}")
-        
-        print(f"[CHARTS] Open-Meteo OK: hourly={len(data.get('hourly',{}).get('time',[]))} daily={len(data.get('daily',{}).get('time',[]))}")
+    # Données risques par zone (pour heatmap)
+    zones_risks = []
+    for z in zones:
+        score = 0
+        if z.precipitation and z.precipitation >= 10: score += 3
+        elif z.precipitation and z.precipitation >= 3: score += 2
+        if z.windspeed and z.windspeed >= 80: score += 3
+        elif z.windspeed and z.windspeed >= 50: score += 2
+        if z.temperature is not None and z.temperature <= 0: score += 2
+        if z.temperature is not None and z.temperature >= 35: score += 3
+        if z.uv_index and z.uv_index >= 8: score += 2
+        zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
 
-        hourly = data.get("hourly", {})
-        daily = data.get("daily", {})
-
-        hourly_out = []
-        times = hourly.get("time", [])
-        temps = hourly.get("temperature_2m", [])
-        precs = hourly.get("precipitation", [])
-        winds = hourly.get("windspeed_10m", [])
-        clouds = hourly.get("cloudcover", [])
-        for i in range(len(times)):
-            hourly_out.append({
-                "time": times[i],
-                "temp": temps[i] if i < len(temps) else 0,
-                "precip": precs[i] if i < len(precs) else 0,
-                "wind": winds[i] if i < len(winds) else 0,
-                "cloud": clouds[i] if i < len(clouds) else 0,
-            })
-
-        daily_out = []
-        d_times = daily.get("time", [])
-        d_tmax = daily.get("temperature_2m_max", [])
-        d_tmin = daily.get("temperature_2m_min", [])
-        d_prec = daily.get("precipitation_sum", [])
-        d_wind = daily.get("windspeed_10m_max", [])
-        d_uv = daily.get("uv_index_max", [])
-        for i in range(len(d_times)):
-            daily_out.append({
-                "date": d_times[i],
-                "tmax": d_tmax[i] if i < len(d_tmax) else 0,
-                "tmin": d_tmin[i] if i < len(d_tmin) else 0,
-                "precip": d_prec[i] if i < len(d_prec) else 0,
-                "wind": d_wind[i] if i < len(d_wind) else 0,
-                "uv": d_uv[i] if i < len(d_uv) else 0,
-            })
-
-        # Données risques par zone (pour heatmap)
-        zones_risks = []
-        for z in zones:
-            score = 0
-            if z.precipitation and z.precipitation >= 10: score += 3
-            elif z.precipitation and z.precipitation >= 3: score += 2
-            if z.windspeed and z.windspeed >= 80: score += 3
-            elif z.windspeed and z.windspeed >= 50: score += 2
-            if z.temperature is not None and z.temperature <= 0: score += 2
-            if z.temperature is not None and z.temperature >= 35: score += 3
-            if z.uv_index and z.uv_index >= 8: score += 2
-            zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
-
-        return {
-            "zone_name": ref.name,
-            "hourly": hourly_out,
-            "daily": daily_out,
-            "zones_risks": zones_risks,
-        }
-
-    except Exception as e:
-        import traceback
-        err_msg = f"{type(e).__name__}: {e}"
-        print(f"[CHARTS] Erreur: {err_msg}")
-        traceback.print_exc()
-        # Même en cas d'erreur API, retourner les zones_risks depuis la DB
-        zones_risks = []
-        for z in zones:
-            score = 0
-            if z.precipitation and z.precipitation >= 10: score += 3
-            elif z.precipitation and z.precipitation >= 3: score += 2
-            if z.windspeed and z.windspeed >= 80: score += 3
-            elif z.windspeed and z.windspeed >= 50: score += 2
-            if z.temperature is not None and z.temperature <= 0: score += 2
-            if z.temperature is not None and z.temperature >= 35: score += 3
-            if z.uv_index and z.uv_index >= 8: score += 2
-            zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
-        return {"hourly": [], "daily": [], "zone_name": ref.name, "zones_risks": zones_risks, "debug_error": err_msg}
+    return {
+        "zone_name": ref.name,
+        "ref_lat": ref.lat,
+        "ref_lon": ref.lon,
+        "zones_risks": zones_risks,
+    }
 
 
 # ============ ROUTES SERVICE (pour meteo_open.py) ============

@@ -2821,14 +2821,57 @@
             console.log('[loadRapport] START — CLIENT_ID:', CLIENT_ID, 'TOKEN:', !!TOKEN);
             if (!CLIENT_ID || !TOKEN) { console.warn('[loadRapport] SKIP — pas de credentials'); return; }
             try {
+                // 1. Fetch alertes + charts (zones_risks + coordonnées) depuis le backend
                 const [resA, resC] = await Promise.all([
                     fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=500`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
                     fetch(`${API_URL}/api/charts/${CLIENT_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
                 ]);
                 console.log('[loadRapport] alertes status:', resA.status, '| charts status:', resC.status);
                 _allAlertes = resA.ok ? await resA.json() : [];
-                _allCharts = resC.ok ? await resC.json() : {};
-                console.log('[loadRapport] alertes count:', _allAlertes.length, '| charts hourly:', (_allCharts.hourly||[]).length);
+                const chartsBackend = resC.ok ? await resC.json() : {};
+
+                // 2. Fetch Open-Meteo directement depuis le navigateur (contourne le blocage Render)
+                let hourly = [], daily = [];
+                const lat = chartsBackend.ref_lat;
+                const lon = chartsBackend.ref_lon;
+                if (lat && lon) {
+                    try {
+                        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation,windspeed_10m,cloudcover&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&past_days=1&forecast_days=7&timezone=auto`;
+                        const omRes = await fetch(omUrl);
+                        if (omRes.ok) {
+                            const om = await omRes.json();
+                            const h = om.hourly || {};
+                            const times = h.time || [];
+                            const temps = h.temperature_2m || [];
+                            const precs = h.precipitation || [];
+                            const winds = h.windspeed_10m || [];
+                            const clouds = h.cloudcover || [];
+                            for (let i = 0; i < times.length; i++) {
+                                hourly.push({ time: times[i], temp: temps[i]||0, precip: precs[i]||0, wind: winds[i]||0, cloud: clouds[i]||0 });
+                            }
+                            const d = om.daily || {};
+                            const dTimes = d.time || [];
+                            const dTmax = d.temperature_2m_max || [];
+                            const dTmin = d.temperature_2m_min || [];
+                            const dPrec = d.precipitation_sum || [];
+                            const dWind = d.windspeed_10m_max || [];
+                            const dUv = d.uv_index_max || [];
+                            for (let i = 0; i < dTimes.length; i++) {
+                                daily.push({ date: dTimes[i], tmax: dTmax[i]||0, tmin: dTmin[i]||0, precip: dPrec[i]||0, wind: dWind[i]||0, uv: dUv[i]||0 });
+                            }
+                            console.log('[loadRapport] Open-Meteo direct: hourly=' + hourly.length + ' daily=' + daily.length);
+                        }
+                    } catch(omErr) { console.warn('[loadRapport] Open-Meteo direct error:', omErr); }
+                }
+
+                // 3. Combiner les données
+                _allCharts = {
+                    zone_name: chartsBackend.zone_name || '',
+                    zones_risks: chartsBackend.zones_risks || [],
+                    hourly: hourly,
+                    daily: daily
+                };
+                console.log('[loadRapport] charts hourly:', _allCharts.hourly.length, 'daily:', _allCharts.daily.length, 'zones_risks:', _allCharts.zones_risks.length);
                 _activeFilter = null;
                 _renderRapportCharts(_allAlertes, _allCharts);
                 console.log('[loadRapport] DONE');
