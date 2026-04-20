@@ -3263,6 +3263,7 @@
             // --- 6. Carte chaleur risques par zone (treemap) ---
             const zr = charts.zones_risks || [];
             if (zr.length > 0) {
+                const allZero = zr.every(z => z.score === 0);
                 if (_apexHeat) _apexHeat.destroy();
                 _apexHeat = new ApexCharts(document.getElementById('chart-heatmap'), {
                     chart: { type: 'treemap', height: 220, toolbar: { show: false }, fontFamily: 'IBM Plex Sans',
@@ -3271,15 +3272,16 @@
                             if (raw) _applyFilter('zone', raw.name);
                         }}
                     },
-                    series: [{ data: zr.map(z => ({ x: z.name + (z.type === 'site' ? ' 🏣' : ''), y: z.score })) }],
+                    series: [{ data: zr.map(z => ({ x: z.name + (z.type === 'site' ? ' 🏣' : ''), y: allZero ? 1 : (z.score || 0.1) })) }],
                     plotOptions: { treemap: { distributed: true, enableShades: false, colorScale: { ranges: [
-                        { from: 0, to: 0, color: '#38a169', name: 'RAS' },
-                        { from: 1, to: 2, color: '#ecc94b', name: 'Faible' },
-                        { from: 3, to: 4, color: '#dd6b20', name: 'Modéré' },
-                        { from: 5, to: 10, color: '#e53e3e', name: 'Élevé' }
+                        { from: 0, to: 0.5, color: '#38a169', name: 'RAS' },
+                        { from: 0.5, to: 1, color: '#38a169', name: allZero ? 'Tout OK ✅' : 'RAS' },
+                        { from: 1.1, to: 2, color: '#ecc94b', name: 'Faible' },
+                        { from: 2.1, to: 4, color: '#dd6b20', name: 'Modéré' },
+                        { from: 4.1, to: 10, color: '#e53e3e', name: 'Élevé' }
                     ] } } },
-                    dataLabels: { enabled: true, style: { fontSize: '12px' }, formatter: (text, op) => [text, 'Score: ' + op.value] },
-                    tooltip: { y: { formatter: v => 'Score risque: ' + v + '/10' } },
+                    dataLabels: { enabled: true, style: { fontSize: '12px' }, formatter: (text, op) => allZero ? [text, '✅ RAS'] : [text, 'Score: ' + op.value] },
+                    tooltip: { y: { formatter: v => allZero ? 'Aucun risque détecté ✅' : 'Score risque: ' + v + '/10' } },
                     legend: { show: true, position: 'bottom' }
                 });
                 _apexHeat.render();
