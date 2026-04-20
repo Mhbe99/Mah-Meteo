@@ -59,6 +59,7 @@ class ZoneMeteo(BaseModel):
 class PrevisionJour(BaseModel):
     """Prévision météo pour un jour"""
     zone: str
+    zone_type: Optional[str] = None
     jour: str  # "Mon 19/03" format
     tmin: Optional[str] = None
     tmax: Optional[str] = None

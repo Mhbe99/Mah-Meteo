@@ -139,7 +139,6 @@
         #dashboard {
             display: none;
             min-height: 100vh;
-            display: flex;
             flex-direction: column;
         }
 
@@ -1458,6 +1457,7 @@
     let map = null;
     let markers = [];
     let traficMarkers = [];
+    let _autoZoomTimer = null;
     // Cache global des données pour le module Tournées
     let _cachedMeteo = [];
     let _cachedTrafic = null;
@@ -1549,14 +1549,11 @@
         document.getElementById("dashboard").style.display = "flex";
         document.getElementById("company-name").textContent = COMPANY_NAME;
 
-        // Rafraîchir les données météo en direct depuis Open-Meteo puis charger le dashboard
-        fetch(`/api/refresh/${CLIENT_ID}`, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${TOKEN}` }
-        }).then(() => refreshData()).catch(() => refreshData());
+        // Charger les données météo (Open-Meteo direct depuis le navigateur)
+        refreshData();
 
-        // Pré-charger les statistiques alertes
-        setTimeout(() => loadRapport(), 500);
+        // Pré-charger les statistiques alertes (délai pour laisser refreshData finir)
+        setTimeout(() => loadRapport(), 2000);
 
         setInterval(refreshData, 15 * 60 * 1000);  // Refresh tous les 15 min
 
@@ -1633,15 +1630,14 @@
                 };
                 const _riskText = (t, w, p, uv) => {
                     const r = [];
-                    if (t <= -5) r.push('🔴 Gel sévère');
-                    else if (t <= 0) r.push('🟡 Gel');
-                    if (t >= 38) r.push('🔴 Canicule');
-                    else if (t >= 33) r.push('🟠 Forte chaleur');
-                    if (w >= 70) r.push('🔴 Vent violent');
+                    if (t >= 35) r.push('🔴 Canicule');
+                    else if (t <= -5) r.push('🔴 Gel sévère');
+                    else if (t <= 0) r.push('🟠 Gel');
+                    if (w >= 80) r.push('🔴 Tempête');
                     else if (w >= 50) r.push('🟠 Vent fort');
-                    if (p >= 20) r.push('🔴 Pluie intense');
-                    else if (p >= 5) r.push('🟡 Pluie modérée');
-                    if (uv >= 8) r.push('🔴 UV dangereux');
+                    if (p >= 10) r.push('🔴 Fortes pluies');
+                    else if (p >= 3) r.push('🟠 Pluie modérée');
+                    if (uv >= 8) r.push('🔴 UV extrême');
                     else if (uv >= 6) r.push('🟠 UV élevé');
                     return r.length ? r.join(' | ') : '✅ RAS';
                 };
@@ -1870,10 +1866,11 @@
             });
 
             zoomIndex = (zoomIndex + 1) % markerPoints.length;
-            setTimeout(autoZoom, 12000);
+            _autoZoomTimer = setTimeout(autoZoom, 12000);
         }
 
-        // Démarrer le zoom automatique
+        // Annuler l'ancien cycle avant d'en démarrer un nouveau
+        if (_autoZoomTimer) clearTimeout(_autoZoomTimer);
         if (markerPoints.length > 0) {
             autoZoom();
         }
@@ -1906,11 +1903,13 @@
             return;
         }
 
-        // Grouper par zone
+        // Grouper par zone + stocker le type
         const grouped = {};
+        const zoneTypes = {};
         previsions.forEach(p => {
             if (!grouped[p.zone]) grouped[p.zone] = [];
             grouped[p.zone].push(p);
+            if (p.zone_type) zoneTypes[p.zone] = p.zone_type;
         });
 
         let html = "";
@@ -1918,17 +1917,17 @@
         // Afficher d'abord les sites, puis les voisins
         const zoneOrder = [];
         Object.keys(grouped).forEach(zone => {
-            const isSite = zone.includes("🏣") || zone.toLowerCase().includes("le meux") || zone.toLowerCase().includes("clairoix");
+            const isSite = (zoneTypes[zone] || '').toLowerCase() === 'site';
             if (isSite) zoneOrder.push(zone);
         });
         Object.keys(grouped).forEach(zone => {
-            const isSite = zone.includes("🏣") || zone.toLowerCase().includes("le meux") || zone.toLowerCase().includes("clairoix");
+            const isSite = (zoneTypes[zone] || '').toLowerCase() === 'site';
             if (!isSite) zoneOrder.push(zone);
         });
 
         zoneOrder.forEach(zone => {
             const days = grouped[zone].slice(0, 5);
-            const isSite = zone.includes("🏣") || zone.toLowerCase().includes("le meux") || zone.toLowerCase().includes("clairoix");
+            const isSite = (zoneTypes[zone] || '').toLowerCase() === 'site';
             const icon = isSite ? "S" : "V";
 
             let daysHtml = "";
@@ -2089,7 +2088,7 @@
         // Mon Compte tab → charger les infos + statistiques
         if (index === 4) {
             if (TOKEN) loadAccountInfo();
-            setTimeout(() => loadRapport(), 50);
+            loadRapport();
         }
         // Administration tab
         if (index === 5 && _adminUnlocked) {

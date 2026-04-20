@@ -836,10 +836,15 @@ def reject_user(user_id: int, current_client: int = Depends(get_current_client),
 @app.get("/api/admin/all-connections")
 def get_all_connections(limit: int = 100, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """Retourne l'historique de connexions de TOUS les utilisateurs."""
-    logs = db.query(ConnectionLog).order_by(ConnectionLog.timestamp.desc()).limit(limit).all()
+    rows = (
+        db.query(ConnectionLog, Client)
+        .outerjoin(Client, ConnectionLog.client_id == Client.id)
+        .order_by(ConnectionLog.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
     result = []
-    for l in logs:
-        client = db.query(Client).filter(Client.id == l.client_id).first()
+    for l, client in rows:
         result.append({
             "id": l.id,
             "timestamp": l.timestamp.isoformat() if l.timestamp else None,

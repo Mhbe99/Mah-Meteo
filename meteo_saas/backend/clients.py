@@ -52,6 +52,7 @@ def get_previsions(client_id: int, db: Session) -> List[PrevisionJour]:
     zones = db.query(Zone).filter(Zone.client_id == client_id).all()
     zone_ids = [z.id for z in zones]
     zone_map = {z.id: z.name for z in zones}
+    zone_type_map = {z.id: z.type for z in zones}
 
     if not zone_ids:
         return []
@@ -64,6 +65,7 @@ def get_previsions(client_id: int, db: Session) -> List[PrevisionJour]:
     for c in caches:
         result.append(PrevisionJour(
             zone=zone_map.get(c.zone_id, "?"),
+            zone_type=zone_type_map.get(c.zone_id, "ville"),
             jour=c.jour,
             tmin=c.tmin,
             tmax=c.tmax,
