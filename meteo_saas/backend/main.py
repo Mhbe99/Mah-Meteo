@@ -4,6 +4,8 @@ main.py — Application FastAPI principale
 """
 
 import os
+import hmac
+import ipaddress
 import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -160,9 +162,10 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
     device_type = "mobile" if any(k in ua_str.lower() for k in ["mobile", "android", "iphone"]) else "tablet" if "ipad" in ua_str.lower() else "desktop"
     browser = "Chrome" if "Chrome" in ua_str and "Edg" not in ua_str else "Edge" if "Edg" in ua_str else "Firefox" if "Firefox" in ua_str else "Safari" if "Safari" in ua_str else "Autre"
     os_info = "Windows" if "Windows" in ua_str else "Mac" if "Macintosh" in ua_str else "Linux" if "Linux" in ua_str else "iOS" if "iPhone" in ua_str else "Android" if "Android" in ua_str else "Autre"
-    # Géolocalisation IP — FIX C2: HTTPS + timeout réduit à 1s
+    # Géolocalisation IP — FIX C2: HTTPS + timeout réduit à 1s + validation IP (anti-SSRF)
     location = ""
     try:
+        ipaddress.ip_address(ip)  # Valide que c'est bien une IP
         geo_r = httpx.get(f"https://ip-api.com/json/{ip}?fields=city,country,countryCode", timeout=1)
         if geo_r.status_code == 200:
             geo = geo_r.json()
@@ -551,30 +554,8 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
 
     alerte_combinee = get_alerte_combinee(incidents_list, risques_actifs)
 
-    # --- ENVOI ALERTES PAR EMAIL ---
-    client = db.query(Client).filter(Client.id == client_id).first()
-    if client and client.email:
-        # Alertes météo
-        alertes_email = []
-        for zone in meteo:
-            risques = getattr(zone, "risques", None)
-            if risques and "RAS" not in risques:
-                alertes_email.append({
-                    "zone": getattr(zone, "name", "?"),
-                    "type": risques.split("(")[0].strip() if "(" in risques else risques,
-                    "valeur": risques,
-                    "message": f"Risque détecté sur {getattr(zone, 'name', '?')}"
-                })
-        if alertes_email:
-            send_meteo_alert(client.email, client.company_name, alertes_email)
-
-        # Alertes trafic (incidents critiques)
-        if incidents_list:
-            send_trafic_alert(client.email, client.company_name, incidents_list)
-
-        # Alerte combinée
-        if alerte_combinee and alerte_combinee.get("message"):
-            send_combined_alert(client.email, client.company_name, alerte_combinee["message"])
+    # FIX H4: Les emails d'alerte ne doivent PAS être envoyés dans un GET
+    # (chaque page load déclencherait des emails). Utiliser un endpoint POST dédié pour les alertes.
 
     return {
         "incidents": incidents_list,
@@ -727,12 +708,12 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
 
 # ============ ROUTES SERVICE (pour meteo_open.py) ============
 
-SERVICE_SECRET = os.getenv("JWT_SECRET", "")
+SERVICE_SECRET = os.getenv("SERVICE_SECRET", os.getenv("JWT_SECRET", ""))
 
 def _verify_service_secret(request: Request):
-    """Vérifie que le header X-Service-Secret correspond au JWT_SECRET."""
+    """Vérifie que le header X-Service-Secret correspond au SERVICE_SECRET."""
     secret = request.headers.get("X-Service-Secret", "")
-    if not secret or secret != SERVICE_SECRET:
+    if not secret or not hmac.compare_digest(secret, SERVICE_SECRET):
         raise HTTPException(status_code=403, detail="Service secret invalide")
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
@@ -781,7 +762,8 @@ class PasswordChangeRequest(BaseModel):
     new_password: str
 
 @app.post("/api/account/{client_id}/password")
-def change_password(client_id: int, data: PasswordChangeRequest, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def change_password(client_id: int, data: PasswordChangeRequest, request: Request, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """Change le mot de passe du client authentifié."""
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
@@ -790,8 +772,8 @@ def change_password(client_id: int, data: PasswordChangeRequest, current_client:
         raise HTTPException(status_code=404, detail="Client introuvable")
     if not verify_password(data.current_password, client.password_hash):
         raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
-    if len(data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 6 caractères")
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 8 caractères")
     client.password_hash = hash_password(data.new_password)
     db.commit()
     return {"status": "ok", "message": "Mot de passe mis à jour"}
@@ -826,7 +808,8 @@ class PinRequest(BaseModel):
     pin: str
 
 @app.post("/api/admin/verify-pin")
-def verify_admin_pin(data: PinRequest, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def verify_admin_pin(data: PinRequest, request: Request, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """Vérifie le PIN admin et retourne si l'utilisateur est admin."""
     client = db.query(Client).filter(Client.id == current_client).first()
     if not client:

@@ -1802,16 +1802,17 @@
             // Alertes : toutes les zones
             if (zone.risques && !zone.risques.includes("RAS") && !zone.risques.includes("✅")) alertCount++;
 
+            // FIX XSS: Échapper toutes les données API
             const row = `
                 <tr>
-                    <td>${zone.name}</td>
-                    <td style="font-size:18px;text-align:center" title="${ciel}">${cielEmoji(ciel)}</td>
+                    <td>${_esc(zone.name)}</td>
+                    <td style="font-size:18px;text-align:center" title="${_esc(ciel)}">${cielEmoji(ciel)}</td>
                     <td>${temp != null ? parseFloat(temp).toFixed(1) + "°" : "?"}</td>
                     <td>${wind != null ? parseFloat(wind).toFixed(1) + " km/h" : "?"}</td>
-                    <td>${direction ? dirEmoji(direction) + ' ' + direction : "?"}</td>
+                    <td>${direction ? dirEmoji(direction) + ' ' + _esc(direction) : "?"}</td>
                     <td>${rain != null ? parseFloat(rain).toFixed(1) + " mm" : "? mm"}</td>
                     <td>${(zone.uv_index ?? zone.uv) != null ? parseFloat(zone.uv_index ?? zone.uv).toFixed(1) : "-"}</td>
-                    <td><span class="risk-badge ${zone.risques?.includes("✅") || zone.risques?.includes("RAS") ? "ok" : ""}">${zone.risques || "RAS"}</span></td>
+                    <td><span class="risk-badge ${zone.risques?.includes("✅") || zone.risques?.includes("RAS") ? "ok" : ""}">${_esc(zone.risques) || "RAS"}</span></td>
                 </tr>
             `;
 
@@ -1880,19 +1881,19 @@
             const key = zone.name.toLowerCase();
             const forecast = forecastMap[key] || {};
 
-            // CORRECTION: Utiliser les bons noms de champs API (temp, wind, direction)
+            // FIX XSS: Échapper les données API dans le popup carte
             const popupContent = `<div style='font-family:IBM Plex Sans,sans-serif;padding:10px;min-width:200px;font-size:12px;line-height:1.6'>
-                <b style="font-size:13px">${zone.name}</b> <span style="color:#a0aec0;font-size:11px">${isSite ? '(site)' : '(voisin)'}</span><br>
+                <b style="font-size:13px">${_esc(zone.name)}</b> <span style="color:#a0aec0;font-size:11px">${isSite ? '(site)' : '(voisin)'}</span><br>
                 <span style="color:#718096">Temp :</span> ${zone.temp ? zone.temp.toFixed(1) + '°C' : '?'}<br>
-                <span style="color:#718096">Vent :</span> ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} ${dirEmoji(zone.direction)} ${zone.direction || '?'}<br>
-                <span style="color:#718096">Ciel :</span> ${cielEmoji(zone.ciel)} ${zone.ciel || '?'}<br>
+                <span style="color:#718096">Vent :</span> ${zone.wind ? zone.wind.toFixed(1) + ' km/h' : '?'} ${dirEmoji(zone.direction)} ${_esc(zone.direction) || '?'}<br>
+                <span style="color:#718096">Ciel :</span> ${cielEmoji(zone.ciel)} ${_esc(zone.ciel) || '?'}<br>
                 <span style="color:#a0aec0;font-size:11px">MAJ : ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}</span><br>
                 <hr style="border:none;border-top:1px solid #e2e8f0;margin:6px 0">
                 <b style="font-size:11px;color:#4a5568">Prévisions J+0</b><br>
-                <span style="color:#718096">Min/Max :</span> ${forecast.tmin || '?'} / ${forecast.tmax || '?'}<br>
-                <span style="color:#718096">Pluie :</span> ${forecast.pluie || '? mm'}<br>
+                <span style="color:#718096">Min/Max :</span> ${_esc(forecast.tmin) || '?'} / ${_esc(forecast.tmax) || '?'}<br>
+                <span style="color:#718096">Pluie :</span> ${_esc(forecast.pluie) || '? mm'}<br>
                 <span style="color:#718096">UV max :</span> ${forecast.uv !== undefined ? forecast.uv : '?'}<br>
-                <span style="color:#718096">Risques :</span> ${forecast.risques || zone.risques || 'N/A'}
+                <span style="color:#718096">Risques :</span> ${_esc(forecast.risques) || _esc(zone.risques) || 'N/A'}
             </div>`;
 
             const marker = L.marker([zone.lat, zone.lon], { icon: icon }).addTo(map);
@@ -2005,7 +2006,7 @@
 
                 daysHtml += `
                     <div class="forecast-day">
-                        <div class="day-name">${d.jour.substring(0, 3)}</div>
+                        <div class="day-name">${_esc(d.jour.substring(0, 3))}</div>
                         <div class="day-icon" style="font-size:24px">${weatherIcon}</div>
                         <div class="day-temps">
                             <span class="tmax">${tempMax.toFixed(0)}°</span>
@@ -2014,7 +2015,7 @@
                         </div>
                         <div class="day-rain">${pluieVal > 0 ? '🌧️' : '—'} ${pluieVal.toFixed(1)} mm</div>
                         <div class="day-uv">${uvVal >= 6 ? '☀️' : uvVal >= 3 ? '🌤️' : '☁️'} UV ${uvVal.toFixed(1)}</div>
-                        <div class="day-risk ${riskClass}">${d.risques || 'RAS'}</div>
+                        <div class="day-risk ${riskClass}">${_esc(d.risques) || 'RAS'}</div>
                     </div>
                 `;
             });
@@ -2023,7 +2024,7 @@
                 <div class="prevision-zone">
                     <div class="zone-header">
                         <span class="zone-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:${isSite ? '#2c3e50' : '#718096'};color:#fff;border-radius:3px;font-size:10px;font-weight:700">${icon}</span>
-                        <span class="zone-name">${zone}</span>
+                        <span class="zone-name">${_esc(zone)}</span>
                     </div>
                     <div class="forecast-card">${daysHtml}</div>
                 </div>
@@ -2073,9 +2074,9 @@
             else if (desc.includes('panne') || desc.includes('véhicule') || desc.includes('broken')) incIcon = '🚛';
             html += `
                 <tr style="border-bottom: 1px solid #e4e2dc;">
-                    <td style="padding:10px 12px;font-size:13px;">${t.route}</td>
-                    <td style="padding:10px 12px;font-size:13px;">${incIcon} ${t.description}</td>
-                    <td style="padding:10px 12px;text-align:center;"><span class="${severityClass}" style="padding:4px 8px;border-radius:3px;font-size:11px;font-weight:500;">${sev.toUpperCase()}</span></td>
+                    <td style="padding:10px 12px;font-size:13px;">${_esc(t.route)}</td>
+                    <td style="padding:10px 12px;font-size:13px;">${incIcon} ${_esc(t.description)}</td>
+                    <td style="padding:10px 12px;text-align:center;"><span class="${severityClass}" style="padding:4px 8px;border-radius:3px;font-size:11px;font-weight:500;">${_esc(sev.toUpperCase())}</span></td>
                     <td style="padding:10px 12px;text-align:right;font-weight:500;">${t.delay_minutes > 0 ? '+' + t.delay_minutes + ' min' : 'Faible'}</td>
                 </tr>
             `;
@@ -2096,7 +2097,7 @@
                 alerteBox.innerHTML = `
                     <div style="padding:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;margin-bottom:16px;">
                         <div style="font-weight:600;color:#856404;font-size:13px;">Alerte combinée météo + trafic</div>
-                        <div style="color:#856404;font-size:12px;margin-top:6px;">${alerte_combinee.message}</div>
+                        <div style="color:#856404;font-size:12px;margin-top:6px;">${_esc(alerte_combinee.message)}</div>
                     </div>`;
             } else {
                 alerteBox.style.display = 'none';
@@ -2128,7 +2129,7 @@
                     });
                     const m = L.marker([inc.lat, inc.lon], { icon })
                         .addTo(map)
-                        .bindPopup(`<b>${inc.route}</b><br>${inc.description}<br>Retard : +${inc.delay_minutes} min`);
+                        .bindPopup(`<b>${_esc(inc.route)}</b><br>${_esc(inc.description)}<br>Retard : +${inc.delay_minutes} min`);
                     traficMarkers.push(m);
                 }
             });
@@ -2444,8 +2445,8 @@
             }
             container.innerHTML = zones.map(z => `
                 <div class="zone-row">
-                    <div><span class="zone-type ${z.type}">${z.type}</span> ${z.name}</div>
-                    <button onclick="deleteZone(${z.id}, '${z.name.replace(/'/g, "\\'")}')" title="Supprimer">&#10005;</button>
+                    <div><span class="zone-type ${_esc(z.type)}">${_esc(z.type)}</span> ${_esc(z.name)}</div>
+                    <button onclick="deleteZone(${z.id}, '${z.name.replace(/'/g, "\\'").replace(/[\\<>"]/g, '')}')" title="Supprimer">&#10005;</button>
                 </div>
             `).join("");
         } catch (e) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur réseau</div>'; }
@@ -3444,7 +3445,7 @@
             // Chercher la zone dans les données météo en cache
             const z = (_cachedMeteo || []).find(m => m.name && m.name.replace(/ 🏣/,'').replace(/ 🏠/,'') === zoneName);
             if (!z) {
-                content.innerHTML = `<div style="font-weight:700;font-size:14px;color:#2d3748;margin-bottom:6px">📍 ${zoneName}</div><p style="color:#718096;font-size:12px">Données non disponibles — cliquez sur Actualiser</p>`;
+                content.innerHTML = `<div style="font-weight:700;font-size:14px;color:#2d3748;margin-bottom:6px">📍 ${_esc(zoneName)}</div><p style="color:#718096;font-size:12px">Données non disponibles — cliquez sur Actualiser</p>`;
                 panel.style.display = 'block';
                 return;
             }
@@ -3461,7 +3462,7 @@
             
             content.innerHTML = `
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-                    <div style="font-weight:800;font-size:16px;color:#2d3748">📍 ${zoneName}</div>
+                    <div style="font-weight:800;font-size:16px;color:#2d3748">📍 ${_esc(zoneName)}</div>
                     <span style="background:#edf2f7;padding:3px 10px;border-radius:12px;font-size:11px;color:#4a5568">${type}</span>
                     <span style="background:${scoreColor};color:#fff;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700">Score: ${score}/10 — ${scoreLabel}</span>
                 </div>
@@ -3473,7 +3474,7 @@
                     <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
                         <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">💨 Vent</div>
                         <div style="font-size:24px;font-weight:800;color:#3182ce;margin-top:4px">${wind != null ? parseFloat(wind).toFixed(1) : '—'}<span style="font-size:12px"> km/h</span></div>
-                        <div style="font-size:11px;color:#a0aec0">${dir}</div>
+                        <div style="font-size:11px;color:#a0aec0">${_esc(dir)}</div>
                     </div>
                     <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
                         <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">🌧️ Pluie</div>
@@ -3485,11 +3486,11 @@
                     </div>
                     <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
                         <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">🌤️ Ciel</div>
-                        <div style="font-size:16px;font-weight:700;color:#4a5568;margin-top:6px">${ciel}</div>
+                        <div style="font-size:16px;font-weight:700;color:#4a5568;margin-top:6px">${_esc(ciel)}</div>
                     </div>
                     <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
                         <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">⚠️ Risques</div>
-                        <div style="font-size:13px;font-weight:700;color:#2d3748;margin-top:6px">${risques}</div>
+                        <div style="font-size:13px;font-weight:700;color:#2d3748;margin-top:6px">${_esc(risques)}</div>
                     </div>
                 </div>`;
             panel.style.display = 'block';
