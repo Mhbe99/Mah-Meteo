@@ -1606,11 +1606,76 @@
             sitesTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>Chargement des données…</p></div></td></tr>`;
             voisinsTableBody.innerHTML = `<tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div><p>Chargement des données…</p></div></td></tr>`;
             
-            const meteo = await fetchData("meteo");
+            let meteo = await fetchData("meteo");
             const previsions = await fetchData("previsions");
             const alertes = await fetchData("alertes");
             const trafic = await fetchData("trafic");
             const zones = await fetchData("zones");
+
+            // Open-Meteo direct depuis le navigateur (Render bloque les appels sortants)
+            if (meteo && meteo.length > 0) {
+                const _windDir = (deg) => {
+                    const dirs = ['Nord','Nord-Est','Est','Sud-Est','Sud','Sud-Ouest','Ouest','Nord-Ouest'];
+                    return dirs[Math.round(deg / 45) % 8];
+                };
+                const _cielIcon = (rain, cloud, wind) => {
+                    if (rain > 5) return 'Pluie forte';
+                    if (rain > 0.5) return 'Pluie';
+                    if (cloud > 80) return 'Couvert';
+                    if (cloud > 40) return 'Nuageux';
+                    if (wind > 40) return 'Venteux';
+                    return 'Ensoleillé';
+                };
+                const _riskText = (t, w, p, uv) => {
+                    const r = [];
+                    if (t <= -5) r.push('🔴 Gel sévère');
+                    else if (t <= 0) r.push('🟡 Gel');
+                    if (t >= 38) r.push('🔴 Canicule');
+                    else if (t >= 33) r.push('🟠 Forte chaleur');
+                    if (w >= 70) r.push('🔴 Vent violent');
+                    else if (w >= 50) r.push('🟠 Vent fort');
+                    if (p >= 20) r.push('🔴 Pluie intense');
+                    else if (p >= 5) r.push('🟡 Pluie modérée');
+                    if (uv >= 8) r.push('🔴 UV dangereux');
+                    else if (uv >= 6) r.push('🟠 UV élevé');
+                    return r.length ? r.join(' | ') : '✅ RAS';
+                };
+                const omPromises = meteo.map(async (zone) => {
+                    try {
+                        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${zone.lat}&longitude=${zone.lon}&current_weather=true&hourly=precipitation,cloudcover&daily=uv_index_max&timezone=auto`;
+                        const omResp = await fetch(omUrl, {signal: AbortSignal.timeout(6000)});
+                        const omData = await omResp.json();
+                        const cw = omData.current_weather || {};
+                        const hourly = omData.hourly || {};
+                        const curTime = cw.time || '';
+                        const times = hourly.time || [];
+                        let precip = 0, cloud = 0;
+                        if (curTime && times.includes(curTime)) {
+                            const idx = times.indexOf(curTime);
+                            precip = (hourly.precipitation || [])[idx] || 0;
+                            cloud = (hourly.cloudcover || [])[idx] || 0;
+                        }
+                        let uv = 0;
+                        const dailyUv = (omData.daily || {}).uv_index_max || [];
+                        if (dailyUv.length) uv = dailyUv[0] || 0;
+                        zone.temp = cw.temperature;
+                        zone.temperature = cw.temperature;
+                        zone.wind = cw.windspeed;
+                        zone.windspeed = cw.windspeed;
+                        zone.wind_direction = _windDir(cw.winddirection || 0);
+                        zone.direction = zone.wind_direction;
+                        zone.precipitation = precip;
+                        zone.cloudcover = cloud;
+                        zone.uv_index = uv;
+                        zone.uv = uv;
+                        zone.ciel = _cielIcon(precip, cloud, cw.windspeed || 0);
+                        zone.risques = _riskText(cw.temperature || 0, cw.windspeed || 0, precip, uv);
+                    } catch(e) { console.warn('[OM]', zone.name, e); }
+                    return zone;
+                });
+                meteo = await Promise.all(omPromises);
+                console.log('[refreshData] Open-Meteo direct: ' + meteo.length + ' zones enrichies');
+            }
 
             // Stocker pour le module Tournées
             _cachedMeteo = meteo || [];
