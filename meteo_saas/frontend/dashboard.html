@@ -1070,6 +1070,7 @@
         <div class="controls">
             <div class="company-badge" id="company-name">---</div>
             <button class="refresh-btn" onclick="refreshData()">Actualiser</button>
+            <button class="refresh-btn" onclick="openAdmin()" style="background:linear-gradient(135deg,#c53030,#e53e3e);color:#fff;font-size:11px;padding:6px 14px">🔒 Admin</button>
             <button class="logout-btn" onclick="logout()">Déconnexion</button>
         </div>
     </header>
@@ -1104,7 +1105,6 @@
                 <button class="tab-btn" onclick="switchTab(2)">Trafic & Alertes</button>
                 <button class="tab-btn" onclick="switchTab(3)">Tournées</button>
                 <button class="tab-btn" onclick="switchTab(4)">Mon Compte</button>
-                <button class="tab-btn" onclick="switchTab(5)" style="color:#e53e3e">🔒 Administration</button>
             </div>
 
             <!-- TAB 1: VUE GÉNÉRALE (Carte + Tableaux) -->
@@ -1424,8 +1424,16 @@
                         </div>
                     </div>
                     <!-- KPIs connexions -->
-                    <div id="admin-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px"></div>
+                    <div id="admin-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px"></div>
+                    <!-- Inscriptions en attente -->
+                    <div style="margin-bottom:24px">
+                        <h4 style="font-size:15px;font-weight:700;color:#d69e2e;margin:0 0 12px">⏳ Inscriptions en attente d'approbation</h4>
+                        <div id="pending-users">
+                            <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Chargement...</div>
+                        </div>
+                    </div>
                     <!-- Tableau connexions -->
+                    <h4 style="font-size:15px;font-weight:700;color:#2b6cb0;margin:0 0 12px">📊 Historique des connexions (tous utilisateurs)</h4>
                     <div id="connections-table" style="overflow-x:auto">
                         <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Chargement...</div>
                     </div>
@@ -2016,11 +2024,15 @@
         // Administration tab
         if (index === 5 && _adminUnlocked) {
             loadConnections();
+            loadPendingUsers();
         }
     }
 
     // ============ ADMINISTRATION — PIN LOCK ============
     let _adminUnlocked = false;
+    function openAdmin() {
+        switchTab(5);
+    }
     function unlockAdmin() {
         const pin = document.getElementById('admin-pin').value;
         if (pin === '1909') {
@@ -2030,6 +2042,7 @@
             document.getElementById('admin-error').style.display = 'none';
             document.getElementById('admin-pin').value = '';
             loadConnections();
+            loadPendingUsers();
         } else {
             document.getElementById('admin-error').style.display = 'block';
             document.getElementById('admin-pin').value = '';
@@ -2088,6 +2101,13 @@
             });
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || "Erreur inscription");
+            if (data.status === 'pending') {
+                errEl.style.display = 'block';
+                errEl.style.color = '#27ae60';
+                errEl.textContent = '✅ ' + data.message;
+                document.getElementById('register-form').reset();
+                return;
+            }
             TOKEN = data.access_token;
             CLIENT_ID = data.client_id;
             COMPANY_NAME = data.company_name;
@@ -2139,27 +2159,31 @@
         const kpisEl = document.getElementById('admin-kpis');
         if (!CLIENT_ID || !TOKEN) return;
         try {
-            const resp = await fetch(`${API_URL}/api/connections/${CLIENT_ID}?limit=100`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            const resp = await fetch(`${API_URL}/api/admin/all-connections?limit=100`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
             if (!resp.ok) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur chargement</div>'; return; }
             const logs = await resp.json();
             if (!logs.length) { container.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:40px;font-size:13px">Aucune connexion enregistrée</div>'; kpisEl.innerHTML=''; return; }
 
-            // Stats
             const devices = new Set();
             const ips = new Set();
+            const users = new Set();
             const today = new Date().toDateString();
             let todayCount = 0;
             logs.forEach(l => {
                 devices.add(`${l.device_type}|${l.browser}|${l.os_info}`);
                 ips.add(l.ip_address);
+                users.add(l.username);
                 if (l.timestamp && new Date(l.timestamp).toDateString() === today) todayCount++;
             });
 
-            // KPIs
             kpisEl.innerHTML = `
                 <div style="background:linear-gradient(135deg,#ebf8ff,#bee3f8);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                     <div style="font-size:11px;color:#2b6cb0;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">📊 Total connexions</div>
                     <div style="font-size:32px;font-weight:800;color:#2b6cb0;margin-top:6px">${logs.length}</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#faf5ff,#e9d8fd);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;color:#6b46c1;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">👤 Utilisateurs</div>
+                    <div style="font-size:32px;font-weight:800;color:#6b46c1;margin-top:6px">${users.size}</div>
                 </div>
                 <div style="background:linear-gradient(135deg,#f0fff4,#c6f6d5);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                     <div style="font-size:11px;color:#276749;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">📱 Appareils uniques</div>
@@ -2174,10 +2198,9 @@
                     <div style="font-size:32px;font-weight:800;color:#c53030;margin-top:6px">${todayCount}</div>
                 </div>`;
 
-            // Tableau enrichi
             const deviceIcons = { desktop: '🖥️', mobile: '📱', tablet: '📱' };
             const seenDevices = new Set();
-            const rows = logs.map((l, i) => {
+            const rows = logs.map(l => {
                 const dt = l.timestamp ? new Date(l.timestamp) : null;
                 const dateStr = dt ? dt.toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'}) : '—';
                 const timeStr = dt ? dt.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '';
@@ -2190,11 +2213,11 @@
                 const rowBg = isToday ? 'background:#fffff0;' : '';
                 return `<tr style="border-bottom:1px solid #edf2f7;${rowBg}">
                     <td style="padding:10px 12px;font-size:12px;white-space:nowrap">${dateStr}<br><span style="color:#a0aec0;font-size:11px">${timeStr}</span></td>
+                    <td style="padding:10px 12px;font-size:12px;font-weight:600">${l.username || '—'}<br><span style="font-weight:400;color:#718096;font-size:11px">${l.company_name || ''}</span></td>
                     <td style="padding:10px 12px;font-size:12px">${icon} ${l.device_type || '—'}${newBadge}</td>
-                    <td style="padding:10px 12px;font-size:12px">${l.browser || '—'}</td>
-                    <td style="padding:10px 12px;font-size:12px">${l.os_info || '—'}</td>
+                    <td style="padding:10px 12px;font-size:12px">${l.browser || '—'} / ${l.os_info || '—'}</td>
+                    <td style="padding:10px 12px;font-size:12px">${l.location || '—'}</td>
                     <td style="padding:10px 12px;font-size:12px;font-family:monospace;color:#718096">${l.ip_address || '—'}</td>
-                    <td style="padding:10px 12px;font-size:11px;color:#a0aec0;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.user_agent||'').replace(/"/g,'&quot;')}">${l.user_agent || '—'}</td>
                 </tr>`;
             }).join('');
 
@@ -2202,15 +2225,66 @@
                 <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                     <thead><tr style="background:#f7fafc;border-bottom:2px solid #e2e8f0">
                         <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Date & Heure</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Utilisateur</th>
                         <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Appareil</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Navigateur</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">OS</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Navigateur / OS</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">📍 Lieu</th>
                         <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">IP</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">User-Agent</th>
                     </tr></thead>
                     <tbody>${rows}</tbody>
                 </table>`;
         } catch (e) { console.error('Erreur chargement connexions:', e); container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur</div>'; }
+    }
+
+    // ============ ADMINISTRATION — INSCRIPTIONS EN ATTENTE ============
+    async function loadPendingUsers() {
+        const container = document.getElementById('pending-users');
+        if (!container) return;
+        try {
+            const resp = await fetch(`${API_URL}/api/admin/pending`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            if (!resp.ok) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur</div>'; return; }
+            const users = await resp.json();
+            if (!users.length) { container.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Aucune inscription en attente</div>'; return; }
+            const rows = users.map(u => `<tr style="border-bottom:1px solid #edf2f7">
+                <td style="padding:10px 12px;font-size:12px;font-weight:600">${u.username}</td>
+                <td style="padding:10px 12px;font-size:12px">${u.company_name || '—'}</td>
+                <td style="padding:10px 12px;font-size:12px">${u.email || '—'}</td>
+                <td style="padding:10px 12px;font-size:12px">${u.plan}</td>
+                <td style="padding:10px 12px;font-size:12px">
+                    <button onclick="approveUser(${u.id})" style="background:#38a169;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;margin-right:6px">✅ Approuver</button>
+                    <button onclick="rejectUser(${u.id})" style="background:#e53e3e;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700">❌ Rejeter</button>
+                </td>
+            </tr>`).join('');
+            container.innerHTML = `
+                <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06)">
+                    <thead><tr style="background:#fefcbf;border-bottom:2px solid #ecc94b">
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#744210;text-transform:uppercase">Utilisateur</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#744210;text-transform:uppercase">Entreprise</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#744210;text-transform:uppercase">Email</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#744210;text-transform:uppercase">Plan</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#744210;text-transform:uppercase">Actions</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        } catch (e) { console.error('Erreur pending:', e); }
+    }
+
+    async function approveUser(userId) {
+        if (!confirm('Approuver ce compte ?')) return;
+        try {
+            const resp = await fetch(`${API_URL}/api/admin/approve/${userId}`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            const data = await resp.json();
+            if (resp.ok) { showNotif(data.message); loadPendingUsers(); } else { alert(data.detail || 'Erreur'); }
+        } catch (e) { alert('Erreur réseau'); }
+    }
+
+    async function rejectUser(userId) {
+        if (!confirm('Rejeter et supprimer ce compte ?')) return;
+        try {
+            const resp = await fetch(`${API_URL}/api/admin/reject/${userId}`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            const data = await resp.json();
+            if (resp.ok) { showNotif(data.message); loadPendingUsers(); } else { alert(data.detail || 'Erreur'); }
+        } catch (e) { alert('Erreur réseau'); }
     }
 
     // ============ MON COMPTE — LISTE DES ZONES ============

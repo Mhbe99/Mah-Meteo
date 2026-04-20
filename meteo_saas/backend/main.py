@@ -136,7 +136,7 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
     if not client.active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Compte inactif"
+            detail="Compte en attente d'approbation par un administrateur"
         )
 
     # Tracker la connexion
@@ -147,8 +147,19 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
     device_type = "mobile" if any(k in ua_str.lower() for k in ["mobile", "android", "iphone"]) else "tablet" if "ipad" in ua_str.lower() else "desktop"
     browser = "Chrome" if "Chrome" in ua_str and "Edg" not in ua_str else "Edge" if "Edg" in ua_str else "Firefox" if "Firefox" in ua_str else "Safari" if "Safari" in ua_str else "Autre"
     os_info = "Windows" if "Windows" in ua_str else "Mac" if "Macintosh" in ua_str else "Linux" if "Linux" in ua_str else "iOS" if "iPhone" in ua_str else "Android" if "Android" in ua_str else "Autre"
+    # Géolocalisation IP
+    location = ""
     try:
-        log = ConnectionLog(client_id=client.id, ip_address=ip, user_agent=ua_str[:500], device_type=device_type, browser=browser, os_info=os_info)
+        geo_r = httpx.get(f"http://ip-api.com/json/{ip}?fields=city,country,countryCode", timeout=3)
+        if geo_r.status_code == 200:
+            geo = geo_r.json()
+            city = geo.get("city", "")
+            cc = geo.get("countryCode", "")
+            location = f"{city}, {cc}" if city else cc
+    except Exception:
+        pass
+    try:
+        log = ConnectionLog(client_id=client.id, ip_address=ip, user_agent=ua_str[:500], device_type=device_type, browser=browser, os_info=os_info, location=location)
         db.add(log)
         db.commit()
     except Exception:
@@ -170,7 +181,7 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
 # ============ INSCRIPTION SELF-SERVICE ============
 
 @limiter.limit("5/minute")
-@app.post("/auth/register", response_model=TokenResponse)
+@app.post("/auth/register")
 def register(request: Request, data: RegisterRequest, db: Session = Depends(get_db)):
     """Inscription d'un nouveau client avec plan."""
     if data.plan not in PLAN_LIMITS:
@@ -186,17 +197,13 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
         company_name=data.company_name,
         email=data.email,
         plan=data.plan,
-        active=1
+        active=0  # En attente d'approbation admin
     )
     db.add(client)
     db.commit()
     db.refresh(client)
 
-    token = create_token(data={"client_id": client.id, "username": client.username})
-    return TokenResponse(
-        access_token=token, token_type="bearer",
-        client_id=client.id, company_name=client.company_name
-    )
+    return {"status": "pending", "message": "Inscription enregistrée. Un administrateur doit approuver votre compte."}
 
 
 # ============ PLANS ============
@@ -782,9 +789,70 @@ def get_connections(client_id: int, limit: int = 50, current_client: int = Depen
             "browser": l.browser,
             "os_info": l.os_info,
             "user_agent": l.user_agent,
+            "location": l.location or "",
         }
         for l in logs
     ]
+
+
+@app.get("/api/admin/pending")
+def get_pending_users(current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Liste les comptes en attente d'approbation."""
+    pending = db.query(Client).filter(Client.active == 0).all()
+    return [
+        {
+            "id": c.id,
+            "username": c.username,
+            "company_name": c.company_name,
+            "email": c.email,
+            "plan": c.plan,
+        }
+        for c in pending
+    ]
+
+
+@app.post("/api/admin/approve/{user_id}")
+def approve_user(user_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Approuve un compte en attente."""
+    user = db.query(Client).filter(Client.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    user.active = 1
+    db.commit()
+    return {"status": "ok", "message": f"Compte {user.username} approuvé"}
+
+
+@app.post("/api/admin/reject/{user_id}")
+def reject_user(user_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Rejette et supprime un compte en attente."""
+    user = db.query(Client).filter(Client.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    db.delete(user)
+    db.commit()
+    return {"status": "ok", "message": f"Compte {user.username} rejeté"}
+
+
+@app.get("/api/admin/all-connections")
+def get_all_connections(limit: int = 100, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Retourne l'historique de connexions de TOUS les utilisateurs."""
+    logs = db.query(ConnectionLog).order_by(ConnectionLog.timestamp.desc()).limit(limit).all()
+    result = []
+    for l in logs:
+        client = db.query(Client).filter(Client.id == l.client_id).first()
+        result.append({
+            "id": l.id,
+            "timestamp": l.timestamp.isoformat() if l.timestamp else None,
+            "username": client.username if client else "?",
+            "company_name": client.company_name if client else "?",
+            "ip_address": l.ip_address,
+            "location": l.location or "",
+            "device_type": l.device_type,
+            "browser": l.browser,
+            "os_info": l.os_info,
+            "user_agent": l.user_agent,
+        })
+    return result
 
 
 # ============ ROUTES FRONTEND ============

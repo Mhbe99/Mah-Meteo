@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mah Météo — Présentation & Mode d'emploi</title>
+<style>
+  body { margin:0; padding:0; background:#f0f4f8; font-family:'Segoe UI',Arial,sans-serif; color:#1a202c; }
+  .container { max-width:680px; margin:24px auto; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.08); }
+  .header { background:linear-gradient(135deg,#1e3a5f,#2c5282); padding:32px 28px; text-align:center; }
+  .header .logo { font-size:42px; margin-bottom:8px; }
+  .header h1 { color:#fff; font-size:22px; margin:0; font-weight:700; letter-spacing:0.5px; }
+  .header p { color:#a0c4e8; font-size:13px; margin:6px 0 0; }
+  .body-content { padding:28px; }
+  .body-content h2 { color:#1e3a5f; font-size:17px; margin:28px 0 10px; padding-bottom:6px; border-bottom:2px solid #e2e8f0; }
+  .body-content h2:first-child { margin-top:0; }
+  .body-content p, .body-content li { font-size:14px; line-height:1.7; color:#2d3748; }
+  .body-content ul { padding-left:20px; }
+  .body-content li { margin-bottom:6px; }
+  .url-box { background:linear-gradient(135deg,#ebf4ff,#e2e8f0); border:2px solid #2c5282; border-radius:8px; padding:18px 20px; text-align:center; margin:20px 0; }
+  .url-box a { color:#2c5282; font-size:18px; font-weight:700; text-decoration:none; }
+  .url-box a:hover { text-decoration:underline; }
+  .url-box .sub { font-size:12px; color:#4a5568; margin-top:6px; }
+  .creds-box { background:#f7fafc; border:1px solid #e2e8f0; border-radius:6px; padding:14px 18px; margin:12px 0; }
+  .creds-box .label { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:0.5px; }
+  .creds-box .value { font-size:14px; font-weight:600; color:#1a202c; margin-top:2px; }
+  .tab-card { background:#f7fafc; border:1px solid #e2e8f0; border-radius:6px; padding:14px 18px; margin:10px 0; }
+  .tab-card .tab-name { font-size:14px; font-weight:700; color:#2c5282; margin-bottom:4px; }
+  .tab-card .tab-name span { font-size:13px; color:#718096; font-weight:400; }
+  .tab-card p { font-size:13px; margin:0; color:#4a5568; }
+  .emoji-badge { display:inline-block; font-size:16px; margin-right:4px; vertical-align:middle; }
+  .step { display:flex; gap:12px; margin:10px 0; align-items:flex-start; }
+  .step-num { background:#2c5282; color:#fff; font-size:13px; font-weight:700; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .step-text { font-size:13px; color:#2d3748; line-height:1.6; }
+  .highlight { background:#fffbeb; border-left:3px solid #f6ad55; padding:10px 14px; margin:14px 0; font-size:13px; color:#744210; border-radius:0 6px 6px 0; }
+  .footer { background:#f7fafc; border-top:1px solid #e2e8f0; padding:16px 28px; text-align:center; font-size:11px; color:#a0aec0; }
+  .section-icon { font-size:20px; vertical-align:middle; margin-right:6px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">🌤️</div>
+    <h1>Mah Météo</h1>
+    <p>Surveillance météo & trafic en temps réel — GEODIS Le Meux</p>
+  </div>
+
+  <div class="body-content">
+
+    <p>Bonjour à tous,</p>
+    <p>Vous trouverez ci-dessous la présentation complète de l'application <b>Mah Météo</b>, l'outil de surveillance météorologique et trafic en temps réel développé pour notre agence. Ce mail détaille son fonctionnement et son mode d'emploi.</p>
+
+    <!-- URL -->
+    <div class="url-box">
+      <a href="https://mah-meteo.onrender.com">https://mah-meteo.onrender.com</a>
+      <div class="sub">Accessible depuis n'importe quel navigateur (PC, tablette, mobile)</div>
+    </div>
+
+    <!-- IDENTIFIANTS -->
+    <h2><span class="section-icon">🔐</span> Connexion</h2>
+    <p>L'application est protégée par un accès sécurisé. Utilisez les identifiants suivants :</p>
+    <div class="creds-box">
+      <div class="label">Identifiant</div>
+      <div class="value">geodis-lemeux</div>
+      <div class="label" style="margin-top:10px;">Mot de passe</div>
+      <div class="value">Geodis60</div>
+    </div>
+    <p style="font-size:12px;color:#718096;">La session reste active 24h. Vous serez automatiquement reconnecté si vous revenez sur le site dans cette période.</p>
+
+    <!-- C'EST QUOI -->
+    <h2><span class="section-icon">📌</span> C'est quoi Mah Météo ?</h2>
+    <p>Mah Météo est une application web qui surveille en continu :</p>
+    <ul>
+      <li><b>La météo</b> de nos 2 sites GEODIS (Le Meux et Clairoix) et de 25 villes voisines du réseau de livraison (Compiègne, Creil, Beauvais, Senlis, Noyon, etc.)</li>
+      <li><b>Le trafic routier</b> en temps réel sur l'ensemble de la zone (~80 km × 120 km autour de nos sites), via l'API TomTom</li>
+      <li><b>Les risques</b> : gel, verglas, canicule, vent fort, fortes pluies, UV extrême, incidents routiers</li>
+    </ul>
+    <p>Les données sont actualisées <b>automatiquement toutes les 22 minutes</b> et à chaque connexion.</p>
+
+    <!-- LES 5 ONGLETS -->
+    <h2><span class="section-icon">📊</span> Les 5 onglets du tableau de bord</h2>
+
+    <p>En haut du tableau de bord, une <b>barre de KPIs</b> affiche en permanence la température max, le vent max, les précipitations et le nombre d'alertes actives sur nos sites.</p>
+
+    <div class="tab-card">
+      <div class="tab-name"><span class="emoji-badge">🗺️</span> Onglet 1 — Vue générale</div>
+      <p>Carte interactive avec toutes les zones marquées. Chaque marqueur affiche la météo actuelle et les prévisions du jour. Les incidents trafic sont aussi affichés sur la carte (💥 accidents, 🚧 travaux, ⛔ fermetures). Deux tableaux récapitulent les conditions sur les sites et les villes voisines.</p>
+    </div>
+
+    <div class="tab-card">
+      <div class="tab-name"><span class="emoji-badge">📅</span> Onglet 2 — Prévisions</div>
+      <p>Prévisions météo sur 5 jours pour chaque zone : température min/max, pluie, indice UV, risques identifiés. Les risques sont affichés avec des badges de couleur (🟢 RAS, 🔵 Pluie, 🟠 Vent, 🔴 Verglas/UV).</p>
+    </div>
+
+    <div class="tab-card">
+      <div class="tab-name"><span class="emoji-badge">🚗</span> Onglet 3 — Trafic & Alertes</div>
+      <p>Liste de tous les incidents routiers en temps réel : accidents, bouchons, travaux, fermetures. Chaque incident indique la route, la description, la sévérité (LOW/MED/HIGH) et le retard estimé en minutes. Un bandeau jaune apparaît en cas d'alerte combinée météo + trafic.</p>
+    </div>
+
+    <div class="tab-card">
+      <div class="tab-name"><span class="emoji-badge">🚛</span> Onglet 4 — Tournées</div>
+      <p>Planification des tournées de livraison. Saisissez le chauffeur, la date et les villes de destination (avec auto-complétion intelligente). L'application affiche automatiquement la météo et les risques sur chaque ville du parcours, avec un code couleur (vert = OK, jaune = modéré, rouge = dangereux).</p>
+    </div>
+
+    <div class="tab-card">
+      <div class="tab-name"><span class="emoji-badge">👤</span> Onglet 5 — Mon Compte</div>
+      <p>Gestion du compte, des zones surveillées (ajouter/supprimer des villes), et <b>statistiques avancées</b> : graphiques interactifs sur l'historique des alertes, la température 48h, la pluie et le vent sur 7 jours, l'indice UV, et une carte de chaleur des risques par zone. Les graphiques sont cliquables pour filtrer les données.</p>
+    </div>
+
+    <!-- ALERTES EMAIL -->
+    <h2><span class="section-icon">📧</span> Alertes par email</h2>
+    <p>L'application envoie automatiquement des emails d'alerte dans deux cas :</p>
+    <ul>
+      <li><b>Alerte météo</b> : quand un seuil de risque est dépassé (gel ≤ 0°C, vent ≥ 50 km/h, pluie ≥ 10 mm, UV ≥ 6, etc.)</li>
+      <li><b>Alerte trafic</b> : un récapitulatif de tous les incidents routiers détectés, groupés par type (accidents, congestion, travaux, fermetures), avec le nombre d'incidents sévères et le retard maximum</li>
+    </ul>
+    <p>Un <b>anti-spam</b> limite les envois à 1 email toutes les 20 minutes pour le trafic et 1 par heure par zone pour la météo.</p>
+
+    <!-- MODE D'EMPLOI -->
+    <h2><span class="section-icon">📖</span> Mode d'emploi rapide</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Ouvrez <b>https://mah-meteo.onrender.com</b> dans votre navigateur et connectez-vous avec les identifiants ci-dessus.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">L'onglet <b>Vue générale</b> s'ouvre automatiquement avec la carte et les conditions météo actuelles. Cliquez sur un marqueur pour voir les détails d'une zone.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Consultez les <b>Prévisions</b> pour anticiper les risques des prochains jours sur vos zones de livraison.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Vérifiez l'onglet <b>Trafic</b> avant un départ pour identifier les incidents sur votre trajet.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-text">Utilisez l'onglet <b>Tournées</b> pour planifier un trajet : ajoutez les villes de destination et visualisez les risques météo/trafic sur chaque étape.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-text">Les <b>données se rafraîchissent automatiquement</b>. Vous pouvez aussi cliquer sur le bouton 🔄 pour forcer une mise à jour.</div>
+    </div>
+
+    <div class="highlight">
+      <b>💡 Astuce :</b> Le premier chargement peut prendre 30 à 50 secondes si le serveur était en veille — c'est normal, les chargements suivants sont instantanés.
+    </div>
+
+    <!-- ZONES COUVERTES -->
+    <h2><span class="section-icon">📍</span> Zones surveillées (27 villes)</h2>
+    <p><b>Sites GEODIS :</b> Le Meux, Clairoix</p>
+    <p><b>Villes voisines :</b> Compiègne, Creil, Beauvais, Chantilly, Noyon, Senlis, Méru, Nogent-sur-Oise, Clermont, Montataire, Liancourt, Chaumont-en-Vexin, Formerie, Breteuil, Saint-Just-en-Chaussée, Trosly-Breuil, Crépy-en-Valois, Saint-Maximin, Nanteuil-le-Haudouin, Ressons-sur-Matz, Estrées-Saint-Denis, Guiscard, Chambly, Crèvecœur-le-Grand, Mouy</p>
+    <p style="font-size:12px;color:#718096;">Des villes peuvent être ajoutées ou retirées depuis l'onglet Mon Compte.</p>
+
+    <!-- SEUILS -->
+    <h2><span class="section-icon">⚠️</span> Seuils d'alerte</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin:10px 0;">
+      <tr style="background:#f7fafc;">
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;">🌡️ Température</td>
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;">≥ 35°C (Canicule) · ≤ 0°C (Gel) · ≤ -5°C (Gel sévère)</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;">💨 Vent</td>
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;">≥ 50 km/h (Vent fort) · ≥ 80 km/h (Tempête)</td>
+      </tr>
+      <tr style="background:#f7fafc;">
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;">🌧️ Pluie</td>
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;">≥ 3 mm (Pluie modérée) · ≥ 10 mm (Fortes pluies)</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;">☀️ UV</td>
+        <td style="padding:8px 12px;border:1px solid #e2e8f0;">≥ 6 (UV élevé) · ≥ 8 (UV extrême)</td>
+      </tr>
+    </table>
+
+    <p style="margin-top:24px;">N'hésitez pas à me contacter pour toute question.</p>
+    <p>Cordialement,<br><b>Mahamé Touré</b></p>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Mah Météo — Application interne GEODIS Le Meux · Avril 2026
+  </div>
+
+</div>
+
+</body>
+</html>

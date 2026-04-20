@@ -176,6 +176,7 @@ class ConnectionLog(Base):
     device_type = Column(String, nullable=True)  # "desktop", "mobile", "tablet"
     browser = Column(String, nullable=True)
     os_info = Column(String, nullable=True)
+    location = Column(String, nullable=True)  # "Paris, FR"
 
     client = relationship("Client")
 
@@ -234,6 +235,14 @@ def init_db():
             db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uix_client_zone ON zones (client_id, name)"))
             db.commit()
             print("  ✅ Contrainte unique (client_id, zone_name) ajoutée")
+        except Exception:
+            db.rollback()
+
+        # Migration: ajouter colonne location à connection_logs
+        try:
+            db.execute(text("ALTER TABLE connection_logs ADD COLUMN location VARCHAR"))
+            db.commit()
+            print("  ✅ Colonne location ajoutée à connection_logs")
         except Exception:
             db.rollback()
         
