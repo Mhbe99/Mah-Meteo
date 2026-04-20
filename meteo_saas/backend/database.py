@@ -164,6 +164,22 @@ class AlerteLog(Base):
     client = relationship("Client", back_populates="alertes_log")
 
 
+class ConnectionLog(Base):
+    """Table connection_logs : historique des connexions"""
+    __tablename__ = "connection_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    device_type = Column(String, nullable=True)  # "desktop", "mobile", "tablet"
+    browser = Column(String, nullable=True)
+    os_info = Column(String, nullable=True)
+
+    client = relationship("Client")
+
+
 # ============ FONCTIONS D'INITIALISATION ============
 
 def init_db():

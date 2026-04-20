@@ -21,7 +21,7 @@ from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address)
 
-from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache
+from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog
 from .auth import create_token, verify_password, get_current_client, hash_password
 from .models import LoginRequest, RegisterRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
 from pydantic import BaseModel
@@ -138,6 +138,21 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Compte inactif"
         )
+
+    # Tracker la connexion
+    ua_str = request.headers.get("user-agent", "")
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    if ip and "," in ip:
+        ip = ip.split(",")[0].strip()
+    device_type = "mobile" if any(k in ua_str.lower() for k in ["mobile", "android", "iphone"]) else "tablet" if "ipad" in ua_str.lower() else "desktop"
+    browser = "Chrome" if "Chrome" in ua_str and "Edg" not in ua_str else "Edge" if "Edg" in ua_str else "Firefox" if "Firefox" in ua_str else "Safari" if "Safari" in ua_str else "Autre"
+    os_info = "Windows" if "Windows" in ua_str else "Mac" if "Macintosh" in ua_str else "Linux" if "Linux" in ua_str else "iOS" if "iPhone" in ua_str else "Android" if "Android" in ua_str else "Autre"
+    try:
+        log = ConnectionLog(client_id=client.id, ip_address=ip, user_agent=ua_str[:500], device_type=device_type, browser=browser, os_info=os_info)
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
 
     # Créer le token
     token = create_token(
@@ -750,16 +765,39 @@ def change_password(client_id: int, data: PasswordChangeRequest, current_client:
     return {"status": "ok", "message": "Mot de passe mis à jour"}
 
 
+# ============ CONNEXIONS / SESSIONS ============
+
+@app.get("/api/connections/{client_id}")
+def get_connections(client_id: int, limit: int = 50, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+    """Retourne l'historique des connexions du client."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    logs = db.query(ConnectionLog).filter(ConnectionLog.client_id == client_id).order_by(ConnectionLog.timestamp.desc()).limit(limit).all()
+    return [
+        {
+            "id": l.id,
+            "timestamp": l.timestamp.isoformat() if l.timestamp else None,
+            "ip_address": l.ip_address,
+            "device_type": l.device_type,
+            "browser": l.browser,
+            "os_info": l.os_info,
+            "user_agent": l.user_agent,
+        }
+        for l in logs
+    ]
+
+
 # ============ ROUTES FRONTEND ============
 
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
     """
-    Retourne le dashboard HTML.
+    Retourne le dashboard HTML avec cache-control pour forcer le rechargement.
     """
     try:
         with open("meteo_saas/frontend/dashboard.html", "r", encoding="utf-8") as f:
-            return f.read()
+            content = f.read()
+        return HTMLResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
     except FileNotFoundError:
         return HTMLResponse("<h1>Dashboard introuvable</h1>", status_code=404)
 

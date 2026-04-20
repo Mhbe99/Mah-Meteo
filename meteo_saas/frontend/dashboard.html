@@ -1327,6 +1327,19 @@
                         </div>
                     </div>
                 </div>
+                <!-- Historique des connexions -->
+                <div style="margin-top:28px;border-top:2px solid #e2e8f0;padding-top:24px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                        <div>
+                            <h3 style="font-size:15px;font-weight:700;margin:0 0 2px">🔐 Historique des connexions</h3>
+                            <p style="font-size:12px;color:#718096;margin:0">Détectez les connexions inhabituelles</p>
+                        </div>
+                        <button onclick="loadConnections()" style="background:linear-gradient(135deg,#2c5282,#3182ce);color:#fff;border:none;padding:8px 18px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(49,130,206,0.3)">↻ Actualiser</button>
+                    </div>
+                    <div id="connections-table" style="overflow-x:auto">
+                        <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Chargement...</div>
+                    </div>
+                </div>
                 <!-- Statistiques alertes -->
                 <div style="margin-top:28px;border-top:2px solid #e2e8f0;padding-top:24px">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
@@ -2067,6 +2080,57 @@
             document.getElementById("acc-changes-bar").style.background = cPct >= 90 ? "#e53e3e" : "#e67e22";
         } catch (e) { console.error("Erreur chargement compte:", e); }
         loadZoneList();
+        loadConnections();
+    }
+
+    // ============ MON COMPTE — CONNEXIONS ============
+    async function loadConnections() {
+        const container = document.getElementById("connections-table");
+        if (!CLIENT_ID || !TOKEN) return;
+        try {
+            const resp = await fetch(`${API_URL}/api/connections/${CLIENT_ID}?limit=30`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            if (!resp.ok) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur chargement</div>'; return; }
+            const logs = await resp.json();
+            if (!logs.length) { container.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Aucune connexion enregistrée</div>'; return; }
+
+            // Détecter les appareils uniques (par IP + navigateur + OS)
+            const devices = new Set();
+            logs.forEach(l => devices.add(`${l.ip_address}|${l.browser}|${l.os_info}`));
+
+            const deviceIcons = { desktop: '🖥️', mobile: '📱', tablet: '📱' };
+            const rows = logs.map((l, i) => {
+                const dt = l.timestamp ? new Date(l.timestamp) : null;
+                const dateStr = dt ? dt.toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+                const timeStr = dt ? dt.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}) : '';
+                const deviceKey = `${l.ip_address}|${l.browser}|${l.os_info}`;
+                const isNew = i === 0 || logs.slice(0, i).every(p => `${p.ip_address}|${p.browser}|${p.os_info}` !== deviceKey);
+                const icon = deviceIcons[l.device_type] || '🖥️';
+                const newBadge = isNew ? '<span style="background:#e53e3e;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">NOUVEAU</span>' : '';
+                return `<tr style="border-bottom:1px solid #edf2f7">
+                    <td style="padding:10px 12px;font-size:12px;white-space:nowrap">${dateStr}<br><span style="color:#a0aec0">${timeStr}</span></td>
+                    <td style="padding:10px 12px;font-size:12px">${icon} ${l.device_type || '—'}${newBadge}</td>
+                    <td style="padding:10px 12px;font-size:12px">${l.browser || '—'}</td>
+                    <td style="padding:10px 12px;font-size:12px">${l.os_info || '—'}</td>
+                    <td style="padding:10px 12px;font-size:12px;font-family:monospace;color:#718096">${l.ip_address || '—'}</td>
+                </tr>`;
+            }).join('');
+
+            container.innerHTML = `
+                <div style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">
+                    <div style="background:#ebf8ff;border-radius:8px;padding:8px 16px;font-size:12px"><strong style="color:#2b6cb0">${logs.length}</strong> connexions</div>
+                    <div style="background:#f0fff4;border-radius:8px;padding:8px 16px;font-size:12px"><strong style="color:#276749">${devices.size}</strong> appareil${devices.size > 1 ? 's' : ''} différent${devices.size > 1 ? 's' : ''}</div>
+                </div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06)">
+                    <thead><tr style="background:#f7fafc;border-bottom:2px solid #e2e8f0">
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Date</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Appareil</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Navigateur</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">OS</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Adresse IP</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        } catch (e) { console.error('Erreur chargement connexions:', e); container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur</div>'; }
     }
 
     // ============ MON COMPTE — LISTE DES ZONES ============
