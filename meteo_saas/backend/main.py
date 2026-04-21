@@ -708,17 +708,36 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
 
 # ============ ROUTES SERVICE (pour meteo_open.py) ============
 
-SERVICE_SECRET = os.getenv("SERVICE_SECRET", os.getenv("JWT_SECRET", ""))
+SERVICE_SECRET = os.getenv("SERVICE_SECRET", os.getenv("JWT_SECRET", "")).strip()
 
 def _verify_service_secret(request: Request):
     """Vérifie que le header X-Service-Secret correspond au JWT_SECRET (ou SERVICE_SECRET si défini)."""
-    secret = request.headers.get("X-Service-Secret", "")
+    secret = request.headers.get("X-Service-Secret", "").strip()
     # Accepter JWT_SECRET ET SERVICE_SECRET pour compatibilité cron GitHub Actions
-    jwt_secret = os.getenv("JWT_SECRET", "")
-    svc_secret = os.getenv("SERVICE_SECRET", "")
+    jwt_secret = os.getenv("JWT_SECRET", "").strip()
+    svc_secret = os.getenv("SERVICE_SECRET", "").strip()
     valid_secrets = [s for s in [jwt_secret, svc_secret] if s]
-    if not secret or not valid_secrets or not any(hmac.compare_digest(secret, v) for v in valid_secrets):
+    if not secret or not valid_secrets:
         raise HTTPException(status_code=403, detail="Service secret invalide")
+    if not any(hmac.compare_digest(secret.encode(), v.encode()) for v in valid_secrets):
+        raise HTTPException(status_code=403, detail="Service secret invalide")
+
+# DEBUG TEMPORAIRE — à retirer après résolution
+@app.get("/api/debug/secret-check")
+def debug_secret(request: Request):
+    """Diagnostic temporaire du secret service."""
+    received = request.headers.get("X-Service-Secret", "")
+    jwt_s = os.getenv("JWT_SECRET", "")
+    svc_s = os.getenv("SERVICE_SECRET", "")
+    return {
+        "received_len": len(received),
+        "received_prefix": received[:4] + "..." if received else "",
+        "jwt_secret_len": len(jwt_s),
+        "jwt_secret_prefix": jwt_s[:4] + "..." if jwt_s else "",
+        "svc_secret_set": bool(svc_s),
+        "match_jwt": received.strip() == jwt_s.strip(),
+        "match_svc": received.strip() == svc_s.strip() if svc_s else False,
+    }
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
 @app.api_route("/api/service/token", methods=["GET", "POST"])
