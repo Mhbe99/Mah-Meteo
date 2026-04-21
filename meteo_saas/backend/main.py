@@ -722,23 +722,6 @@ def _verify_service_secret(request: Request):
     if not any(hmac.compare_digest(secret.encode(), v.encode()) for v in valid_secrets):
         raise HTTPException(status_code=403, detail="Service secret invalide")
 
-# DEBUG TEMPORAIRE — à retirer après résolution
-@app.get("/api/debug/secret-check")
-def debug_secret(request: Request):
-    """Diagnostic temporaire du secret service."""
-    received = request.headers.get("X-Service-Secret", "")
-    jwt_s = os.getenv("JWT_SECRET", "")
-    svc_s = os.getenv("SERVICE_SECRET", "")
-    return {
-        "received_len": len(received),
-        "received_prefix": received[:4] + "..." if received else "",
-        "jwt_secret_len": len(jwt_s),
-        "jwt_secret_prefix": jwt_s[:4] + "..." if jwt_s else "",
-        "svc_secret_set": bool(svc_s),
-        "match_jwt": received.strip() == jwt_s.strip(),
-        "match_svc": received.strip() == svc_s.strip() if svc_s else False,
-    }
-
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
 @app.api_route("/api/service/token", methods=["GET", "POST"])
 def get_service_token(request: Request, client_id: int = 1, db: Session = Depends(get_db)):
