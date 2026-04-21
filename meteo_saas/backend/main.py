@@ -711,10 +711,13 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
 SERVICE_SECRET = os.getenv("SERVICE_SECRET", os.getenv("JWT_SECRET", ""))
 
 def _verify_service_secret(request: Request):
-    """Vérifie que le header X-Service-Secret correspond au SERVICE_SECRET (ou JWT_SECRET en fallback)."""
+    """Vérifie que le header X-Service-Secret correspond au JWT_SECRET (ou SERVICE_SECRET si défini)."""
     secret = request.headers.get("X-Service-Secret", "")
-    expected = os.getenv("SERVICE_SECRET") or os.getenv("JWT_SECRET", "")
-    if not secret or not expected or not hmac.compare_digest(secret, expected):
+    # Accepter JWT_SECRET ET SERVICE_SECRET pour compatibilité cron GitHub Actions
+    jwt_secret = os.getenv("JWT_SECRET", "")
+    svc_secret = os.getenv("SERVICE_SECRET", "")
+    valid_secrets = [s for s in [jwt_secret, svc_secret] if s]
+    if not secret or not valid_secrets or not any(hmac.compare_digest(secret, v) for v in valid_secrets):
         raise HTTPException(status_code=403, detail="Service secret invalide")
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
