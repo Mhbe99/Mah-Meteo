@@ -371,7 +371,7 @@ def get_previsions_route(client_id: int, current_client: int = Depends(get_curre
 
 
 @app.get("/api/alertes/{client_id}", response_model=list[Alerte])
-def get_alertes_route(client_id: int, limit: int = Query(default=30, ge=1, le=200), current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_alertes_route(client_id: int, limit: int = Query(default=30, ge=1, le=500), current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
     """
     Récupère les dernières alertes du client.
     """
@@ -711,9 +711,10 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
 SERVICE_SECRET = os.getenv("SERVICE_SECRET", os.getenv("JWT_SECRET", ""))
 
 def _verify_service_secret(request: Request):
-    """Vérifie que le header X-Service-Secret correspond au SERVICE_SECRET."""
+    """Vérifie que le header X-Service-Secret correspond au SERVICE_SECRET (ou JWT_SECRET en fallback)."""
     secret = request.headers.get("X-Service-Secret", "")
-    if not secret or not hmac.compare_digest(secret, SERVICE_SECRET):
+    expected = os.getenv("SERVICE_SECRET") or os.getenv("JWT_SECRET", "")
+    if not secret or not expected or not hmac.compare_digest(secret, expected):
         raise HTTPException(status_code=403, detail="Service secret invalide")
 
 # CORRECTION: Accepter GET et POST pour compatibilité GitHub Actions + meteo_open.py
