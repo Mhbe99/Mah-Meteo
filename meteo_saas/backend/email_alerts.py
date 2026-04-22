@@ -352,8 +352,8 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
     <div style="max-width:650px;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;background:#fff;">
         <!-- En-tête avec logo -->
         <div style="background:linear-gradient(135deg,{plan_color},rgba(0,0,0,0.05));padding:30px 24px;color:#fff;text-align:center;">
-            <div style="font-size:32px;margin-bottom:8px;">🌤️</div>
-            <h1 style="margin:0 0 8px 0;font-size:24px;font-weight:700;">Bienvenue dans Mah Météo</h1>
+            <div style="font-size:24px;margin-bottom:8px;">M</div>
+            <h1 style="margin:0 0 8px 0;font-size:24px;font-weight:700;">Bienvenue</h1>
             <p style="margin:0;font-size:14px;opacity:0.9;">{company_name}</p>
         </div>
         
@@ -404,11 +404,11 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
                 <h3 style="margin:0 0 12px 0;color:#276749;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Fonctionnalités</h3>
                 <ul style="margin:0;padding-left:20px;color:#4a5568;font-size:13px;line-height:1.7;list-style:none;">
                     <li style="margin-bottom:6px;">Carte interactive avec vos zones</li>
-                    <li style="margin-bottom:6px;">Prévisions météo sur 7 jours</li>
+                    <li style="margin-bottom:6px;">Prévisions météo</li>
                     <li style="margin-bottom:6px;">Alertes en temps réel</li>
                     <li style="margin-bottom:6px;">Suivi du trafic</li>
                     <li style="margin-bottom:6px;">Gestion des tournées</li>
-                    <li>Statistiques et rapports</li>
+                    <li>Rapports personnalisés</li>
                 </ul>
             </div>
             
@@ -433,5 +433,5 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
     </div>
     """
     
-    subject = f"✅ Bienvenue sur Mah Météo — Compte approuvé ({plan_label})"
+    subject = f"Bienvenue sur Mah Météo — Compte approuvé ({plan_label})"
     return _send_email(to_email, subject, html)
