@@ -31,6 +31,7 @@ class TokenResponse(BaseModel):
     token_type: str
     client_id: int
     company_name: str
+    requires_password_change: bool = False  # Indique si mot de passe temporaire
 
 
 # ============ MÉTÉO ============

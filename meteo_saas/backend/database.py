@@ -61,6 +61,7 @@ class Client(Base):
     is_admin = Column(Integer, default=0)  # 1 = administrateur
     zone_changes = Column(Integer, default=0)  # compteur de changements de zones
     trial_expires_at = Column(DateTime, nullable=True)  # Expiration essai PRO 7j après approbation
+    password_changed_at = Column(DateTime, nullable=True)  # NULL = mot de passe temporaire non changé
 
     # Relations
     zones = relationship("Zone", back_populates="client", cascade="all, delete-orphan")
@@ -225,6 +226,14 @@ def init_db():
             db.execute(text("ALTER TABLE clients ADD COLUMN trial_expires_at TIMESTAMP"))
             db.commit()
             print("  ✅ Colonne trial_expires_at ajoutée à clients")
+        except Exception:
+            db.rollback()
+        
+        # Migration: ajouter password_changed_at à la table clients (tracker changement mdp)
+        try:
+            db.execute(text("ALTER TABLE clients ADD COLUMN password_changed_at TIMESTAMP"))
+            db.commit()
+            print("  ✅ Colonne password_changed_at ajoutée à clients")
         except Exception:
             db.rollback()
         

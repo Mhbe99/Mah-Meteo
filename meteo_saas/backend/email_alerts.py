@@ -265,30 +265,23 @@ def _build_trial_block(trial_expires_at):
     
     expiry_date = trial_expires_at.strftime('%d/%m/%Y')
     return f"""<div style="background:linear-gradient(135deg,#3498db,#2980b9);border-radius:8px;padding:20px;margin-bottom:24px;color:#fff;border:2px solid #2980b9;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <div>
-                        <h3 style="margin:0 0 4px 0;font-size:16px;font-weight:700;">🎁 Essai PRO GRATUIT</h3>
-                        <p style="margin:0;font-size:12px;opacity:0.9;">Pendant 7 jours</p>
-                    </div>
-                    <div style="font-size:32px;">✨</div>
-                </div>
+                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:700;">Essai PRO GRATUIT - 7 jours</h3>
                 <div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px;margin-bottom:12px;border-left:4px solid #f39c12;">
                     <p style="margin:0;font-size:13px;line-height:1.5;">
-                        <strong>🚀 Débloquez TOUTES les fonctionnalités PRO gratuitement !</strong><br>
-                        Vous avez accès complet au plan PRO jusqu'au <strong>{expiry_date}</strong>. Découvrez :
+                        <strong>Débloquez TOUTES les fonctionnalités PRO gratuitement !</strong><br>
+                        Accès complet jusqu'au <strong>{expiry_date}</strong>.
                     </p>
                 </div>
                 <ul style="margin:0;padding-left:20px;font-size:12px;line-height:1.6;">
-                    <li>✅ <strong>5 sites</strong> GEODIS (au lieu de 1)</li>
-                    <li>✅ <strong>15 zones voisines</strong> (au lieu de 3)</li>
-                    <li>✅ <strong>5 alertes/mois</strong> par email (au lieu de 0)</li>
-                    <li>✅ <strong>30 modifications/mois</strong> (au lieu de 2)</li>
-                    <li>✅ Cartes avancées, rapports, tournées complètes</li>
+                    <li><strong>5 sites</strong> GEODIS (au lieu de 1)</li>
+                    <li><strong>15 zones voisines</strong> (au lieu de 3)</li>
+                    <li><strong>5 alertes/mois</strong> par email (au lieu de 0)</li>
+                    <li><strong>30 modifications/mois</strong> (au lieu de 2)</li>
+                    <li>Cartes avancées, rapports, tournées complètes</li>
                 </ul>
                 <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.2);">
                     <p style="margin:0;font-size:12px;">
-                        <strong>⏰ Après l'essai :</strong> Vous reviendrez automatiquement au plan FREE.
-                        Pour garder l'accès PRO, passez à un abonnement payant avant le {expiry_date}.
+                        Après l'essai : Vous reviendrez au plan FREE. Pour conserver PRO, passez à un abonnement payant avant le {expiry_date}.
                     </p>
                 </div>
             </div>"""
@@ -337,19 +330,19 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
             <td style="padding:10px 12px;border:1px solid #e2e8f0;font-weight:600;color:#2d3748;text-align:center;">Limite</td>
         </tr>
         <tr>
-            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">📍 Sites GEODIS</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">Sites GEODIS</td>
             <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#27ae60;">{limits.get('sites', 0)}</td>
         </tr>
         <tr>
-            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">🏘️ Zones voisines</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">Zones voisines</td>
             <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#27ae60;">{limits.get('voisins', 0)}</td>
         </tr>
         <tr>
-            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">✏️ Modifications/mois</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">Modifications/mois</td>
             <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#27ae60;">{limits.get('changes', 0)}</td>
         </tr>
         <tr>
-            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">📧 Alertes par email/mois</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#4a5568;">Alertes par email/mois</td>
             <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#27ae60;">{limits.get('emails', 0)}</td>
         </tr>
     </table>
@@ -366,12 +359,12 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
         
         <!-- Contenu principal -->
         <div style="padding:30px 24px;">
-            <h2 style="color:#2d3748;font-size:18px;margin:0 0 8px 0;">✅ Votre compte a été approuvé !</h2>
+            <h2 style="color:#2d3748;font-size:18px;margin:0 0 8px 0;">Compte approuvé !</h2>
             <p style="color:#718096;font-size:14px;margin:0 0 24px 0;">Voici vos identifiants et le récapitulatif de votre abonnement.</p>
             
             <!-- Bloc identifiants -->
             <div style="background:#f0f9ff;border:2px solid #bee3f8;border-radius:8px;padding:16px;margin-bottom:24px;">
-                <h3 style="margin:0 0 12px 0;color:#2b6cb0;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">🔐 Vos identifiants</h3>
+                <h3 style="margin:0 0 12px 0;color:#2b6cb0;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Vos identifiants</h3>
                 <div style="margin-bottom:12px;">
                     <label style="display:block;font-size:11px;color:#718096;font-weight:600;margin-bottom:4px;">Identifiant</label>
                     <div style="background:#fff;border:1px solid #cbd5e0;border-radius:4px;padding:10px 12px;font-family:monospace;font-size:14px;color:#2d3748;font-weight:600;word-break:break-all;">{username}</div>
@@ -380,12 +373,12 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
                     <label style="display:block;font-size:11px;color:#718096;font-weight:600;margin-bottom:4px;">Mot de passe temporaire</label>
                     <div style="background:#fff;border:1px solid #cbd5e0;border-radius:4px;padding:10px 12px;font-family:monospace;font-size:14px;color:#2d3748;font-weight:600;word-break:break-all;">{temp_password}</div>
                 </div>
-                <p style="color:#c53030;font-size:12px;margin:12px 0 0 0;font-weight:600;">⚠️ Ce mot de passe est temporaire. Vous devrez le changer lors de votre première connexion.</p>
+                <p style="color:#c53030;font-size:12px;margin:12px 0 0 0;font-weight:600;">IMPORTANT : Ce mot de passe est temporaire. Vous devrez le changer lors de votre première connexion.</p>
             </div>
             
             <!-- Bloc plan -->
             <div style="background:linear-gradient(135deg,rgba(0,0,0,0.02),rgba(0,0,0,0.04));border-left:4px solid {plan_color};border-radius:8px;padding:16px;margin-bottom:24px;">
-                <h3 style="margin:0 0 12px 0;color:#2d3748;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">📦 Votre plan</h3>
+                <h3 style="margin:0 0 12px 0;color:#2d3748;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Votre plan</h3>
                 <div style="font-size:18px;font-weight:700;color:{plan_color};margin-bottom:12px;">{plan_label}</div>
                 <p style="color:#718096;font-size:13px;margin:0;">Voici vos quotas de démarrage :</p>
                 {limits_html}
@@ -396,7 +389,7 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
             
             <!-- Bloc guide -->
             <div style="background:#fffaf0;border:1px solid #feebc8;border-radius:8px;padding:16px;margin-bottom:24px;">
-                <h3 style="margin:0 0 12px 0;color:#c05621;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">📚 Guide de démarrage</h3>
+                <h3 style="margin:0 0 12px 0;color:#c05621;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Guide de démarrage</h3>
                 <ol style="margin:0;padding-left:20px;color:#4a5568;font-size:13px;line-height:1.7;">
                     <li style="margin-bottom:8px;"><strong>Connectez-vous</strong> avec vos identifiants ci-dessus</li>
                     <li style="margin-bottom:8px;"><strong>Changez votre mot de passe</strong> lors de la première connexion</li>
@@ -408,14 +401,14 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
             
             <!-- Bloc fonctionnalités -->
             <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:16px;margin-bottom:24px;">
-                <h3 style="margin:0 0 12px 0;color:#276749;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">✨ Vos fonctionnalités</h3>
+                <h3 style="margin:0 0 12px 0;color:#276749;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Fonctionnalités</h3>
                 <ul style="margin:0;padding-left:20px;color:#4a5568;font-size:13px;line-height:1.7;list-style:none;">
-                    <li style="margin-bottom:6px;">✅ Carte interactive avec vos zones</li>
-                    <li style="margin-bottom:6px;">✅ Prévisions météo sur 7 jours</li>
-                    <li style="margin-bottom:6px;">✅ Alertes en temps réel</li>
-                    <li style="margin-bottom:6px;">✅ Suivi du trafic</li>
-                    <li style="margin-bottom:6px;">✅ Gestion des tournées</li>
-                    <li>✅ Statistiques et rapports</li>
+                    <li style="margin-bottom:6px;">Carte interactive avec vos zones</li>
+                    <li style="margin-bottom:6px;">Prévisions météo sur 7 jours</li>
+                    <li style="margin-bottom:6px;">Alertes en temps réel</li>
+                    <li style="margin-bottom:6px;">Suivi du trafic</li>
+                    <li style="margin-bottom:6px;">Gestion des tournées</li>
+                    <li>Statistiques et rapports</li>
                 </ul>
             </div>
             

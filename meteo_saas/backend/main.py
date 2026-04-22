@@ -192,7 +192,8 @@ def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_
         access_token=token,
         token_type="bearer",
         client_id=client.id,
-        company_name=client.company_name
+        company_name=client.company_name,
+        requires_password_change=client.password_changed_at is None  # Mdp temporaire si jamais changé
     )
 
 
@@ -783,6 +784,7 @@ def change_password(client_id: int, data: PasswordChangeRequest, request: Reques
     if len(data.new_password) < 8:
         raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 8 caractères")
     client.password_hash = hash_password(data.new_password)
+    client.password_changed_at = datetime.now()  # Marquer que le mdp a été changé
     db.commit()
     return {"status": "ok", "message": "Mot de passe mis à jour"}
 
