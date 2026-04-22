@@ -1074,6 +1074,28 @@
     </div>
 </div>
 
+<!-- MODAL: CHANGER LE MOT DE PASSE OBLIGATOIRE (premier login) -->
+<div id="password-change-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div class="login-box" style="max-width:440px;">
+        <h2 style="text-align:center;color:#2c3e50;margin-bottom:20px;">Changement de mot de passe requis</h2>
+        <p style="color:#718096;text-align:center;margin-bottom:20px;font-size:14px;">
+            Bienvenue! Vous devez changer votre mot de passe temporaire pour continuer.
+        </p>
+        <form id="password-change-form">
+            <div class="form-group">
+                <label>Nouveau mot de passe</label>
+                <input type="password" id="new-password" placeholder="Min. 8 caractères" required minlength="8">
+            </div>
+            <div class="form-group">
+                <label>Confirmer</label>
+                <input type="password" id="confirm-password" placeholder="Confirmez" required minlength="8">
+            </div>
+            <div class="login-error" id="password-change-error"></div>
+            <button type="submit" class="login-btn">Valider le mot de passe</button>
+        </form>
+    </div>
+</div>
+
 <!-- DASHBOARD -->
 <div id="dashboard">
     <header>
@@ -1579,15 +1601,67 @@
             TOKEN = data.access_token;
             CLIENT_ID = data.client_id;
             COMPANY_NAME = data.company_name;
+            const requiresPasswordChange = data.requires_password_change || false;
 
             localStorage.setItem("token", TOKEN);
             localStorage.setItem("client_id", CLIENT_ID);
             localStorage.setItem("company_name", COMPANY_NAME);
 
-            showDashboard();
+            // Si changement de password requis, afficher le modal
+            if (requiresPasswordChange) {
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("password-change-modal").style.display = "flex";
+            } else {
+                showDashboard();
+            }
         } catch (error) {
             document.getElementById("login-error").textContent = error.message;
             document.getElementById("login-error").style.display = "block";
+        }
+    });
+
+    // ============ PASSWORD CHANGE (FORCED) ============
+    document.getElementById("password-change-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const newPassword = document.getElementById("new-password").value;
+        const confirmPassword = document.getElementById("confirm-password").value;
+        const errorEl = document.getElementById("password-change-error");
+        
+        if (newPassword !== confirmPassword) {
+            errorEl.textContent = "Les mots de passe ne correspondent pas";
+            errorEl.style.display = "block";
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            errorEl.textContent = "Min. 8 caractères requis";
+            errorEl.style.display = "block";
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/account/${CLIENT_ID}/password`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${TOKEN}`
+                },
+                body: JSON.stringify({
+                    current_password: "", // Le serveur ne demande pas l'ancien mdp pour le premier changement
+                    new_password: newPassword
+                })
+            });
+            
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Erreur changement de password");
+            
+            // Masquer le modal et afficher le dashboard
+            document.getElementById("password-change-modal").style.display = "none";
+            showDashboard();
+        } catch (error) {
+            errorEl.textContent = error.message;
+            errorEl.style.display = "block";
         }
     });
 

@@ -773,14 +773,21 @@ class PasswordChangeRequest(BaseModel):
 @limiter.limit("5/minute")
 @app.post("/api/account/{client_id}/password")
 def change_password(client_id: int, data: PasswordChangeRequest, request: Request, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
-    """Change le mot de passe du client authentifié."""
+    """Change le mot de passe du client authentifié.
+       Permet le changement sans vérifier l'ancien password si c'est le premier changement (password_changed_at == NULL).
+    """
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client introuvable")
-    if not verify_password(data.current_password, client.password_hash):
-        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    
+    # Permettre changement sans vérif si c'est le premier changement (password_changed_at == NULL)
+    if client.password_changed_at is not None:
+        # Pas le premier changement: vérifier l'ancien password
+        if not verify_password(data.current_password, client.password_hash):
+            raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    
     if len(data.new_password) < 8:
         raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 8 caractères")
     client.password_hash = hash_password(data.new_password)
