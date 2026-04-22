@@ -10,7 +10,7 @@ import httpx
 import secrets
 import string
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -847,7 +847,7 @@ def get_pending_users(current_client: int = Depends(require_admin), db: Session 
 
 @app.post("/api/admin/approve/{user_id}")
 def approve_user(user_id: int, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
-    """Approuve un compte en attente et envoie un email de bienvenue."""
+    """Approuve un compte en attente, active essai PRO 7j, et envoie email de bienvenue."""
     user = db.query(Client).filter(Client.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
@@ -860,16 +860,23 @@ def approve_user(user_id: int, current_client: int = Depends(require_admin), db:
     user.password_hash = hash_password(temp_password)
     user.active = 1
     
+    # Ajouter essai PRO gratuit 7 jours (démarre immédiatement)
+    user.trial_expires_at = datetime.now() + timedelta(days=7)
+    
+    # Forcer plan "free" au départ (pour diriger vers upgrade après trial)
+    # Les utilisateurs obtiendront accès PRO durant 7j grâce à trial_expires_at
+    user.plan = "free"
+    
     # Récupérer les quotas du plan
     PLAN_LIMITS = {
-        "free":       {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3},
+        "free":       {"sites": 1, "voisins": 3,  "emails": 0, "changes": 2},
         "standard":   {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3},
         "pro":        {"sites": 3, "voisins": 8,  "emails": 3, "changes": 10},
         "enterprise": {"sites": 5, "voisins": 15, "emails": 5, "changes": 30},
         "groupe":     {"sites": 5, "voisins": 15, "emails": 5, "changes": 30},
-        "gratuit":    {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3}
+        "gratuit":    {"sites": 1, "voisins": 3,  "emails": 0, "changes": 2}
     }
-    plan_limits = PLAN_LIMITS.get(user.plan or "standard", PLAN_LIMITS["standard"])
+    plan_limits = PLAN_LIMITS.get(user.plan or "free", PLAN_LIMITS["free"])
     
     db.commit()
     
@@ -880,8 +887,9 @@ def approve_user(user_id: int, current_client: int = Depends(require_admin), db:
             username=user.username,
             temp_password=temp_password,
             company_name=user.company_name or "Votre Entreprise",
-            plan=user.plan or "standard",
-            limits=plan_limits
+            plan=user.plan or "free",
+            limits=plan_limits,
+            trial_expires_at=user.trial_expires_at
         )
         print(f"[APPROVE] Email envoyé à {user.email}")
     except Exception as e:

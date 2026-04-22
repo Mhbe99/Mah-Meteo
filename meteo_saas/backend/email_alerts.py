@@ -260,14 +260,15 @@ def send_combined_alert(to_email: str, company_name: str, message: str):
 
 # ============ EMAIL DE BIENVENUE (APPROBATION) ============
 
-def send_welcome_email(to_email: str, username: str, temp_password: str, company_name: str, plan: str, limits: dict):
+def send_welcome_email(to_email: str, username: str, temp_password: str, company_name: str, plan: str, limits: dict, trial_expires_at=None):
     """
     Envoie un email de bienvenue après approbation de l'inscription.
     
     Inclut :
     - Identifiant (username)
     - Mot de passe temporaire
-    - Quotas de démarrage
+    - Quotas de démarrage (FREE = très limité)
+    - Offre essai PRO 7j gratuit
     - Guide d'utilisation
     - Lien de connexion
     """
@@ -352,6 +353,36 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
                 <div style="font-size:18px;font-weight:700;color:{plan_color};margin-bottom:12px;">{plan_label}</div>
                 <p style="color:#718096;font-size:13px;margin:0;">Voici vos quotas de démarrage :</p>
                 {limits_html}
+            </div>
+            
+            <!-- Bloc essai PRO gratuit 7j -->
+            <div style="background:linear-gradient(135deg,#3498db,#2980b9);border-radius:8px;padding:20px;margin-bottom:24px;color:#fff;border:2px solid #2980b9;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div>
+                        <h3 style="margin:0 0 4px 0;font-size:16px;font-weight:700;">🎁 Essai PRO GRATUIT</h3>
+                        <p style="margin:0;font-size:12px;opacity:0.9;">Pendant 7 jours</p>
+                    </div>
+                    <div style="font-size:32px;">✨</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px;margin-bottom:12px;border-left:4px solid #f39c12;">
+                    <p style="margin:0;font-size:13px;line-height:1.5;">
+                        <strong>🚀 Débloquez TOUTES les fonctionnalités PRO gratuitement !</strong><br>
+                        Vous avez accès complet au plan PRO jusqu'au <strong>{trial_expires_at.strftime('%d/%m/%Y')}</strong>. Découvrez :
+                    </p>
+                </div>
+                <ul style="margin:0;padding-left:20px;font-size:12px;line-height:1.6;">
+                    <li>✅ <strong>5 sites</strong> GEODIS (au lieu de 1)</li>
+                    <li>✅ <strong>15 zones voisines</strong> (au lieu de 3)</li>
+                    <li>✅ <strong>5 alertes/mois</strong> par email (au lieu de 0)</li>
+                    <li>✅ <strong>30 modifications/mois</strong> (au lieu de 2)</li>
+                    <li>✅ Cartes avancées, rapports, tournées complètes</li>
+                </ul>
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.2);">
+                    <p style="margin:0;font-size:12px;">
+                        <strong>⏰ Après l'essai :</strong> Vous reviendrez automatiquement au plan FREE.
+                        Pour garder l'accès PRO, passez à un abonnement payant avant le {trial_expires_at.strftime('%d/%m/%Y')}.
+                    </p>
+                </div>
             </div>
             
             <!-- Bloc guide -->

@@ -60,6 +60,7 @@ class Client(Base):
     active = Column(Integer, default=1)  # booléen stocké comme 0/1
     is_admin = Column(Integer, default=0)  # 1 = administrateur
     zone_changes = Column(Integer, default=0)  # compteur de changements de zones
+    trial_expires_at = Column(DateTime, nullable=True)  # Expiration essai PRO 7j après approbation
 
     # Relations
     zones = relationship("Zone", back_populates="client", cascade="all, delete-orphan")
