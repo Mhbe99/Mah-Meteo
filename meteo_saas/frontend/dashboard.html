@@ -1596,6 +1596,11 @@
         document.getElementById("dashboard").style.display = "flex";
         document.getElementById("company-name").textContent = COMPANY_NAME;
 
+        // Charger les zones du client pour les tournées
+        if (window._loadClientDestinations) {
+            window._loadClientDestinations();
+        }
+
         // Charger les données météo (Open-Meteo direct depuis le navigateur)
         refreshData();
 
@@ -2543,44 +2548,39 @@
     (function () {
         'use strict';
 
-        // ======================================================
-        // BASE DE DESTINATIONS — sites + voisins connus
-        // Construite à partir de clients.json (GEODIS — Le Meux)
-        // ======================================================
-        const baseDestinations = [
-            { ville: "Le Meux",              type: "site"  },
-            { ville: "Clairoix",             type: "site"  },
-            { ville: "Compiègne",            type: "voisin" },
-            { ville: "Creil",                type: "voisin" },
-            { ville: "Beauvais",             type: "voisin" },
-            { ville: "Chantilly",            type: "voisin" },
-            { ville: "Noyon",                type: "voisin" },
-            { ville: "Senlis",               type: "voisin" },
-            { ville: "Méru",                 type: "voisin" },
-            { ville: "Nogent-sur-Oise",      type: "voisin" },
-            { ville: "Clermont",             type: "voisin" },
-            { ville: "Montataire",           type: "voisin" },
-            { ville: "Liancourt",            type: "voisin" },
-            { ville: "Chaumont-en-Vexin",    type: "voisin" },
-            { ville: "Formerie",             type: "voisin" },
-            { ville: "Pont-Sainte-Maxence",  type: "voisin" },
-            { ville: "Margny-lès-Compiègne", type: "voisin" },
-            { ville: "Lacroix-Saint-Ouen",   type: "voisin" },
-            { ville: "Verberie",             type: "voisin" },
-            { ville: "Thourotte",            type: "voisin" },
-            { ville: "Breteuil",             type: "voisin" },
-            { ville: "St Just en Chaussée", type: "voisin" },
-            { ville: "Trosly-Breuil",       type: "voisin" },
-            { ville: "Crépy-en-Valois",     type: "voisin" },
-            { ville: "Saint-Maximin",        type: "voisin" },
-            { ville: "Nanteuil-le-Haudouin", type: "voisin" },
-            { ville: "Ressons-sur-Matz",     type: "voisin" },
-            { ville: "Estrées-Saint-Denis",  type: "voisin" },
-            { ville: "Guiscard",             type: "voisin" },
-            { ville: "Chambly",              type: "voisin" },
-            { ville: "Crèvecoeur-le-Grand",  type: "voisin" },
-            { ville: "Mouy",                 type: "voisin" }
-        ];
+        // Destinations chargées dynamiquement depuis l'API du client
+        let baseDestinations = [];
+
+        // Charger les zones du client depuis l'API
+        async function loadClientDestinations() {
+            try {
+                if (!TOKEN || !CLIENT_ID) {
+                    console.warn('[Tournées] Pas de token/client_id, utilisant destinations vides');
+                    baseDestinations = [];
+                    return;
+                }
+                const response = await fetch(`/api/zones/${CLIENT_ID}`, {
+                    headers: { "Authorization": `Bearer ${TOKEN}` }
+                });
+                if (!response.ok) {
+                    console.warn(`[Tournées] Erreur chargement zones: ${response.status}`);
+                    baseDestinations = [];
+                    return;
+                }
+                const zones = await response.json();
+                baseDestinations = zones.map(z => ({
+                    ville: z.name,
+                    type: z.type === "site" ? "site" : "voisin"
+                }));
+                console.log(`[Tournées] ${baseDestinations.length} zones chargées`);
+            } catch (e) {
+                console.warn('[Tournées] Erreur load destinations:', e);
+                baseDestinations = [];
+            }
+        }
+        
+        // Exposer en global pour que showDashboard() puisse l'appeler
+        window._loadClientDestinations = loadClientDestinations;
 
         // Liste plate de toutes les villes connues (source de vérité)
         function _getToutesVillesConnues() {
