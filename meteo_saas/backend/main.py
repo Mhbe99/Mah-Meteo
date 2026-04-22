@@ -7,6 +7,8 @@ import os
 import hmac
 import ipaddress
 import httpx
+import secrets
+import string
 from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header, Query
@@ -30,7 +32,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from .clients import get_meteo_actuelle, get_previsions, get_alertes, get_zones
 from .trafic import get_incidents
-from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert
+from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert, send_welcome_email
 
 load_dotenv()
 
@@ -845,13 +847,47 @@ def get_pending_users(current_client: int = Depends(require_admin), db: Session 
 
 @app.post("/api/admin/approve/{user_id}")
 def approve_user(user_id: int, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
-    """Approuve un compte en attente."""
+    """Approuve un compte en attente et envoie un email de bienvenue."""
     user = db.query(Client).filter(Client.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    
+    # Générer un mot de passe temporaire fort (12 caractères)
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+    
+    # Hacher et assigner le mot de passe
+    user.password_hash = hash_password(temp_password)
     user.active = 1
+    
+    # Récupérer les quotas du plan
+    PLAN_LIMITS = {
+        "free":       {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3},
+        "standard":   {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3},
+        "pro":        {"sites": 3, "voisins": 8,  "emails": 3, "changes": 10},
+        "enterprise": {"sites": 5, "voisins": 15, "emails": 5, "changes": 30},
+        "groupe":     {"sites": 5, "voisins": 15, "emails": 5, "changes": 30},
+        "gratuit":    {"sites": 1, "voisins": 5,  "emails": 1, "changes": 3}
+    }
+    plan_limits = PLAN_LIMITS.get(user.plan or "standard", PLAN_LIMITS["standard"])
+    
     db.commit()
-    return {"status": "ok", "message": f"Compte {user.username} approuvé"}
+    
+    # Envoyer l'email de bienvenue
+    try:
+        send_welcome_email(
+            to_email=user.email,
+            username=user.username,
+            temp_password=temp_password,
+            company_name=user.company_name or "Votre Entreprise",
+            plan=user.plan or "standard",
+            limits=plan_limits
+        )
+        print(f"[APPROVE] Email envoyé à {user.email}")
+    except Exception as e:
+        print(f"[APPROVE] Erreur envoi email: {e}")
+    
+    return {"status": "ok", "message": f"Compte {user.username} approuvé et email envoyé"}
 
 
 @app.post("/api/admin/reject/{user_id}")
