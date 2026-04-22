@@ -772,6 +772,14 @@ class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str
 
+
+class AdminSetPasswordRequest(BaseModel):
+    new_password: str
+
+
+class AdminWelcomeEmailTestRequest(BaseModel):
+    to_email: Optional[str] = None
+
 @limiter.limit("5/minute")
 @app.post("/api/account/{client_id}/password")
 def change_password(client_id: int, data: PasswordChangeRequest, request: Request, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
@@ -964,6 +972,63 @@ def reset_account_data(user_id: int, current_client: int = Depends(require_admin
             "alertes": deleted_alertes,
             "trafic": deleted_trafic,
         }
+    }
+
+
+@app.post("/api/admin/set-password/{user_id}")
+def admin_set_password(user_id: int, data: AdminSetPasswordRequest, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
+    """Permet à un administrateur de définir un nouveau mot de passe utilisateur."""
+    user = db.query(Client).filter(Client.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    if not data.new_password or len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caractères")
+
+    user.password_hash = hash_password(data.new_password)
+    user.password_changed_at = datetime.now()
+    db.commit()
+
+    return {
+        "status": "ok",
+        "message": f"Mot de passe mis à jour pour {user.username}",
+        "user_id": user.id,
+    }
+
+
+@app.post("/api/admin/test-welcome-email/{user_id}")
+def admin_test_welcome_email(user_id: int, data: AdminWelcomeEmailTestRequest, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
+    """Envoie un email de bienvenue de test vers une boîte cible (ou SMTP_USER par défaut)."""
+    user = db.query(Client).filter(Client.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    plan_limits = PLAN_LIMITS.get(user.plan or "free", PLAN_LIMITS["free"])
+
+    test_target = (data.to_email or os.getenv("SMTP_USER") or os.getenv("SENDER_EMAIL") or user.email or "").strip()
+    if not test_target:
+        raise HTTPException(status_code=400, detail="Aucune adresse email cible disponible")
+
+    # Mot de passe indicatif uniquement pour le mail de test
+    temp_password_for_email = "123abc123"
+
+    ok = send_welcome_email(
+        to_email=test_target,
+        username=user.username,
+        temp_password=temp_password_for_email,
+        company_name=user.company_name or "Votre Entreprise",
+        plan=user.plan or "free",
+        limits=plan_limits,
+        trial_expires_at=user.trial_expires_at,
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Echec envoi email de test")
+
+    return {
+        "status": "ok",
+        "message": "Email de bienvenue de test envoyé",
+        "to_email": test_target,
+        "user_id": user.id,
     }
 
 
