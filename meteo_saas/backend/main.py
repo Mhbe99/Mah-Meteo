@@ -25,7 +25,7 @@ from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address)
 
-from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog
+from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog, AlerteLog, TrafficIncident
 from .auth import create_token, verify_password, get_current_client, hash_password
 from .models import LoginRequest, RegisterRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
 from pydantic import BaseModel
@@ -592,8 +592,8 @@ def _risk_text(temp, wind, precip, uv):
     elif wind >= 50: r.append("🟠 Vent fort")
     if precip >= 10: r.append("🔴 Fortes pluies")
     elif precip >= 3: r.append("🟠 Pluie modérée")
-    if uv >= 8: r.append("🔴 UV extrême")
-    elif uv >= 6: r.append("🟠 UV élevé")
+    if uv >= 10: r.append("🔴 UV extrême")
+    elif uv >= 7: r.append("🟠 UV élevé")
     return " | ".join(r) if r else "✅ RAS"
 
 @app.post("/api/refresh/{client_id}")
@@ -616,7 +616,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
                 f"https://api.open-meteo.com/v1/forecast?"
                 f"latitude={zone.lat}&longitude={zone.lon}"
                 f"&current_weather=true"
-                f"&hourly=precipitation,cloudcover"
+                f"&hourly=precipitation,cloudcover,uv_index"
                 f"&daily=uv_index_max"
                 f"&timezone=auto"
             )
@@ -634,16 +634,18 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
             # Pluie et nuages à l'heure courante
             precip = 0.0
             cloud = 0.0
+            uv = 0.0
             if current_time in times:
                 idx = times.index(current_time)
                 precip = hourly.get("precipitation", [0.0])[idx] or 0.0
                 cloud = hourly.get("cloudcover", [0.0])[idx] or 0.0
+                uv = hourly.get("uv_index", [0.0])[idx] or 0.0
 
-            # UV du jour
-            uv = 0.0
-            daily_uv = data.get("daily", {}).get("uv_index_max", [])
-            if daily_uv:
-                uv = daily_uv[0] or 0.0
+            # Fallback: si UV horaire indisponible, utiliser UV max du jour
+            if uv == 0.0:
+                daily_uv = data.get("daily", {}).get("uv_index_max", [])
+                if daily_uv:
+                    uv = daily_uv[0] or 0.0
 
             temp = current.get("temperature", 0)
             wind = current.get("windspeed", 0)
@@ -875,6 +877,18 @@ def approve_user(user_id: int, current_client: int = Depends(require_admin), db:
     # Forcer plan "free" au départ (pour diriger vers upgrade après trial)
     # Les utilisateurs obtiendront accès PRO durant 7j grâce à trial_expires_at
     user.plan = "free"
+    user.zone_changes = 0
+    user.password_changed_at = None
+
+    # Isolation stricte: un compte nouvellement approuvé doit démarrer sans historique ni zones.
+    zone_ids = [zid for (zid,) in db.query(Zone.id).filter(Zone.client_id == user.id).all()]
+    if zone_ids:
+        db.query(MeteoSnapshot).filter(MeteoSnapshot.zone_id.in_(zone_ids)).delete(synchronize_session=False)
+        db.query(PrevisionCache).filter(PrevisionCache.zone_id.in_(zone_ids)).delete(synchronize_session=False)
+        db.query(Zone).filter(Zone.client_id == user.id).delete(synchronize_session=False)
+
+    db.query(AlerteLog).filter(AlerteLog.client_id == user.id).delete(synchronize_session=False)
+    db.query(TrafficIncident).filter(TrafficIncident.client_id == user.id).delete(synchronize_session=False)
     
     # Récupérer les quotas du plan
     PLAN_LIMITS = {
