@@ -220,6 +220,14 @@ def init_db():
         except Exception:
             db.rollback()
         
+        # Migration: ajouter trial_expires_at à la table clients (7-day PRO trial)
+        try:
+            db.execute(text("ALTER TABLE clients ADD COLUMN trial_expires_at TIMESTAMP"))
+            db.commit()
+            print("  ✅ Colonne trial_expires_at ajoutée à clients")
+        except Exception:
+            db.rollback()
+        
         # Migration: mettre à jour le mot de passe des clients JSON depuis INIT_CLIENT_PASSWORD
         init_password = os.getenv("INIT_CLIENT_PASSWORD")
         if init_password:
