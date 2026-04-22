@@ -92,7 +92,7 @@ def _zones_depuis_client(client):
 
 
 def get_jwt_token(client_id=1, username="geodis-lemeux"):
-    """🔐 Récupère le JWT token pour l'authentification Render
+    """Récupère le JWT token pour l'authentification Render
     
     Priorité :
     1. Appel GET /api/service/token sur Render (toujours frais)
@@ -111,14 +111,14 @@ def get_jwt_token(client_id=1, username="geodis-lemeux"):
             data = response.json()
             token = data.get("token") or data.get("access_token")
             if token:
-                print("[✅ Token généré par Render]")
+                print("[Token généré par Render]")
                 return token
     except Exception as e:
-        print(f"[⚠️ Erreur récupération token Render: {e}]")
+        print(f"[Erreur récupération token Render: {e}]")
     
     # Priorité 2: Token pré-configuré depuis env
     if RENDER_API_TOKEN:
-        print("[✅ Token depuis env (RENDER_API_TOKEN)]")
+        print("[Token depuis env (RENDER_API_TOKEN)]")
         return RENDER_API_TOKEN
     
     # Priorité 3: Générer un token localement (dev/fallback)
@@ -138,7 +138,7 @@ def get_jwt_token(client_id=1, username="geodis-lemeux"):
 
 
 def post_to_render(zone_name: str, temp, wind, direction, precip, cloudcover, uv, risques, ciel, client_id=1):
-    """📤 Envoie les données à Render API.
+    """Envoie les données à Render API.
        client_id permet le multi-tenant."""
     try:
         token = get_jwt_token(client_id=client_id)
@@ -266,14 +266,14 @@ def get_risk_icons(temp, wind, rain, uv, test_mode=False):
         risk.append("🧪 TEST ALERTE")
     return "<br>".join(risk) if risk else "✅ RAS"
 
-def save_to_saas_db(zone_name, temp, wind, direction, precip, cloudcover, uv, risques, ciel):
+def save_to_saas_db(zone_name, temp, wind, direction, precip, cloudcover, uv, risques, ciel, client_id=1):
     """Sauvegarde les données météo dans la base SaaS"""
     if not DB_AVAILABLE:
         return
     try:
         db = SessionLocal()
-        # Récupérer la zone du client
-        zone = db.query(Zone).filter(Zone.name.like(f"%{zone_name}%")).first()
+        # Récupérer la zone du client SPÉCIFIQUE (FIX: filtre par client_id)
+        zone = db.query(Zone).filter(Zone.client_id == client_id, Zone.name.like(f"%{zone_name}%")).first()
         if not zone:
             db.close()
             return
@@ -294,7 +294,7 @@ def save_to_saas_db(zone_name, temp, wind, direction, precip, cloudcover, uv, ri
         db.commit()
         db.close()
     except Exception as e:
-        print(f"⚠️ Erreur sauvegarde DB {zone_name}: {e}")
+        print(f"Erreur sauvegarde DB {zone_name}: {e}")
 
 
 def _executer_pour_client(client):
@@ -332,7 +332,7 @@ def _executer_pour_client(client):
 
             current = data.get("current_weather", {})
 
-            # 🌧️ Récupération pluie actuelle depuis hourly
+            # Récupération pluie actuelle depuis hourly
             hourly = data.get("hourly", {})
             precip_now = 0
             if "time" in hourly and "precipitation" in hourly:
@@ -342,7 +342,7 @@ def _executer_pour_client(client):
                     idx = hourly["time"].index(now_str)
                     precip_now = hourly["precipitation"][idx]
 
-            # ☁️ Récupération couverture nuageuse actuelle depuis hourly
+            # Récupération couverture nuageuse actuelle depuis hourly
             cloud_now = 0
             if "time" in hourly and "cloudcover" in hourly:
                 now = datetime.datetime.now().replace(minute=0, second=0, microsecond=0)
@@ -351,13 +351,13 @@ def _executer_pour_client(client):
                     idx = hourly["time"].index(now_str)
                     cloud_now = hourly["cloudcover"][idx]
 
-            # 🌞 Récupération UV du jour (journée actuelle)
+            # Récupération UV du jour (journée actuelle)
             uv_today = 0
             if "uv_index_max" in data.get("daily", {}) and len(data["daily"]["uv_index_max"]) > 0:
                 uv_today = data["daily"]["uv_index_max"][0]
 
             direction = get_wind_direction(current.get("winddirection", 0))
-            # 🌦️ Déterminer le ciel selon conditions
+            # Déterminer le ciel selon conditions
             if precip_now > 0:
                 ciel = "🌧️"
             elif cloud_now > 75:
@@ -370,7 +370,7 @@ def _executer_pour_client(client):
                 ciel = "☀️"
             risque = get_risk_icons(current.get("temperature", 0), current.get("windspeed", 0), precip_now, uv_today)
             
-            # 💾 SAUVEGARDE DANS BD SAAS
+            # SAUVEGARDE DANS BD SAAS
             risque_clean = risque.replace("<br>", " | ")
             save_to_saas_db(
                 zone_name=zone,
@@ -381,10 +381,11 @@ def _executer_pour_client(client):
                 cloudcover=cloud_now,
                 uv=uv_today,
                 risques=risque_clean,
-                ciel=ciel
+                ciel=ciel,
+                client_id=client_id
             )
             
-            # 📤 TOUJOURS envoyer à Render même si sauvegarde DB locale échoue
+            # TOUJOURS envoyer à Render même si sauvegarde DB locale échoue
             post_to_render(
                 zone_name=zone,
                 temp=current.get("temperature", 0),
@@ -401,11 +402,11 @@ def _executer_pour_client(client):
             print(f"Error fetching data for {zone}: {e}")
             continue
 
-        # ✅ ENVOI MAIL EN CAS DE RISQUE
+        # ENVOI MAIL EN CAS DE RISQUE
         if "✅ RAS" not in risque:
             send_email_alerte(zone,f"Risque détecté à{zone}:\n{risque.replace('<br>',',')}")
             
-            # 📁 ARCHIVAGE DE L'ALERTE POUR HISTORIQUE
+            # ARCHIVAGE DE L'ALERTE POUR HISTORIQUE
             archive_file = os.path.join("exports", "alertes_historique.json")
             try:
                 # Charger historique existant
