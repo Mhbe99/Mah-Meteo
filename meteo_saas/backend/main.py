@@ -932,6 +932,41 @@ def reject_user(user_id: int, current_client: int = Depends(require_admin), db: 
     return {"status": "ok", "message": f"Compte {user.username} rejeté"}
 
 
+@app.post("/api/admin/reset-account/{user_id}")
+def reset_account_data(user_id: int, current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
+    """Remet un compte client à zéro (données métier uniquement)."""
+    user = db.query(Client).filter(Client.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    zone_ids = [zid for (zid,) in db.query(Zone.id).filter(Zone.client_id == user.id).all()]
+    deleted_snapshots = 0
+    deleted_previsions = 0
+    deleted_zones = 0
+    if zone_ids:
+        deleted_snapshots = db.query(MeteoSnapshot).filter(MeteoSnapshot.zone_id.in_(zone_ids)).delete(synchronize_session=False)
+        deleted_previsions = db.query(PrevisionCache).filter(PrevisionCache.zone_id.in_(zone_ids)).delete(synchronize_session=False)
+        deleted_zones = db.query(Zone).filter(Zone.client_id == user.id).delete(synchronize_session=False)
+
+    deleted_alertes = db.query(AlerteLog).filter(AlerteLog.client_id == user.id).delete(synchronize_session=False)
+    deleted_trafic = db.query(TrafficIncident).filter(TrafficIncident.client_id == user.id).delete(synchronize_session=False)
+
+    user.zone_changes = 0
+    db.commit()
+
+    return {
+        "status": "ok",
+        "message": f"Compte {user.username} remis à zéro",
+        "deleted": {
+            "zones": deleted_zones,
+            "snapshots": deleted_snapshots,
+            "previsions": deleted_previsions,
+            "alertes": deleted_alertes,
+            "trafic": deleted_trafic,
+        }
+    }
+
+
 @app.get("/api/admin/all-connections")
 def get_all_connections(limit: int = Query(default=100, ge=1, le=200), current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
     """Retourne l'historique de connexions de TOUS les utilisateurs."""
