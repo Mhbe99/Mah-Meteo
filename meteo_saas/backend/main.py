@@ -1033,30 +1033,80 @@ def admin_test_welcome_email(user_id: int, data: AdminWelcomeEmailTestRequest, c
 
 
 @app.get("/api/admin/all-connections")
-def get_all_connections(limit: int = Query(default=100, ge=1, le=200), current_client: int = Depends(require_admin), db: Session = Depends(get_db)):
-    """Retourne l'historique de connexions de TOUS les utilisateurs."""
+def get_all_connections(
+    limit: int = Query(default=100, ge=1, le=500),
+    grouped: bool = Query(default=True),
+    current_client: int = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Retourne l'historique de connexions de TOUS les utilisateurs.
+
+    Par défaut, les connexions sont regroupées par appareil/IP pour éviter les doublons.
+    """
+    fetch_limit = min(max(limit * 10, 300), 3000) if grouped else limit
     rows = (
         db.query(ConnectionLog, Client)
         .outerjoin(Client, ConnectionLog.client_id == Client.id)
         .order_by(ConnectionLog.timestamp.desc())
-        .limit(limit)
+        .limit(fetch_limit)
         .all()
     )
-    result = []
+
+    if not grouped:
+        result = []
+        for l, client in rows:
+            result.append({
+                "id": l.id,
+                "timestamp": l.timestamp.isoformat() if l.timestamp else None,
+                "username": client.username if client else "?",
+                "company_name": client.company_name if client else "?",
+                "ip_address": l.ip_address,
+                "location": l.location or "",
+                "device_type": l.device_type,
+                "browser": l.browser,
+                "os_info": l.os_info,
+                "user_agent": l.user_agent,
+            })
+        return result
+
+    grouped_rows = {}
     for l, client in rows:
-        result.append({
-            "id": l.id,
-            "timestamp": l.timestamp.isoformat() if l.timestamp else None,
-            "username": client.username if client else "?",
-            "company_name": client.company_name if client else "?",
-            "ip_address": l.ip_address,
-            "location": l.location or "",
-            "device_type": l.device_type,
-            "browser": l.browser,
-            "os_info": l.os_info,
-            "user_agent": l.user_agent,
-        })
-    return result
+        key = (
+            l.client_id,
+            l.ip_address or "",
+            l.browser or "",
+            l.os_info or "",
+            l.device_type or "",
+        )
+
+        if key not in grouped_rows:
+            grouped_rows[key] = {
+                "id": l.id,
+                "timestamp": l.timestamp.isoformat() if l.timestamp else None,
+                "first_seen": l.timestamp.isoformat() if l.timestamp else None,
+                "last_seen": l.timestamp.isoformat() if l.timestamp else None,
+                "session_count": 1,
+                "username": client.username if client else "?",
+                "company_name": client.company_name if client else "?",
+                "ip_address": l.ip_address,
+                "location": l.location or "",
+                "device_type": l.device_type,
+                "browser": l.browser,
+                "os_info": l.os_info,
+                "user_agent": l.user_agent,
+            }
+        else:
+            grouped_rows[key]["session_count"] += 1
+            if l.timestamp and grouped_rows[key]["first_seen"]:
+                if l.timestamp.isoformat() < grouped_rows[key]["first_seen"]:
+                    grouped_rows[key]["first_seen"] = l.timestamp.isoformat()
+
+    result = sorted(
+        grouped_rows.values(),
+        key=lambda x: x["timestamp"] or "",
+        reverse=True,
+    )
+    return result[:limit]
 
 
 # ============ ROUTES FRONTEND ============

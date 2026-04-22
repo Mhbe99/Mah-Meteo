@@ -2381,7 +2381,7 @@
         const kpisEl = document.getElementById('admin-kpis');
         if (!CLIENT_ID || !TOKEN) return;
         try {
-            const resp = await fetch(`${API_URL}/api/admin/all-connections?limit=100`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            const resp = await fetch(`${API_URL}/api/admin/all-connections?limit=100&grouped=true`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
             if (!resp.ok) { container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur chargement</div>'; return; }
             const logs = await resp.json();
             if (!logs.length) { container.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:40px;font-size:13px">Aucune connexion enregistrée</div>'; kpisEl.innerHTML=''; return; }
@@ -2391,17 +2391,19 @@
             const users = new Set();
             const today = new Date().toDateString();
             let todayCount = 0;
+            let totalSessions = 0;
             logs.forEach(l => {
                 devices.add(`${l.device_type}|${l.browser}|${l.os_info}`);
                 ips.add(l.ip_address);
                 users.add(l.username);
+                totalSessions += (l.session_count || 1);
                 if (l.timestamp && new Date(l.timestamp).toDateString() === today) todayCount++;
             });
 
             kpisEl.innerHTML = `
                 <div style="background:linear-gradient(135deg,#ebf8ff,#bee3f8);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                     <div style="font-size:11px;color:#2b6cb0;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">📊 Total connexions</div>
-                    <div style="font-size:32px;font-weight:800;color:#2b6cb0;margin-top:6px">${logs.length}</div>
+                    <div style="font-size:32px;font-weight:800;color:#2b6cb0;margin-top:6px">${totalSessions}</div>
                 </div>
                 <div style="background:linear-gradient(135deg,#faf5ff,#e9d8fd);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                     <div style="font-size:11px;color:#6b46c1;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">👤 Utilisateurs</div>
@@ -2433,10 +2435,11 @@
                 const newBadge = firstSeen ? '<span style="background:#e53e3e;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">NOUVEAU</span>' : '';
                 const isToday = dt && dt.toDateString() === today;
                 const rowBg = isToday ? 'background:#fffff0;' : '';
+                const countBadge = `<span style="display:inline-block;background:#2b6cb0;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">${l.session_count || 1} session(s)</span>`;
                 return `<tr style="border-bottom:1px solid #edf2f7;${rowBg}">
                     <td style="padding:10px 12px;font-size:12px;white-space:nowrap">${dateStr}<br><span style="color:#a0aec0;font-size:11px">${timeStr}</span></td>
                     <td style="padding:10px 12px;font-size:12px;font-weight:600">${_esc(l.username) || '—'}<br><span style="font-weight:400;color:#718096;font-size:11px">${_esc(l.company_name)}</span></td>
-                    <td style="padding:10px 12px;font-size:12px">${icon} ${_esc(l.device_type) || '—'}${newBadge}</td>
+                    <td style="padding:10px 12px;font-size:12px">${icon} ${_esc(l.device_type) || '—'}${newBadge}${countBadge}</td>
                     <td style="padding:10px 12px;font-size:12px">${_esc(l.browser) || '—'} / ${_esc(l.os_info) || '—'}</td>
                     <td style="padding:10px 12px;font-size:12px">${_esc(l.location) || '—'}</td>
                     <td style="padding:10px 12px;font-size:12px;font-family:monospace;color:#718096">${_esc(l.ip_address) || '—'}</td>
