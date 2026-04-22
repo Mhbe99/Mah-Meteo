@@ -963,6 +963,35 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/diagnostics")
+def diagnostics(db: Session = Depends(get_db)):
+    """Endpoint diagnostique pour tester la connexion BD et détecter les erreurs."""
+    try:
+        # Test 1: Query the database
+        client_count = db.query(Client).count()
+        
+        # Test 2: Check table structure
+        from sqlalchemy import inspect as sqla_inspect
+        inspector = sqla_inspect(db.get_bind())
+        columns = [c['name'] for c in inspector.get_columns('clients')]
+        
+        return {
+            "status": "ok",
+            "database": "connected",
+            "client_count": client_count,
+            "client_columns": columns,
+            "has_trial_expires_at": "trial_expires_at" in columns
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 @app.head("/health")
 async def head_health():
     """FIX: Répond aux HEAD requests health check"""
