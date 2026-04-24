@@ -1769,28 +1769,31 @@
                     else if (w >= 50) r.push('🟠 Vent fort');
                     if (p >= 10) r.push('🔴 Fortes pluies');
                     else if (p >= 3) r.push('🟠 Pluie modérée');
-                    if (uv >= 8) r.push('🔴 UV extrême');
-                    else if (uv >= 6) r.push('🟠 UV élevé');
+                    if (uv >= 10) r.push('🔴 UV extrême');
+                    else if (uv >= 7) r.push('🟠 UV élevé');
                     return r.length ? r.join(' | ') : '✅ RAS';
                 };
                 const omPromises = meteo.map(async (zone) => {
                     try {
-                        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${zone.lat}&longitude=${zone.lon}&current_weather=true&hourly=precipitation,cloudcover&daily=uv_index_max&timezone=auto`;
+                        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${zone.lat}&longitude=${zone.lon}&current_weather=true&hourly=precipitation,cloudcover,uv_index&daily=uv_index_max&timezone=auto`;
                         const omResp = await fetch(omUrl, {signal: AbortSignal.timeout(6000)});
                         const omData = await omResp.json();
                         const cw = omData.current_weather || {};
                         const hourly = omData.hourly || {};
                         const curTime = cw.time || '';
                         const times = hourly.time || [];
-                        let precip = 0, cloud = 0;
+                        let precip = 0, cloud = 0, uv = 0;
                         if (curTime && times.includes(curTime)) {
                             const idx = times.indexOf(curTime);
                             precip = (hourly.precipitation || [])[idx] || 0;
                             cloud = (hourly.cloudcover || [])[idx] || 0;
+                            uv = (hourly.uv_index || [])[idx] || 0;
                         }
-                        let uv = 0;
-                        const dailyUv = (omData.daily || {}).uv_index_max || [];
-                        if (dailyUv.length) uv = dailyUv[0] || 0;
+                        // Fallback sur UV max journalier uniquement si l'UV horaire n'est pas disponible
+                        if (!uv) {
+                            const dailyUv = (omData.daily || {}).uv_index_max || [];
+                            if (dailyUv.length) uv = dailyUv[0] || 0;
+                        }
                         zone.temp = cw.temperature;
                         zone.temperature = cw.temperature;
                         zone.wind = cw.windspeed;
@@ -3560,7 +3563,7 @@
                     </div>
                     <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
                         <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">☀️ UV</div>
-                        <div style="font-size:24px;font-weight:800;color:${uv >= 8 ? '#e53e3e' : uv >= 6 ? '#dd6b20' : uv >= 3 ? '#ecc94b' : '#38a169'};margin-top:4px">${parseFloat(uv).toFixed(1)}</div>
+                        <div style="font-size:24px;font-weight:800;color:${uv >= 10 ? '#e53e3e' : uv >= 7 ? '#dd6b20' : uv >= 3 ? '#ecc94b' : '#38a169'};margin-top:4px">${parseFloat(uv).toFixed(1)}</div>
                     </div>
                     <div style="background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
                         <div style="font-size:10px;color:#718096;text-transform:uppercase;font-weight:700;letter-spacing:0.5px">🌤️ Ciel</div>
