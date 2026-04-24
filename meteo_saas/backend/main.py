@@ -9,6 +9,7 @@ import ipaddress
 import httpx
 import secrets
 import string
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header, Query
@@ -416,11 +417,27 @@ def add_meteo_snapshot(
     if client_id != current_client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
+    def _norm_zone_name(name: str) -> str:
+        # Accepte les variantes avec/sans emoji/suffixes décoratifs
+        if not name:
+            return ""
+        cleaned = re.sub(r"[^\w\s\-]", " ", str(name), flags=re.UNICODE)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
+        return cleaned
+
     # Trouver la zone (match exact insensible à la casse)
     zone = db.query(Zone).filter(
         Zone.client_id == client_id,
         Zone.name.ilike(data.zone_name)
     ).first()
+
+    # Fallback tolérant (noms avec/sans emoji, espaces, ponctuation)
+    if not zone:
+        requested = _norm_zone_name(data.zone_name)
+        for z in db.query(Zone).filter(Zone.client_id == client_id).all():
+            if _norm_zone_name(z.name) == requested:
+                zone = z
+                break
 
     if not zone:
         # Auto-créer la zone si elle existe dans clients.json
@@ -431,10 +448,11 @@ def add_meteo_snapshot(
         try:
             with open(_json_path, "r", encoding="utf-8") as _f:
                 _clients = _json.load(_f)
+            requested = _norm_zone_name(data.zone_name)
             for _c in _clients.get("clients", []):
                 for _st, _key in [("site", "sites"), ("voisin", "voisins")]:
                     for _z in _c.get("zones", {}).get(_key, []):
-                        if _z["name"].lower() == data.zone_name.lower():
+                        if _norm_zone_name(_z["name"]) == requested:
                             _coords = (_z["lat"], _z["lon"])
                             _zone_type = _st
                             break

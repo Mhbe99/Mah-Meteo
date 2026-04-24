@@ -66,7 +66,7 @@ for zone_name in TOUTES_ZONES.keys():
     
     try:
         response = requests.post(
-            f"{RENDER_API_URL}?client_id=1",
+            f"{RENDER_API_URL}?client_id={client_id}",
             headers=headers,
             json=payload,
             timeout=10
