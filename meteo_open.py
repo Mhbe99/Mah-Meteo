@@ -427,25 +427,53 @@ def _executer_pour_client(client):
                         historique = json.load(fh)
                 else:
                     historique = []
-                
-                # Ajouter nouvelle alerte avec timestamp détaillé
+
+                # Garder uniquement un historique récent (30 jours) pour éviter l'accumulation infinie
                 now = datetime.datetime.now()
-                historique.append({
+                cutoff = now - datetime.timedelta(days=30)
+                historique_recent = []
+                for h in historique:
+                    try:
+                        ts = h.get("timestamp")
+                        if not ts:
+                            continue
+                        h_dt = datetime.datetime.fromisoformat(ts)
+                        if h_dt >= cutoff:
+                            historique_recent.append(h)
+                    except Exception:
+                        continue
+
+                # Nouvelle alerte enrichie avec client_id pour un fallback multi-tenant sûr
+                new_entry = {
                     "timestamp": now.isoformat(),
                     "date": now.strftime("%Y-%m-%d"),
                     "jour_semaine": now.strftime("%A"),
                     "heure": now.strftime("%H:00"),
+                    "client_id": client_id,
                     "zone": zone,
                     "risques": risque.replace("<br>", " | "),
                     "temp": current.get("temperature", "N/A"),
                     "wind": current.get("windspeed", "N/A"),
                     "rain": precip_now
-                })
+                }
+
+                # Éviter les doublons sur la même heure / zone / risque / client
+                already_exists = any(
+                    h.get("client_id") == new_entry["client_id"]
+                    and h.get("zone") == new_entry["zone"]
+                    and h.get("risques") == new_entry["risques"]
+                    and h.get("date") == new_entry["date"]
+                    and h.get("heure") == new_entry["heure"]
+                    for h in historique_recent[-200:]
+                )
+
+                if not already_exists:
+                    historique_recent.append(new_entry)
                 
                 # Sauvegarder historique
                 os.makedirs(os.path.dirname(archive_file), exist_ok=True)
                 with open(archive_file, "w", encoding="utf-8") as fh:
-                    json.dump(historique, fh, ensure_ascii=False, indent=2)
+                    json.dump(historique_recent, fh, ensure_ascii=False, indent=2)
             except Exception as e:
                 print(f"⚠️ Erreur archivage alerte {zone}: {e}")
         current_data[zone] = {

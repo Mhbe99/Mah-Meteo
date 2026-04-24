@@ -110,8 +110,20 @@ def get_alertes(client_id: int, db: Session, limit: int = 30) -> List[Alerte]:
             with open(historique_path, "r", encoding="utf-8") as f:
                 historique = json.load(f)
 
+            # Fallback multi-tenant strict: ne garder que les entrées taggées pour ce client
+            historique_client = []
+            for h in historique:
+                h_client_id = h.get("client_id")
+                if h_client_id is None:
+                    continue
+                try:
+                    if int(h_client_id) == int(client_id):
+                        historique_client.append(h)
+                except Exception:
+                    continue
+
             alertes_list = []
-            for alert_dict in historique[-limit:]:  # Derniers limite
+            for alert_dict in historique_client[-limit:]:  # Derniers limite pour le client
                 # Créer une Alerte depuis le dict (structure peut varier)
                 alerte = Alerte(
                     zone_name=alert_dict.get("zone", "Inconnue"),
