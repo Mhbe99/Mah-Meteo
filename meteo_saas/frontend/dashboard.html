@@ -2598,6 +2598,10 @@
             showNotif(`Zone "${_selectedGeo.name}" ajoutée`);
             cancelAddZone();
             loadAccountInfo();
+            if (window._loadClientDestinations) {
+                await window._loadClientDestinations();
+                if (window.refreshTournees) window.refreshTournees();
+            }
         } catch (e) {
             showNotif(e.message);
         }
@@ -2614,6 +2618,10 @@
             if (!resp.ok) throw new Error(data.detail || "Erreur suppression");
             showNotif(`Zone "${zoneName}" supprimée`);
             loadAccountInfo();
+            if (window._loadClientDestinations) {
+                await window._loadClientDestinations();
+                if (window.refreshTournees) window.refreshTournees();
+            }
         } catch (e) { showNotif(e.message); }
     }
 
@@ -2662,6 +2670,14 @@
         
         // Exposer en global pour que showDashboard() puisse l'appeler
         window._loadClientDestinations = loadClientDestinations;
+
+        // Important: en auto-login, showDashboard peut s'exécuter avant que cette fonction existe.
+        // On force ici un chargement initial des destinations dès que le module est prêt.
+        if (TOKEN && CLIENT_ID) {
+            loadClientDestinations().then(() => {
+                if (window.refreshTournees) window.refreshTournees();
+            });
+        }
 
         // Liste plate de toutes les villes connues (source de vérité)
         function _getToutesVillesConnues() {
@@ -3246,7 +3262,10 @@
         _updateStats();
 
         // Exposer le rafraîchissement pour refreshData
-        window.refreshTournees = function() {
+        window.refreshTournees = async function() {
+            if (TOKEN && CLIENT_ID && window._loadClientDestinations) {
+                await window._loadClientDestinations();
+            }
             _renderTournees();
             _updateStats();
         };
