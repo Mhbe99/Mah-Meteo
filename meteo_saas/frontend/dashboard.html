@@ -2051,10 +2051,21 @@
         // Grouper par zone + stocker le type
         const grouped = {};
         const zoneTypes = {};
+        const meteoTypes = {};
+        (_cachedMeteo || []).forEach(z => {
+            if (z && z.name) {
+                meteoTypes[z.name.toLowerCase()] = z.type;
+            }
+        });
         previsions.forEach(p => {
             if (!grouped[p.zone]) grouped[p.zone] = [];
             grouped[p.zone].push(p);
-            if (p.zone_type) zoneTypes[p.zone] = p.zone_type;
+            if (p.zone_type) {
+                zoneTypes[p.zone] = p.zone_type;
+            } else {
+                const fallbackType = meteoTypes[(p.zone || '').toLowerCase()];
+                if (fallbackType) zoneTypes[p.zone] = fallbackType;
+            }
         });
 
         let html = "";
@@ -2657,10 +2668,18 @@
                     return;
                 }
                 const zones = await response.json();
-                baseDestinations = zones.map(z => ({
-                    ville: z.name,
-                    type: z.type === "site" ? "site" : "voisin"
-                }));
+                if (Array.isArray(zones) && zones.length > 0) {
+                    baseDestinations = zones.map(z => ({
+                        ville: z.name,
+                        type: z.type === "site" ? "site" : "voisin"
+                    }));
+                } else {
+                    // Fallback: conserver une liste exploitable depuis les données météo en cache
+                    baseDestinations = (_cachedMeteo || []).map(z => ({
+                        ville: z.name,
+                        type: z.type === "site" ? "site" : "voisin"
+                    }));
+                }
                 console.log(`[Tournées] ${baseDestinations.length} zones chargées`);
             } catch (e) {
                 console.warn('[Tournées] Erreur load destinations:', e);
