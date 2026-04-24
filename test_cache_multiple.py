@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 import requests
 import time
+import os
 from meteo_saas.backend.auth import create_token
-from meteo_saas.backend.database import SessionLocal, Client
+from meteo_saas.backend.database import SessionLocal, Client, Zone
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080")
 
 db = SessionLocal()
-client = db.query(Client).filter(Client.username == 'service-meteo').first()
+client = None
+for c in db.query(Client).filter(Client.active == 1).order_by(Client.id.asc()).all():
+    if db.query(Zone).filter(Zone.client_id == c.id).count() > 0:
+        client = c
+        break
 
 if not client:
-    print("Client not found")
-    exit(1)
+    print("SKIP: client with zones not found in local DB")
+    exit(0)
 
 token = create_token({'client_id': client.id, 'username': client.username})
 headers = {'Authorization': f'Bearer {token}'}
@@ -22,7 +29,11 @@ times = []
 for i in range(1, 6):
     print(f"\n[Appel {i}]")
     start = time.time()
-    r = requests.get(f'http://localhost:8080/api/trafic/{client.id}', headers=headers, timeout=30)
+    try:
+        r = requests.get(f'{API_BASE_URL}/api/trafic/{client.id}', headers=headers, timeout=30)
+    except requests.RequestException as e:
+        print(f"SKIP: API locale indisponible ({e})")
+        exit(0)
     elapsed = time.time() - start
     times.append(elapsed)
     

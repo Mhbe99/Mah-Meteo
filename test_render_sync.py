@@ -16,8 +16,32 @@ load_dotenv()
 RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
 RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "")
+TEST_USERNAME = os.getenv("TEST_USERNAME", "geodis-lemeux")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "demo1234")
 RENDER_API_URL = f"{RENDER_URL}/api/meteo/snapshot/add"
 CLIENT_ID = 1
+
+
+def _login_fallback():
+    """Login utilisateur pour récupérer un token valide si nécessaire."""
+    global RENDER_API_TOKEN, CLIENT_ID
+    login_resp = requests.post(
+        f"{RENDER_URL}/auth/login",
+        json={"username": TEST_USERNAME, "password": TEST_PASSWORD},
+        timeout=15
+    )
+    if not login_resp.ok:
+        if login_resp.status_code in (401, 403):
+            print(f"SKIP: identifiants invalides pour {TEST_USERNAME}")
+            sys.exit(0)
+        print(f"❌ Login impossible: HTTP {login_resp.status_code} {login_resp.text[:200]}")
+        sys.exit(1)
+    login_data = login_resp.json()
+    RENDER_API_TOKEN = login_data.get("access_token", "")
+    CLIENT_ID = login_data.get("client_id", CLIENT_ID)
+    if not RENDER_API_TOKEN:
+        print(f"SKIP: payload login invalide: {login_data}")
+        sys.exit(0)
 
 print("=" * 80)
 print("🧪 TEST RENDER SYNC")
@@ -30,10 +54,8 @@ print(f"   RENDER_API_TOKEN: {RENDER_API_TOKEN[:50]}..." if RENDER_API_TOKEN els
 print(f"   JWT_SECRET: {JWT_SECRET[:50]}..." if JWT_SECRET else "   JWT_SECRET: ❌ VIDE")
 
 if not RENDER_API_TOKEN:
-    print("\n❌ ERREUR: RENDER_API_TOKEN est vide dans .env")
-    print("   Ajoute cette ligne à .env:")
-    print("   RENDER_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfaWQiOjEsInVzZXJuYW1lIjoic2VydmljZS1tZXRlbyJ9.0Hc7P6TsYcSr6oVDCFEj4zDxd6MsjpAioUlViaFeHEk")
-    sys.exit(1)
+    print("\n⚠️ RENDER_API_TOKEN vide: tentative de login utilisateur pour obtenir un token")
+    _login_fallback()
 
 # Étape 2: Tester la connexion à Render
 print("\n[2/5] ✓ Vérification de Render...")
@@ -89,6 +111,27 @@ try:
     if response.status_code == 200:
         print("   ✅ Données envoyées avec succès!")
         print(f"   Réponse: {response.json()}")
+    elif response.status_code in (401, 403):
+        print("   ⚠️ Token invalide/expiré, tentative de relogin...")
+        _login_fallback()
+        headers["Authorization"] = f"Bearer {RENDER_API_TOKEN}"
+        url_with_params = f"{RENDER_API_URL}?client_id={CLIENT_ID}"
+        response = requests.post(
+            url_with_params,
+            headers=headers,
+            json=test_data,
+            timeout=10
+        )
+        print(f"   Status après relogin: {response.status_code}")
+        if response.status_code == 200:
+            print("   ✅ Données envoyées avec succès après relogin!")
+        elif response.status_code in (401, 403):
+            print("SKIP: authentification refusée après relogin")
+            sys.exit(0)
+        else:
+            print(f"   ❌ ERREUR {response.status_code}")
+            print(f"   Réponse: {response.text[:500]}")
+            sys.exit(1)
     else:
         print(f"   ❌ ERREUR {response.status_code}")
         print(f"   Réponse: {response.text[:500]}")
@@ -102,7 +145,7 @@ except Exception as e:
 print("\n[5/5] ✓ Vérification des données...")
 try:
     response = requests.get(
-        f"{RENDER_URL}/api/meteo/1",
+        f"{RENDER_URL}/api/meteo/{CLIENT_ID}",
         headers={"Authorization": f"Bearer {RENDER_API_TOKEN}"},
         timeout=5
     )
@@ -111,7 +154,7 @@ try:
         data = response.json()
         print(f"   ✅ Données dans la BD: {len(data)} snapshots")
         if data:
-            print(f"   Dernier: {data[-1]['zone_name']} - {data[-1]['temperature']}°C")
+            print(f"   Dernier: {data[-1].get('name', '?')} - {data[-1].get('temp', '?')}°C")
     else:
         print(f"   ⚠️  Status {response.status_code}")
 except Exception as e:

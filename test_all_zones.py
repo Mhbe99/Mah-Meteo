@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
-RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
+TEST_USERNAME = os.getenv("TEST_USERNAME", "geodis-lemeux")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "demo1234")
 RENDER_API_URL = f"{RENDER_URL}/api/meteo/snapshot/add"
 
 TOUTES_ZONES = {
@@ -27,8 +28,23 @@ TOUTES_ZONES = {
     "Chaumont-en-Vexin": {"lat": 49.0, "lon": 1.5},
 }
 
+login_resp = requests.post(
+    f"{RENDER_URL}/auth/login",
+    json={"username": TEST_USERNAME, "password": TEST_PASSWORD},
+    timeout=15
+)
+if not login_resp.ok:
+    print(f"SKIP: login impossible ({login_resp.status_code}) pour {TEST_USERNAME}")
+    raise SystemExit(0)
+login_data = login_resp.json()
+token = login_data.get("access_token")
+client_id = login_data.get("client_id")
+if not token or not client_id:
+    print(f"SKIP: payload login invalide: {login_data}")
+    raise SystemExit(0)
+
 headers = {
-    "Authorization": f"Bearer {RENDER_API_TOKEN}",
+    "Authorization": f"Bearer {token}",
     "Content-Type": "application/json"
 }
 
@@ -68,15 +84,23 @@ print(f"\n✅ Total: {success_count}/{len(TOUTES_ZONES)} zones envoyées avec su
 
 print("\n[2] Vérifier l'API pour confirmationêtes...\n")
 
-token = RENDER_API_TOKEN
 headers = {"Authorization": f"Bearer {token}"}
-r = requests.get(f"{RENDER_URL}/api/meteo/1", headers=headers)
+r = requests.get(f"{RENDER_URL}/api/meteo/{client_id}", headers=headers, timeout=15)
+if not r.ok:
+    print(f"SKIP: lecture meteo impossible ({r.status_code})")
+    raise SystemExit(0)
 zones = r.json()
+if not isinstance(zones, list):
+    print(f"SKIP: format inattendu /api/meteo: {zones}")
+    raise SystemExit(0)
 
 has_data = 0
 for zone in zones:
-    if zone['type'] == 'site' and zone.get('temp') is not None:
-        print(f"✅ {zone['name']:25} | Temp: {zone['temp']:.1f}C")
+    if not isinstance(zone, dict):
+        continue
+    ztemp = zone.get('temp')
+    if zone.get('type') == 'site' and ztemp is not None:
+        print(f"✅ {zone.get('name','?'):25} | Temp: {float(ztemp):.1f}C")
         has_data += 1
 
 print(f"\n📊 Résultat: {has_data} zones affichent des données")

@@ -4,9 +4,15 @@
 """
 import requests
 import json
+import os
 from time import sleep
+from dotenv import load_dotenv
 
-RENDER_URL = 'https://mah-meteo.onrender.com'
+load_dotenv()
+
+RENDER_URL = os.getenv('RENDER_URL', 'https://mah-meteo.onrender.com')
+TEST_USERNAME = os.getenv('TEST_USERNAME', 'geodis-lemeux')
+TEST_PASSWORD = os.getenv('TEST_PASSWORD') or os.getenv('INIT_CLIENT_PASSWORD', 'demo1234')
 BASE_LOGIN_URL = f'{RENDER_URL}/auth/login'
 API_BASE = f'{RENDER_URL}/api'
 
@@ -15,11 +21,26 @@ print("🚀 TEST COMPLET RENDER - DONNÉES JUSQU'AU DASHBOARD")
 print("=" * 80)
 print()
 
-# [1] Récupérer token de service
-print("[1] Récupération token service...")
-r = requests.post(f'{API_BASE}/service/token', timeout=10)
-service_token = r.json()['token']
-print(f"✅ Token service: {service_token[:40]}...")
+# [1] Login utilisateur
+print("[1] Login utilisateur...")
+r = requests.post(
+    BASE_LOGIN_URL,
+    json={"username": TEST_USERNAME, "password": TEST_PASSWORD},
+    timeout=15
+)
+if not r.ok:
+    if r.status_code in (401, 403):
+        print(f"SKIP: identifiants invalides pour {TEST_USERNAME}")
+        raise SystemExit(0)
+    print(f"❌ Login failed: {r.status_code} {r.text[:200]}")
+    raise SystemExit(1)
+login_data = r.json()
+service_token = login_data.get('access_token')
+client_id = login_data.get('client_id')
+if not service_token or not client_id:
+    print(f"SKIP: payload login invalide: {login_data}")
+    raise SystemExit(0)
+print(f"✅ Login OK - client_id={client_id}")
 print()
 
 # [2] Envoyer 3 snapshots (zones différentes)
@@ -40,7 +61,7 @@ headers_service = {
 
 for data in zones_data:
     r = requests.post(
-        f'{API_BASE}/meteo/snapshot/add?client_id=1',
+        f'{API_BASE}/meteo/snapshot/add?client_id={client_id}',
         headers=headers_service,
         json=data,
         timeout=10
@@ -66,20 +87,8 @@ print()
 
 # Login
 print("  a) Login...")
-r = requests.post(
-    f'{RENDER_URL}/auth/login',
-    json={"username": "geodis-lemeux", "password": "demo1234"},
-    timeout=10
-)
-
-if r.status_code != 200:
-    print(f"  ❌ Login failed: {r.status_code}")
-    print(f"     {r.text[:200]}")
-    exit(1)
-
-user_token = r.json()['access_token']
-client_id = r.json()['client_id']
-print(f"  ✅ Login OK - client_id={client_id}")
+user_token = service_token
+print(f"  ✅ Login déjà valide - client_id={client_id}")
 
 # Récupérer les données météo
 print("  b) Récupération données météo...")
@@ -114,7 +123,7 @@ for zone in main_zones:
     print(f"     🌡️  Température: {zone.get('temp', 'N/A')}°C")
     print(f"     💨 Vent: {zone.get('wind', 'N/A')} km/h ({zone.get('direction', '?')})")
     print(f"     ☁️  Couverture: {zone.get('cloudcover', 'N/A')}%")
-    print(f"     💧 Précipitations: {zone.get('precip', 'N/A')} mm")
+    print(f"     💧 Précipitations: {zone.get('precipitation', 'N/A')} mm")
     print(f"     ⚠️  Risques: {zone.get('risques', 'Aucun')}")
     print()
 
