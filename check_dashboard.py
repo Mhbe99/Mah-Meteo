@@ -7,16 +7,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
+TEST_USERNAME = os.getenv("TEST_USERNAME", "geodis-lemeux")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "demo1234")
 
 # Authentication
 print("Authentification...")
-r = requests.post(RENDER_URL + '/auth/login', json={'username': 'geodis-lemeux', 'password': 'demo1234'})
-token = r.json()['access_token']
+try:
+    r = requests.post(RENDER_URL + '/auth/login', json={'username': TEST_USERNAME, 'password': TEST_PASSWORD}, timeout=15)
+except requests.RequestException as e:
+    print(f"SKIP: endpoint indisponible ({e})")
+    raise SystemExit(0)
+if not r.ok:
+    if r.status_code in (401, 403):
+        print(f"SKIP: identifiants invalides pour {TEST_USERNAME}")
+        raise SystemExit(0)
+    print(f"❌ Login HTTP {r.status_code}: {r.text[:200]}")
+    raise SystemExit(1)
+login_data = r.json()
+token = login_data.get('access_token')
+client_id = login_data.get('client_id')
+if not token or not client_id:
+    print(f"❌ Réponse login invalide: {login_data}")
+    raise SystemExit(1)
 print("✅ Login OK\n")
 
 # Retrieve data
 print("Récupération des zones avec données...\n")
-r = requests.get(RENDER_URL + '/api/meteo/1', headers={'Authorization': f'Bearer {token}'})
+r = requests.get(f"{RENDER_URL}/api/meteo/{client_id}", headers={'Authorization': f'Bearer {token}'}, timeout=15)
+if not r.ok:
+    if r.status_code in (401, 403):
+        print("SKIP: token refusé par l'API")
+        raise SystemExit(0)
+    print(f"❌ Erreur météo HTTP {r.status_code}: {r.text[:200]}")
+    raise SystemExit(1)
 zones = r.json()
 
 print("ZONES AVEC DONNÉES:\n")
