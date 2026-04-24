@@ -3267,7 +3267,7 @@
             try {
                 // 1. Fetch alertes + charts (zones_risks + coordonnées) depuis le backend
                 const [resA, resC] = await Promise.all([
-                    fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=200`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
+                    fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=200&hours=24`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
                     fetch(`${API_URL}/api/charts/${CLIENT_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
                 ]);
                 console.log('[loadRapport] alertes status:', resA.status, '| charts status:', resC.status);

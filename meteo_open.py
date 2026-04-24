@@ -330,6 +330,25 @@ def _executer_pour_client(client):
     current_data = {}
     forecast_data = {zone: [] for zone in TOUTES_ZONES}
 
+    # État des derniers risques archivés par client/zone (pour éviter les répétitions)
+    archive_state_file = os.path.join("exports", "last_archive_risks.json")
+    try:
+        if os.path.exists(archive_state_file):
+            with open(archive_state_file, "r", encoding="utf-8") as fh:
+                archive_state = json.load(fh)
+        else:
+            archive_state = {}
+    except Exception:
+        archive_state = {}
+
+    def _save_archive_state(state):
+        try:
+            os.makedirs(os.path.dirname(archive_state_file), exist_ok=True)
+            with open(archive_state_file, "w", encoding="utf-8") as fh:
+                json.dump(state, fh, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
     for zone, coord in TOUTES_ZONES.items():
         lat, lon = coord["lat"], coord["lon"]
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&hourly=precipitation,cloudcover,uv_index&timezone=auto"
@@ -414,68 +433,86 @@ def _executer_pour_client(client):
             print(f"Error fetching data for {zone}: {e}")
             continue
 
-        # ✅ ENVOI MAIL EN CAS DE RISQUE
+        # ✅ ENVOI/ARCHIVAGE seulement sur changement de risque
         if "✅ RAS" not in risque:
-            send_email_alerte(zone,f"Risque détecté à{zone}:\n{risque.replace('<br>',',')}")
+            risk_text = risque.replace("<br>", " | ")
+            state_key = f"{client_id}:{zone}"
+            last_risk = archive_state.get(state_key)
+            risk_changed = (last_risk != risk_text)
+
+            if risk_changed:
+                send_email_alerte(zone, f"Risque détecté à{zone}:\n{risque.replace('<br>',',')}")
             
-            # 📁 ARCHIVAGE DE L'ALERTE POUR HISTORIQUE
-            archive_file = os.path.join("exports", "alertes_historique.json")
-            try:
-                # Charger historique existant
-                if os.path.exists(archive_file):
-                    with open(archive_file, "r", encoding="utf-8") as fh:
-                        historique = json.load(fh)
-                else:
-                    historique = []
+                # 📁 ARCHIVAGE DE L'ALERTE POUR HISTORIQUE
+                archive_file = os.path.join("exports", "alertes_historique.json")
+                try:
+                    # Charger historique existant
+                    if os.path.exists(archive_file):
+                        with open(archive_file, "r", encoding="utf-8") as fh:
+                            historique = json.load(fh)
+                    else:
+                        historique = []
 
-                # Garder uniquement un historique récent (30 jours) pour éviter l'accumulation infinie
-                now = datetime.datetime.now()
-                cutoff = now - datetime.timedelta(days=30)
-                historique_recent = []
-                for h in historique:
-                    try:
-                        ts = h.get("timestamp")
-                        if not ts:
+                    # Garder uniquement un historique récent (30 jours) pour éviter l'accumulation infinie
+                    now = datetime.datetime.now()
+                    cutoff = now - datetime.timedelta(days=30)
+                    historique_recent = []
+                    for h in historique:
+                        try:
+                            ts = h.get("timestamp")
+                            if not ts:
+                                continue
+                            h_dt = datetime.datetime.fromisoformat(ts)
+                            if h_dt >= cutoff:
+                                historique_recent.append(h)
+                        except Exception:
                             continue
-                        h_dt = datetime.datetime.fromisoformat(ts)
-                        if h_dt >= cutoff:
-                            historique_recent.append(h)
-                    except Exception:
-                        continue
 
-                # Nouvelle alerte enrichie avec client_id pour un fallback multi-tenant sûr
-                new_entry = {
-                    "timestamp": now.isoformat(),
-                    "date": now.strftime("%Y-%m-%d"),
-                    "jour_semaine": now.strftime("%A"),
-                    "heure": now.strftime("%H:00"),
-                    "client_id": client_id,
-                    "zone": zone,
-                    "risques": risque.replace("<br>", " | "),
-                    "temp": current.get("temperature", "N/A"),
-                    "wind": current.get("windspeed", "N/A"),
-                    "rain": precip_now
-                }
+                    # Nouvelle alerte enrichie avec client_id pour un fallback multi-tenant sûr
+                    new_entry = {
+                        "timestamp": now.isoformat(),
+                        "date": now.strftime("%Y-%m-%d"),
+                        "jour_semaine": now.strftime("%A"),
+                        "heure": now.strftime("%H:00"),
+                        "client_id": client_id,
+                        "zone": zone,
+                        "risques": risk_text,
+                        "temp": current.get("temperature", "N/A"),
+                        "wind": current.get("windspeed", "N/A"),
+                        "rain": precip_now
+                    }
 
-                # Éviter les doublons sur la même heure / zone / risque / client
-                already_exists = any(
-                    h.get("client_id") == new_entry["client_id"]
-                    and h.get("zone") == new_entry["zone"]
-                    and h.get("risques") == new_entry["risques"]
-                    and h.get("date") == new_entry["date"]
-                    and h.get("heure") == new_entry["heure"]
-                    for h in historique_recent[-200:]
-                )
+                    # Éviter les doublons sur la même heure / zone / risque / client
+                    already_exists = any(
+                        h.get("client_id") == new_entry["client_id"]
+                        and h.get("zone") == new_entry["zone"]
+                        and h.get("risques") == new_entry["risques"]
+                        and h.get("date") == new_entry["date"]
+                        and h.get("heure") == new_entry["heure"]
+                        for h in historique_recent[-200:]
+                    )
 
-                if not already_exists:
-                    historique_recent.append(new_entry)
-                
-                # Sauvegarder historique
-                os.makedirs(os.path.dirname(archive_file), exist_ok=True)
-                with open(archive_file, "w", encoding="utf-8") as fh:
-                    json.dump(historique_recent, fh, ensure_ascii=False, indent=2)
-            except Exception as e:
-                print(f"⚠️ Erreur archivage alerte {zone}: {e}")
+                    if not already_exists:
+                        historique_recent.append(new_entry)
+
+                    # Sauvegarder historique
+                    os.makedirs(os.path.dirname(archive_file), exist_ok=True)
+                    with open(archive_file, "w", encoding="utf-8") as fh:
+                        json.dump(historique_recent, fh, ensure_ascii=False, indent=2)
+
+                    # Mémoriser le dernier risque archivé pour cette zone/client
+                    archive_state[state_key] = risk_text
+                    _save_archive_state(archive_state)
+                except Exception as e:
+                    print(f"⚠️ Erreur archivage alerte {zone}: {e}")
+            else:
+                print(f"ℹ️ Risque inchangé pour {zone} (client {client_id}) — pas de nouvelle alerte archivée")
+        else:
+            # Le risque est revenu à RAS: on réarme la détection de changement
+            state_key = f"{client_id}:{zone}"
+            if state_key in archive_state:
+                del archive_state[state_key]
+                _save_archive_state(archive_state)
         current_data[zone] = {
             "temp": f"{current.get('temperature')}\u00b0C",
             "wind": f"{current.get('windspeed')} km/h",

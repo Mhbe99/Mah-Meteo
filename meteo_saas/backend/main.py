@@ -374,14 +374,20 @@ def get_previsions_route(client_id: int, current_client: int = Depends(get_curre
 
 
 @app.get("/api/alertes/{client_id}", response_model=list[Alerte])
-def get_alertes_route(client_id: int, limit: int = Query(default=30, ge=1, le=500), current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_alertes_route(
+    client_id: int,
+    limit: int = Query(default=30, ge=1, le=500),
+    hours: Optional[int] = Query(default=None, ge=1, le=24 * 30),
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
     """
     Récupère les dernières alertes du client.
     """
     if client_id != current_client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
-    return get_alertes(client_id, db, limit=limit)
+    return get_alertes(client_id, db, limit=limit, hours=hours)
 
 
 @app.get("/api/zones/{client_id}")

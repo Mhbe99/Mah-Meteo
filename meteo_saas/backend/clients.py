@@ -77,7 +77,7 @@ def get_previsions(client_id: int, db: Session) -> List[PrevisionJour]:
     return result
 
 
-def get_alertes(client_id: int, db: Session, limit: int = 30) -> List[Alerte]:
+def get_alertes(client_id: int, db: Session, limit: int = 30, hours: Optional[int] = None) -> List[Alerte]:
     """
     Récupère les dernières alertes du client.
     
@@ -87,9 +87,13 @@ def get_alertes(client_id: int, db: Session, limit: int = 30) -> List[Alerte]:
     """
     
     # 1. Chercher dans la DB
-    alertes_db = db.query(AlerteLog).filter(
-        AlerteLog.client_id == client_id
-    ).order_by(AlerteLog.timestamp.desc()).limit(limit).all()
+    query = db.query(AlerteLog).filter(AlerteLog.client_id == client_id)
+    cutoff_dt = None
+    if hours is not None and hours > 0:
+        cutoff_dt = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
+        query = query.filter(AlerteLog.timestamp >= cutoff_dt)
+
+    alertes_db = query.order_by(AlerteLog.timestamp.desc()).limit(limit).all()
 
     if alertes_db:
         return [
@@ -123,7 +127,22 @@ def get_alertes(client_id: int, db: Session, limit: int = 30) -> List[Alerte]:
                     continue
 
             alertes_list = []
-            for alert_dict in historique_client[-limit:]:  # Derniers limite pour le client
+            if cutoff_dt is not None:
+                historique_client_filtered = []
+                for h in historique_client:
+                    try:
+                        h_ts = h.get("timestamp")
+                        if not h_ts:
+                            continue
+                        h_dt = datetime.datetime.fromisoformat(h_ts)
+                        if h_dt >= cutoff_dt:
+                            historique_client_filtered.append(h)
+                    except Exception:
+                        continue
+            else:
+                historique_client_filtered = historique_client
+
+            for alert_dict in historique_client_filtered[-limit:]:  # Derniers limite pour le client
                 # Créer une Alerte depuis le dict (structure peut varier)
                 alerte = Alerte(
                     zone_name=alert_dict.get("zone", "Inconnue"),
