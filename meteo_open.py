@@ -6,8 +6,10 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='repla
 
 import requests
 import datetime
+import smtplib
 
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import os
 import json
 import time

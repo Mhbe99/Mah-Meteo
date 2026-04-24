@@ -1,16 +1,6 @@
 {
-  "timestamp": 1777024446.5253491,
+  "timestamp": 1777032521.0853481,
   "incidents": [
-    {
-      "route": "D6014 — Bordeaux-Saint-Clair [N14] - D146 (D6014) → Les Thilliers-en-Vexin [N14] - D181 (D6014)",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 3,
-      "icon": "[TRAFFIC]",
-      "lat": 49.2341297924,
-      "lon": 1.6135444822,
-      "zone_source": "Chaumont-en-Vexin"
-    },
     {
       "route": "D14b — Route de Rouen (D15e) → D15bis",
       "description": "Route fermée",
@@ -22,44 +12,14 @@
       "zone_source": "Chaumont-en-Vexin"
     },
     {
-      "route": "Rue de l'Hospice / Place de l'Hôtel de Ville → Gisors",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 1,
-      "icon": "[TRAFFIC]",
-      "lat": 49.2793438257,
-      "lon": 1.7780255856,
-      "zone_source": "Chaumont-en-Vexin"
-    },
-    {
-      "route": "D983 — Route Communale → Place de la Mairie / Rue de la Fontaine (D157)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.1837217123,
-      "lon": 1.7822983446,
-      "zone_source": "Chaumont-en-Vexin"
-    },
-    {
-      "route": "D983 — Place de la Mairie / Rue de la Fontaine (D157) → Route Communale",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.1952350885,
-      "lon": 1.7995529952,
-      "zone_source": "Chaumont-en-Vexin"
-    },
-    {
-      "route": "D69 — Le Village-Sud / Rue Tille → Route Nationale (D315)",
+      "route": "E46 — Saint-Germer-de-Fly Orsimont - D104 (N31) → Gournay est - D930 - D916 (N31)",
       "description": "Bouchon",
       "severity": "high",
       "delay_minutes": 2,
       "icon": "[TRAFFIC]",
-      "lat": 49.7412631377,
-      "lon": 1.8164790752,
-      "zone_source": "Formerie"
+      "lat": 49.4604693799,
+      "lon": 1.7742248955,
+      "zone_source": "Chaumont-en-Vexin"
     },
     {
       "route": "D159 — Rue des Maquignons (D175) → Rue des Rochettes / Sente du Miroir",
@@ -72,23 +32,13 @@
       "zone_source": "Chaumont-en-Vexin"
     },
     {
-      "route": "D159 — Rue du Lavoir → Rue des Maquignons (D175)",
+      "route": "D159 — Rue de l'Abreuvoir → Rue des Maquignons (D175)",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
       "icon": "[CLOSED]",
-      "lat": 49.1080887959,
-      "lon": 1.8494005086,
-      "zone_source": "Chaumont-en-Vexin"
-    },
-    {
-      "route": "D109 — Route des Solons → Rue du Grand Courtil / Le Courtil Madame",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.420036401,
-      "lon": 1.9157824996,
+      "lat": 49.1072130503,
+      "lon": 1.8485609772,
       "zone_source": "Chaumont-en-Vexin"
     },
     {
@@ -102,6 +52,16 @@
       "zone_source": "Chaumont-en-Vexin"
     },
     {
+      "route": "D109 — Route des Solons → Rue du Grand Courtil / Le Courtil Madame",
+      "description": "Route fermée",
+      "severity": "high",
+      "delay_minutes": 0,
+      "icon": "[CLOSED]",
+      "lat": 49.420036401,
+      "lon": 1.9157824996,
+      "zone_source": "Chaumont-en-Vexin"
+    },
+    {
       "route": "D901 — Marseille en Beauvaisis - D930 (D901) → Grandvillers - D1015 (D901)",
       "description": "Bouchon",
       "severity": "high",
@@ -109,17 +69,7 @@
       "icon": "[TRAFFIC]",
       "lat": 49.6568526797,
       "lon": 1.9420292559,
-      "zone_source": "Crèvecoeur-le-Grand"
-    },
-    {
-      "route": "Boulevard Sainte-Apolline → Boulevard des Chasseurs / Rue de l'Eider",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0456228505,
-      "lon": 2.0040835026,
-      "zone_source": "Méru"
+      "zone_source": "Beauvais"
     },
     {
       "route": "Rue de Rouen (D931) → D931",
@@ -152,44 +102,14 @@
       "zone_source": "Méru"
     },
     {
-      "route": "Avenue de Boissy-l'Aillerie (D92) → Osny",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 3,
-      "icon": "[TRAFFIC]",
-      "lat": 49.0631014163,
-      "lon": 2.0572167221,
-      "zone_source": "Méru"
-    },
-    {
-      "route": "Rue des Lilas → Boulevard de l'Hautil",
+      "route": "Avenue Jean Mermoz (D931) / Rue Bossuet → Avenue Jean Mermoz (D931)",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
       "icon": "[CLOSED]",
-      "lat": 49.0342475736,
-      "lon": 2.0676156464,
-      "zone_source": "Méru"
-    },
-    {
-      "route": "Rue de Pontoise (D92) → Rue des Pâtis",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0605493036,
-      "lon": 2.0698834541,
-      "zone_source": "Méru"
-    },
-    {
-      "route": "Rue des Pâtis (D92) → Rue de Pontoise (D92)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0610723359,
-      "lon": 2.0704668346,
-      "zone_source": "Méru"
+      "lat": 49.4376705989,
+      "lon": 2.0746175531,
+      "zone_source": "Beauvais"
     },
     {
       "route": "Avenue Jean Mermoz (D931) → Avenue Victor Hugo / Rue Cambry",
@@ -202,44 +122,14 @@
       "zone_source": "Beauvais"
     },
     {
-      "route": "Avenue Jean Mermoz (D931) / Rue Bossuet → Avenue Jean Mermoz (D931)",
-      "description": "Route fermée",
+      "route": "Rue Henri Becquerel → Rue de l'Industrie / Allée Monge",
+      "description": "Bouchon",
       "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.4376705989,
-      "lon": 2.0746175531,
+      "delay_minutes": 2,
+      "icon": "[TRAFFIC]",
+      "lat": 49.4119052857,
+      "lon": 2.1146441582,
       "zone_source": "Beauvais"
-    },
-    {
-      "route": "Chaussée Jules César (D14) → Avenue François Mitterrand / Avenue Adolphe Chauvin",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0437453009,
-      "lon": 2.0869543734,
-      "zone_source": "Méru"
-    },
-    {
-      "route": "Avenue François Mitterrand / Avenue Adolphe Chauvin → Chaussée Jules César (D14)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0430211062,
-      "lon": 2.0861590984,
-      "zone_source": "Méru"
-    },
-    {
-      "route": "Avenue François Mitterrand / Avenue Adolphe Chauvin → Avenue de Verdun",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0437453009,
-      "lon": 2.0869543734,
-      "zone_source": "Méru"
     },
     {
       "route": "D609 — D105 → Amblainville",
@@ -252,54 +142,14 @@
       "zone_source": "Méru"
     },
     {
-      "route": "Rue Parmentier (D4) / Rue François Villon (D4) → Rue François Mitterrand (D928)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0719983498,
-      "lon": 2.1550248149,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "Rue François Mitterrand (D928) → Rue Parmentier (D4)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.078271995,
-      "lon": 2.1588617149,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "N184 → N184",
+      "route": "Rue de Paris (D1001) / Rue du Chemin de la Messe → Rue de Mouy (D137)",
       "description": "Bouchon",
       "severity": "high",
-      "delay_minutes": 3,
+      "delay_minutes": 4,
       "icon": "[TRAFFIC]",
-      "lat": 49.0610119757,
-      "lon": 2.2118165675,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "D191 — Avenue de Paris (D928) / Avenue de la République (D928) → Rue de l'Église",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0383406454,
-      "lon": 2.2166525904,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "N184 — Villiers-Adam - D104 (N184) → D44 (N184)",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 5,
-      "icon": "[TRAFFIC]",
-      "lat": 49.0717032589,
-      "lon": 2.2235150221,
-      "zone_source": "Chambly"
+      "lat": 49.3266083335,
+      "lon": 2.2062496427,
+      "zone_source": "Méru"
     },
     {
       "route": "D49 → Rue Nationale (D923) / Rue des Écoles",
@@ -309,7 +159,17 @@
       "icon": "[CLOSED]",
       "lat": 49.1952659265,
       "lon": 2.2326184395,
-      "zone_source": "Chambly"
+      "zone_source": "Méru"
+    },
+    {
+      "route": "Rond-Point des Héros de la Résistance (D922) → Route du Pommier",
+      "description": "Bouchon",
+      "severity": "high",
+      "delay_minutes": 3,
+      "icon": "[TRAFFIC]",
+      "lat": 49.1253635589,
+      "lon": 2.2346421662,
+      "zone_source": "Méru"
     },
     {
       "route": "Rue du 11 Novembre 1918 (D924) / Rue Anatole France → Route de Neuilly-en-Thelle (D49) / Place Descartes",
@@ -319,27 +179,7 @@
       "icon": "[CLOSED]",
       "lat": 49.1689266536,
       "lon": 2.2495793882,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "Avenue Jean Jaurès (D78) → Rue du 8 Mai 1945 / Rue Louise Michel",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 4,
-      "icon": "[TRAFFIC]",
-      "lat": 49.1468681615,
-      "lon": 2.2822701517,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "D924 — Rue du Pilori (D118) → Place Bourgeois",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 3,
-      "icon": "[TRAFFIC]",
-      "lat": 49.1675050856,
-      "lon": 2.3619398061,
-      "zone_source": "Saint-Maximin"
+      "zone_source": "Méru"
     },
     {
       "route": "Chemin du Halage (D924) → D118",
@@ -349,7 +189,7 @@
       "icon": "[CLOSED]",
       "lat": 49.1682762415,
       "lon": 2.3644771758,
-      "zone_source": "Saint-Maximin"
+      "zone_source": "Chantilly"
     },
     {
       "route": "D118 → Chemin du Halage (D924)",
@@ -359,7 +199,7 @@
       "icon": "[CLOSED]",
       "lat": 49.1685819933,
       "lon": 2.3628437105,
-      "zone_source": "Saint-Maximin"
+      "zone_source": "Chantilly"
     },
     {
       "route": "Rue de la République (D922z) → Avenue de Royaumont (D909) / Rue Pierre et Marie Curie",
@@ -369,7 +209,7 @@
       "icon": "[CLOSED]",
       "lat": 49.1308325742,
       "lon": 2.3719229881,
-      "zone_source": "Saint-Maximin"
+      "zone_source": "Chantilly"
     },
     {
       "route": "D930 — D916 (D930) → D47 (D930)",
@@ -379,7 +219,7 @@
       "icon": "[CLOSED]",
       "lat": 49.6285580355,
       "lon": 2.3803692643,
-      "zone_source": "Breteuil"
+      "zone_source": "Clermont"
     },
     {
       "route": "D930 — D47 (D930) → D916 (D930)",
@@ -389,7 +229,7 @@
       "icon": "[CLOSED]",
       "lat": 49.6278325132,
       "lon": 2.3838628415,
-      "zone_source": "Breteuil"
+      "zone_source": "Clermont"
     },
     {
       "route": "Allée de la Pépinière → Allée des Bouleaux",
@@ -402,6 +242,16 @@
       "zone_source": "Chantilly"
     },
     {
+      "route": "Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e) → D123",
+      "description": "Route fermée",
+      "severity": "high",
+      "delay_minutes": 0,
+      "icon": "[CLOSED]",
+      "lat": 49.2496155494,
+      "lon": 2.4296454672,
+      "zone_source": "Montataire"
+    },
+    {
       "route": "D123 → Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e)",
       "description": "Route fermée",
       "severity": "high",
@@ -412,14 +262,24 @@
       "zone_source": "Montataire"
     },
     {
-      "route": "Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e) → D123",
+      "route": "Rue de Paris (D316) → Rue de Paris (D316)",
+      "description": "Bouchon",
+      "severity": "high",
+      "delay_minutes": 3,
+      "icon": "[TRAFFIC]",
+      "lat": 49.1279196915,
+      "lon": 2.4306271557,
+      "zone_source": "Chantilly"
+    },
+    {
+      "route": "D916 — Avrechy - D570 (D916) → Saint-Just-en-Chaussée centre - D938 (D916)",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
       "icon": "[CLOSED]",
-      "lat": 49.2496155494,
-      "lon": 2.4296454672,
-      "zone_source": "Montataire"
+      "lat": 49.5021119812,
+      "lon": 2.437252212,
+      "zone_source": "Clermont"
     },
     {
       "route": "Allée de la Thève → Rue de l'Église",
@@ -462,16 +322,6 @@
       "zone_source": "Chantilly"
     },
     {
-      "route": "Rue du Gué → Rue Claude Hugon / D9z",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0677054657,
-      "lon": 2.4763346795,
-      "zone_source": "Chantilly"
-    },
-    {
       "route": "Rue Étienne Régis Audibert → Avenue du Tremblay (D120)",
       "description": "Route fermée",
       "severity": "high",
@@ -482,17 +332,7 @@
       "zone_source": "Creil"
     },
     {
-      "route": "Rue Roger Salengro (D184) / Rue de la Garenne → Rue Roger Salengro (D184)",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 5,
-      "icon": "[TRAFFIC]",
-      "lat": 49.0851237316,
-      "lon": 2.5003833656,
-      "zone_source": "Chantilly"
-    },
-    {
-      "route": "Avenue du Tremblay (D120) → Rue Antoine-Laurent de Lavoisier",
+      "route": "Avenue du Tremblay (D120) → Chemin de Ronde",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
@@ -502,54 +342,14 @@
       "zone_source": "Creil"
     },
     {
-      "route": "Rue Antoine-Laurent de Lavoisier → Avenue du Tremblay (D120) / Route de Verneuil",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.271954316,
-      "lon": 2.5032077316,
-      "zone_source": "Creil"
-    },
-    {
-      "route": "Rue Eugène Pottier → Rue des Prés / Hameau du Gué",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0762992636,
-      "lon": 2.5041170005,
-      "zone_source": "Chantilly"
-    },
-    {
-      "route": "Rue des Prés / Hameau du Gué → Rue Eugène Pottier",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0795098398,
-      "lon": 2.503455836,
-      "zone_source": "Chantilly"
-    },
-    {
-      "route": "Rue de Paris (D184) → Chemin de Soulte",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 5,
-      "icon": "[TRAFFIC]",
-      "lat": 49.0384492773,
-      "lon": 2.505778629,
-      "zone_source": "Chantilly"
-    },
-    {
-      "route": "D1017 — Limite Oise / Val d'Oise [N17] - D317 (95) (D1017) → La Chapelle-en-Serval [N17] - D924A (D1017)",
+      "route": "Place de la Halle / Rue de l'Apport au Pain → Rue de la République (D1017) / Rue de Meaux",
       "description": "Bouchon",
       "severity": "high",
       "delay_minutes": 4,
       "icon": "[TRAFFIC]",
-      "lat": 49.1246112075,
-      "lon": 2.5334348861,
-      "zone_source": "Chantilly"
+      "lat": 49.2050197789,
+      "lon": 2.5845819299,
+      "zone_source": "Senlis"
     },
     {
       "route": "Rue des Joncs → D1017",
@@ -572,47 +372,7 @@
       "zone_source": "Senlis"
     },
     {
-      "route": "D934 — Bouchoir → D329",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.752336637,
-      "lon": 2.659884948,
-      "zone_source": "Ressons-sur-Matz"
-    },
-    {
-      "route": "D13 — Othis - D26E (D13) → Dammartin-en-Goële - Avenue de l'Europe (D13)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.078214346,
-      "lon": 2.676066715,
-      "zone_source": "Nanteuil-le-Haudouin"
-    },
-    {
-      "route": "D13 — Dammartin-en-Goële - Avenue de l'Europe (D13) → Othis - D26E (D13)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0743077303,
-      "lon": 2.6751534228,
-      "zone_source": "Nanteuil-le-Haudouin"
-    },
-    {
-      "route": "Rue Louis Braille (D404) / Chemin Rural → Rue du Général de Gaulle (D401) / Rue Notre-Dame",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0532630772,
-      "lon": 2.6792867069,
-      "zone_source": "Nanteuil-le-Haudouin"
-    },
-    {
-      "route": "D13 — Rue du Bailly / Rue du Grand Ferré (D26) → Impasse de la Vieille Ferme / Rue du Château",
+      "route": "D13 — Rue du Bailly / Rue du Grand Ferré (D26) → Place Saint-Wandrille",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
@@ -622,24 +382,14 @@
       "zone_source": "Le Meux 🏣"
     },
     {
-      "route": "D13 — Impasse de la Vieille Ferme / Rue du Château → Rue du Bailly / Rue du Grand Ferré (D26)",
+      "route": "D13 — Place Saint-Wandrille → Rue du Bailly / Rue du Grand Ferré (D26)",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
       "icon": "[CLOSED]",
-      "lat": 49.3470266702,
-      "lon": 2.732248265,
+      "lat": 49.3474464253,
+      "lon": 2.7316554968,
       "zone_source": "Le Meux 🏣"
-    },
-    {
-      "route": "Route de Senlis (N330) → Route de Paris (D84)",
-      "description": "Bouchon",
-      "severity": "high",
-      "delay_minutes": 3,
-      "icon": "[TRAFFIC]",
-      "lat": 49.0949741499,
-      "lon": 2.7460079973,
-      "zone_source": "Nanteuil-le-Haudouin"
     },
     {
       "route": "D98 — D200 → Rue Jacques Chevalier",
@@ -672,24 +422,14 @@
       "zone_source": "Le Meux 🏣"
     },
     {
-      "route": "Rue du Château d'Eau → Rue Nationale (D932a)",
-      "description": "Route fermée",
+      "route": "Rue Charles Faroux → Avenue du Général Weygand / Place Jean-Paul II",
+      "description": "Bouchon",
       "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.3564277924,
-      "lon": 2.7911388461,
-      "zone_source": "Le Meux 🏣"
-    },
-    {
-      "route": "Rue du Général Maunoury (D401) → Rue de l'Échelette / Rue du Bourget",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.0376392307,
-      "lon": 2.8019266908,
-      "zone_source": "Nanteuil-le-Haudouin"
+      "delay_minutes": 2,
+      "icon": "[TRAFFIC]",
+      "lat": 49.4056222351,
+      "lon": 2.8105821793,
+      "zone_source": "Compiègne"
     },
     {
       "route": "Rue Magenta (D332) → Rue Jeanne d'Arc / Rue Saint-Corneille",
@@ -709,17 +449,7 @@
       "icon": "[CLOSED]",
       "lat": 49.2317748136,
       "lon": 2.8938138073,
-      "zone_source": "Crépy-en-Valois"
-    },
-    {
-      "route": "D520 — Crépy-en-Valois → Avenue Pasteur",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.2319129618,
-      "lon": 2.8930010979,
-      "zone_source": "Crépy-en-Valois"
+      "zone_source": "Clairoix 🏣"
     },
     {
       "route": "D25 — Avenue Pasteur → Boulevard Victor Hugo (D520) / Rue des Tournelles",
@@ -729,7 +459,17 @@
       "icon": "[CLOSED]",
       "lat": 49.2312920584,
       "lon": 2.8945768957,
-      "zone_source": "Crépy-en-Valois"
+      "zone_source": "Clairoix 🏣"
+    },
+    {
+      "route": "D520 — Crépy-en-Valois → Avenue Pasteur",
+      "description": "Route fermée",
+      "severity": "high",
+      "delay_minutes": 0,
+      "icon": "[CLOSED]",
+      "lat": 49.2319129618,
+      "lon": 2.8930010979,
+      "zone_source": "Clairoix 🏣"
     },
     {
       "route": "D25 — Rue Henri Laroche → Avenue Pasteur",
@@ -739,16 +479,6 @@
       "icon": "[CLOSED]",
       "lat": 49.2306201341,
       "lon": 2.8959595745,
-      "zone_source": "Crépy-en-Valois"
-    },
-    {
-      "route": "Rue du Maréchal Joffre (D66) → Rue Henri Barbusse (D15)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.4813610818,
-      "lon": 2.9000351911,
       "zone_source": "Clairoix 🏣"
     },
     {
@@ -762,14 +492,24 @@
       "zone_source": "Clairoix 🏣"
     },
     {
+      "route": "Rue du Maréchal Joffre (D66) → Rue Henri Barbusse (D15)",
+      "description": "Route fermée",
+      "severity": "high",
+      "delay_minutes": 0,
+      "icon": "[CLOSED]",
+      "lat": 49.4813610818,
+      "lon": 2.9000351911,
+      "zone_source": "Clairoix 🏣"
+    },
+    {
       "route": "Rue de Soissons (D1324) → Rue du Bois Tillet",
       "description": "Bouchon",
       "severity": "high",
-      "delay_minutes": 9,
+      "delay_minutes": 4,
       "icon": "[TRAFFIC]",
-      "lat": 49.2337328249,
-      "lon": 2.9074461346,
-      "zone_source": "Crépy-en-Valois"
+      "lat": 49.230895068,
+      "lon": 2.906656224,
+      "zone_source": "Clairoix 🏣"
     },
     {
       "route": "D40 — Chemin de la Taille d'Humières → Rue Aristide Briand / Rue de Pimprez (D608)",
@@ -792,14 +532,14 @@
       "zone_source": "Noyon"
     },
     {
-      "route": "Boulevard de la République / Rue Clemenceau → Boulevard de la Liberté (D937) / Rue de Verdun (D937)",
+      "route": "Rue de Villers (D936) → Rue de Vierzy / Chemin du Port",
       "description": "Route fermée",
       "severity": "high",
       "delay_minutes": 0,
       "icon": "[CLOSED]",
-      "lat": 49.7459690677,
-      "lon": 3.0767672842,
-      "zone_source": "Guiscard"
+      "lat": 49.2004493326,
+      "lon": 3.1111250406,
+      "zone_source": "Clairoix 🏣"
     },
     {
       "route": "Rue de Vierzy / Chemin du Port → Rue de Villers (D936)",
@@ -809,86 +549,46 @@
       "icon": "[CLOSED]",
       "lat": 49.1953745986,
       "lon": 3.1075174695,
-      "zone_source": "Crépy-en-Valois"
+      "zone_source": "Clairoix 🏣"
     },
     {
-      "route": "Rue de Villers (D936) → Rue de Vierzy / Chemin du Port",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.2004493326,
-      "lon": 3.1111250406,
-      "zone_source": "Crépy-en-Valois"
-    },
-    {
-      "route": "D438 — Rue du Point Y → Rue Paul Isèbe (D32)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.7412805796,
-      "lon": 3.1718878036,
-      "zone_source": "Guiscard"
-    },
-    {
-      "route": "D438 — Rue Paul Isèbe (D32) → Rue du Point Y",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.7416319069,
-      "lon": 3.1740831917,
-      "zone_source": "Guiscard"
-    },
-    {
-      "route": "D32 — Rue des 2 Lieutenants Lecomte et Larrmuzeaux / Rue de Tugny (D34) → Rue de Saint-Simon (D431)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.7434719192,
-      "lon": 3.1721815055,
-      "zone_source": "Guiscard"
-    },
-    {
-      "route": "D32 — Rue de Saint-Simon (D431) → Rue des 2 Lieutenants Lecomte et Larrmuzeaux / Rue de Tugny (D34)",
-      "description": "Route fermée",
-      "severity": "high",
-      "delay_minutes": 0,
-      "icon": "[CLOSED]",
-      "lat": 49.7372626137,
-      "lon": 3.1808892971,
-      "zone_source": "Guiscard"
-    },
-    {
-      "route": "Rue de la Couturelle → Rue de la Couturelle",
+      "route": "E46 — Gournay est - D930 - D916 (N31) → Saint-Germer-de-Fly Orsimont - D104 (N31)",
       "description": "Trafic avec des à-coups",
       "severity": "med",
-      "delay_minutes": 4,
+      "delay_minutes": 1,
       "icon": "[TRAFFIC]",
-      "lat": 49.4127823488,
-      "lon": 2.2292629961,
-      "zone_source": "Mouy"
+      "lat": 49.4623066858,
+      "lon": 1.7619242849,
+      "zone_source": "Chaumont-en-Vexin"
     },
     {
-      "route": "D236 — Quartier de l'Abbaye → Rue de l'Ormelet (D82) / Route de Foucarmont (D82)",
-      "description": "Travaux",
-      "severity": "low",
-      "delay_minutes": 0,
-      "icon": "[WORK]",
-      "lat": 49.6719186342,
-      "lon": 1.6997144701,
-      "zone_source": "Formerie"
+      "route": "D922 — Fosses - D184 (D922) → Survilliers - D317 (D922)",
+      "description": "Trafic avec des à-coups",
+      "severity": "med",
+      "delay_minutes": 2,
+      "icon": "[TRAFFIC]",
+      "lat": 49.0988767254,
+      "lon": 2.5218128745,
+      "zone_source": "Chantilly"
     },
     {
       "route": "D159 / Route Nationale → D983",
       "description": "Travaux",
       "severity": "low",
-      "delay_minutes": 1,
+      "delay_minutes": 0,
       "icon": "[WORK]",
       "lat": 49.0999013428,
       "lon": 1.791542578,
+      "zone_source": "Chaumont-en-Vexin"
+    },
+    {
+      "route": "D983 — Rue du Rocquet → Place de la Mairie / Rue de la Fontaine (D157)",
+      "description": "Travaux",
+      "severity": "low",
+      "delay_minutes": 0,
+      "icon": "[WORK]",
+      "lat": 49.1897929018,
+      "lon": 1.7900257888,
       "zone_source": "Chaumont-en-Vexin"
     },
     {
@@ -902,44 +602,24 @@
       "zone_source": "Beauvais"
     },
     {
-      "route": "D928 — Méry-sur-Oise - D922 (D928) → Sognolles - D44 (D928)",
-      "description": "Travaux",
+      "route": "D931 — Beauvais ouest - D981 (D931) → Beauvais centre - D1001D901B (D931)",
+      "description": "Trafic ralenti",
       "severity": "low",
-      "delay_minutes": 0,
-      "icon": "[WORK]",
-      "lat": 49.0595354631,
-      "lon": 2.1885913196,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "N184 → N184",
-      "description": "Travaux",
-      "severity": "low",
-      "delay_minutes": 0,
-      "icon": "[WORK]",
-      "lat": 49.0610119757,
-      "lon": 2.2118165675,
-      "zone_source": "Chambly"
-    },
-    {
-      "route": "N184 — Villiers-Adam - D104 (N184) → D44 (N184)",
-      "description": "Travaux",
-      "severity": "low",
-      "delay_minutes": 0,
-      "icon": "[WORK]",
-      "lat": 49.0693724509,
-      "lon": 2.2196848277,
-      "zone_source": "Chambly"
+      "delay_minutes": 2,
+      "icon": "[TRAFFIC]",
+      "lat": 49.436438107,
+      "lon": 2.0819198671,
+      "zone_source": "Beauvais"
     },
     {
       "route": "D64 — L'Isle-Adam - D922 (D64) → L'Isle-Adam - Avenue du Général de Gaulle (D64)",
       "description": "Travaux",
       "severity": "low",
-      "delay_minutes": 0,
+      "delay_minutes": 1,
       "icon": "[WORK]",
       "lat": 49.111025833,
       "lon": 2.2233768884,
-      "zone_source": "Chambly"
+      "zone_source": "Méru"
     },
     {
       "route": "D4 — Persan → Persan",
@@ -949,7 +629,7 @@
       "icon": "[WORK]",
       "lat": 49.1534556793,
       "lon": 2.2481189254,
-      "zone_source": "Chambly"
+      "zone_source": "Méru"
     },
     {
       "route": "D44 — Rue de Blaincourt (D17) / Rue de la Tour du Moulin → Rue de Beauvais / Rue de la Mairie",
@@ -959,17 +639,7 @@
       "icon": "[WORK]",
       "lat": 49.2165640056,
       "lon": 2.3644262139,
-      "zone_source": "Saint-Maximin"
-    },
-    {
-      "route": "D1016 — Chantilly nord [N16] - D44 - D924 (D1016) → Lamorlaye [N16] - D118 (D1016)",
-      "description": "Trafic ralenti",
-      "severity": "low",
-      "delay_minutes": 2,
-      "icon": "[TRAFFIC]",
-      "lat": 49.1985074196,
-      "lon": 2.4625548307,
-      "zone_source": "Chantilly"
+      "zone_source": "Montataire"
     },
     {
       "route": "D10 — Rue de la République / Rue de Choisy → Place des Acacias",
@@ -979,7 +649,7 @@
       "icon": "[WORK]",
       "lat": 49.3633572934,
       "lon": 2.6248029952,
-      "zone_source": "Estrées-Saint-Denis"
+      "zone_source": "Le Meux 🏣"
     },
     {
       "route": "D1324 → Autoroute du Nord (A1)",
@@ -999,13 +669,13 @@
       "icon": "[WORK]",
       "lat": 49.521211997,
       "lon": 2.713679332,
-      "zone_source": "Ressons-sur-Matz"
+      "zone_source": "Le Meux 🏣"
     },
     {
       "route": "D200 — Chevrières - A1 (D200) → D85 (D200)",
       "description": "Travaux",
       "severity": "low",
-      "delay_minutes": 0,
+      "delay_minutes": 1,
       "icon": "[WORK]",
       "lat": 49.3366599242,
       "lon": 2.7299455886,
@@ -1039,27 +709,7 @@
       "icon": "[CONSTRUCTION]",
       "lat": 49.1612260555,
       "lon": 2.8579540138,
-      "zone_source": "Nanteuil-le-Haudouin"
-    },
-    {
-      "route": "D15 — Route de Nesle → Rue Talon / D24",
-      "description": "Travaux",
-      "severity": "low",
-      "delay_minutes": 0,
-      "icon": "[WORK]",
-      "lat": 49.7116394604,
-      "lon": 2.9136044865,
-      "zone_source": "Guiscard"
-    },
-    {
-      "route": "D930 — Ham centre - D932 (D930) → D17 (D930)",
-      "description": "Travaux",
-      "severity": "low",
-      "delay_minutes": 1,
-      "icon": "[WORK]",
-      "lat": 49.7420007274,
-      "lon": 3.0490547007,
-      "zone_source": "Guiscard"
+      "zone_source": "Le Meux 🏣"
     }
   ]
 }

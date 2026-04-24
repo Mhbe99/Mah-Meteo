@@ -36,7 +36,7 @@ import os
 if os.path.exists("exports/trafic_cache.json"):
     print("    ✅ Fichier cache créé!")
     import json
-    with open("exports/trafic_cache.json") as f:
+    with open("exports/trafic_cache.json", "r", encoding="utf-8") as f:
         cache = json.load(f)
     print(f"    Contient {len(cache.get('incidents', []))} incidents")
     print(f"    Timestamp: {cache.get('timestamp')}")
