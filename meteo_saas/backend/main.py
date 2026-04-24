@@ -700,7 +700,7 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
         elif z.windspeed and z.windspeed >= 50: score += 2
         if z.temperature is not None and z.temperature <= 0: score += 2
         if z.temperature is not None and z.temperature >= 35: score += 3
-        if z.uv_index and z.uv_index >= 8: score += 2
+        if z.uv_index and z.uv_index >= 7: score += 2
         zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
 
     return {

@@ -252,15 +252,23 @@ def get_risk_icons(temp, wind, rain, uv, test_mode=False):
     try:
         t = float(temp)
         r = float(rain)
+        w = float(wind)
+        u = float(uv)
         if t < 1 and r > 0 and datetime.datetime.now().month in [11, 12, 1, 2]:
             risk.append("❄️ Verglas")
     except:
+        w = wind
+        r = rain
+        u = uv
         pass
-    if test_mode or wind > 40:
+    if test_mode or w > 40:
         risk.append("💨 Vent fort")
-    if rain > 5:
+    if r > 5:
         risk.append("🌧️ Alerte pluie")
-    if uv >= 8:
+    # Aligné avec le backend SaaS: UV élevé dès 7, extrême dès 10
+    if u >= 10:
+        risk.append("🔥 UV extrême")
+    elif u >= 7:
         risk.append("🔥 UV fort")
     if test_mode and not risk:  # Force une alerte de test si aucune autre
         risk.append("🧪 TEST ALERTE")
@@ -324,7 +332,7 @@ def _executer_pour_client(client):
 
     for zone, coord in TOUTES_ZONES.items():
         lat, lon = coord["lat"], coord["lon"]
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&hourly=precipitation,cloudcover&timezone=auto"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&hourly=precipitation,cloudcover,uv_index&timezone=auto"
         try:
             r = requests.get(url, timeout=10)
             r.raise_for_status()
@@ -351,9 +359,13 @@ def _executer_pour_client(client):
                     idx = hourly["time"].index(now_str)
                     cloud_now = hourly["cloudcover"][idx]
 
-            # 🌞 Récupération UV du jour (journée actuelle)
+            # 🌞 UV courant (horaire), fallback UV max du jour si indisponible
             uv_today = 0
-            if "uv_index_max" in data.get("daily", {}) and len(data["daily"]["uv_index_max"]) > 0:
+            if "time" in hourly and "uv_index" in hourly:
+                if now_str in hourly["time"]:
+                    idx = hourly["time"].index(now_str)
+                    uv_today = hourly["uv_index"][idx] or 0
+            if uv_today == 0 and "uv_index_max" in data.get("daily", {}) and len(data["daily"]["uv_index_max"]) > 0:
                 uv_today = data["daily"]["uv_index_max"][0]
 
             direction = get_wind_direction(current.get("winddirection", 0))
@@ -450,11 +462,13 @@ def _executer_pour_client(client):
             days = data.get("daily", {})
             for i in range(len(days["time"])):
                 date = datetime.datetime.strptime(days["time"][i], "%Y-%m-%d").strftime("%a %d/%m")
-                tmin = f"{days['temperature_2m_min'][i]}\u00b0C"
-                tmax = f"{days['temperature_2m_max'][i]}\u00b0C"
+                tmin_val = days['temperature_2m_min'][i]
+                tmax_val = days['temperature_2m_max'][i]
+                tmin = f"{tmin_val}\u00b0C"
+                tmax = f"{tmax_val}\u00b0C"
                 pluie = float(days['precipitation_sum'][i])
                 uv = days["uv_index_max"][i]
-                risque = get_risk_icons(0, 0, pluie, uv)
+                risque = get_risk_icons(tmin_val, 0, pluie, uv)
                 forecast_data[zone].append({
                     "jour": date,
                     "tmin": tmin,
