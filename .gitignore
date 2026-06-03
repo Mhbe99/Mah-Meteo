@@ -1,0 +1,41 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+meteo_saas.db
+*.log
+
+# Données clients et opérationnelles — NE PAS versionner
+meteo_saas/data/clients.json
+
+# Exports générés — NE PAS versionner
+exports/
+
+
+# Local ad-hoc analysis and helper scripts (non-versioned)
+AUDIT_COMPLET_2026-05-07.md
+RAPPORT_TECHNIQUE_COMPLET_2026-05-07.md
+attach_zones_to_test_client.py
+check_aqi_api.py
+check_clients.py
+compare_temps.py
+create_test_client.py
+diagnostic.py
+generate_email_logo_b64.py
+generate_email_previews.py
+generate_logo_png.py
+generer_guide.py
+inject_aqi_test.py
+preview_vue_generale.html
+rapport_hebdomadaire_v2.py
+setup_zones_aqi.py
+test_alertes_par_risque.py
+test_aqi_deploy.py
+test_batch_meteo.py
+test_rapport_charts.py
+test_render_final.py
+visual_proposition_dashboard_v2.html
+
+# Local temporary DB and test folder
+test_meteo.db
+tests/

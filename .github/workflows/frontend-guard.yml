@@ -1,0 +1,44 @@
+name: Frontend Guard
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  dashboard-inline-js-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract inline JS from dashboard
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          html_path = Path('meteo_saas/frontend/dashboard.html')
+          text = html_path.read_text(encoding='utf-8')
+          scripts = re.findall(r'<script>(.*?)</script>', text, flags=re.S)
+          if not scripts:
+              raise SystemExit('No inline <script> found in dashboard.html')
+
+          js = scripts[-1]
+          out = Path('tmp_dashboard_inline.js')
+          out.write_text(js, encoding='utf-8')
+          print(f'Extracted inline JS to {out} ({len(js)} chars)')
+          PY
+
+      - name: JavaScript syntax check
+        run: node --check tmp_dashboard_inline.js
+
+      - name: Guard critical globals
+        run: |
+          grep -n "let _rapportCharge" meteo_saas/frontend/dashboard.html
+          test "$(grep -c "let _rapportCharge" meteo_saas/frontend/dashboard.html)" -eq 1

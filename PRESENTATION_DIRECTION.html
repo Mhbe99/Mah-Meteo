@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mah-Météo — Présentation Direction GEODIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; color: #2c3e50; line-height: 1.6; }
+
+        .page { max-width: 1100px; margin: 0 auto; padding: 40px 30px; }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+            color: white;
+            padding: 40px 50px;
+            border-radius: 12px;
+            margin-bottom: 35px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(52, 152, 219, 0.15);
+            border-radius: 50%;
+        }
+        .header h1 { font-size: 2em; margin-bottom: 5px; }
+        .header .subtitle { font-size: 1.1em; color: #85c1e9; }
+        .header .date { margin-top: 12px; font-size: 0.9em; color: #aab7c4; }
+        .header .badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        /* SECTIONS */
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px 35px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        .section h2 {
+            font-size: 1.3em;
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+        .section h3 {
+            font-size: 1.05em;
+            color: #34495e;
+            margin: 18px 0 10px;
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 20px;
+            font-size: 0.92em;
+        }
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e8ecf1;
+        }
+        tr:nth-child(even) { background: #f8f9fb; }
+        tr:hover { background: #eef3f8; }
+
+        .status-ok { color: #27ae60; font-weight: 700; }
+        .status-new { color: #e67e22; font-weight: 700; }
+        .status-auto { color: #3498db; font-weight: 700; }
+
+        /* KPI ROW */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px;
+            margin: 20px 0;
+        }
+        .kpi-card {
+            background: linear-gradient(135deg, #f8f9fb, #eef1f5);
+            border-left: 4px solid #3498db;
+            padding: 18px 20px;
+            border-radius: 8px;
+        }
+        .kpi-card .value { font-size: 1.8em; font-weight: 700; color: #2c3e50; }
+        .kpi-card .label { font-size: 0.85em; color: #7f8c8d; margin-top: 2px; }
+        .kpi-card.green { border-left-color: #27ae60; }
+        .kpi-card.orange { border-left-color: #e67e22; }
+        .kpi-card.red { border-left-color: #e74c3c; }
+
+        /* EVOLUTION */
+        .evolution-grid {
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            align-items: start;
+            gap: 0;
+            margin: 15px 0;
+        }
+        .evo-before, .evo-after {
+            padding: 18px;
+            border-radius: 8px;
+        }
+        .evo-before {
+            background: #fdf2f2;
+            border: 1px solid #e8b4b4;
+        }
+        .evo-after {
+            background: #f0faf4;
+            border: 1px solid #a3d9b1;
+        }
+        .evo-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            color: #3498db;
+            padding-top: 20px;
+        }
+        .evo-title {
+            font-weight: 700;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+        }
+        .evo-before .evo-title { color: #c0392b; }
+        .evo-after .evo-title { color: #27ae60; }
+        .evo-list { list-style: none; padding: 0; }
+        .evo-list li { padding: 3px 0; font-size: 0.88em; }
+        .evo-list li::before { content: '•'; margin-right: 8px; }
+
+        /* ACTION */
+        .action-box {
+            background: #fff8e1;
+            border: 2px solid #f0c040;
+            border-radius: 10px;
+            padding: 25px 30px;
+            margin-top: 10px;
+        }
+        .action-box h3 { color: #e67e22; margin-bottom: 10px; }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #aab7c4;
+            font-size: 0.85em;
+        }
+
+        @media print {
+            body { background: white; }
+            .page { padding: 20px; }
+            .section { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>🌤️ Mah-Météo — Station Météo Connectée</h1>
+        <div class="subtitle">Plateforme SaaS de surveillance météo, trafic & logistique — GEODIS Le Meux / Clairoix</div>
+        <div class="date">Présentation Direction — Avril 2026</div>
+        <div class="badge">✅ EN PRODUCTION</div>
+    </div>
+
+    <!-- CHIFFRES CLÉS -->
+    <div class="section">
+        <h2>📊 Chiffres clés de la plateforme</h2>
+        <div class="kpi-row">
+            <div class="kpi-card"><div class="value">2</div><div class="label">Sites surveillés (Le Meux, Clairoix)</div></div>
+            <div class="kpi-card green"><div class="value">19</div><div class="label">Villes voisines suivies en temps réel</div></div>
+            <div class="kpi-card orange"><div class="value">J+5</div><div class="label">Horizon de prévisions météo</div></div>
+            <div class="kpi-card"><div class="value">~22 min</div><div class="label">Fréquence de mise à jour automatique</div></div>
+            <div class="kpi-card red"><div class="value">4</div><div class="label">Types d'alertes détectées</div></div>
+            <div class="kpi-card green"><div class="value">24/7</div><div class="label">Surveillance continue automatisée</div></div>
+        </div>
+    </div>
+
+    <!-- FONCTIONNALITÉS COMPLÈTES -->
+    <div class="section">
+        <h2>🔧 Fonctionnalités complètes de l'application</h2>
+
+        <h3>1. Surveillance météo en temps réel</h3>
+        <table>
+            <tr><th>Fonctionnalité</th><th>Détail</th><th>Statut</th></tr>
+            <tr><td>Données météo actuelles</td><td>Température, vent (vitesse + direction), précipitations, couverture nuageuse, indice UV, état du ciel</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Couverture géographique</td><td>2 sites GEODIS + 19 villes voisines (Compiègne, Creil, Beauvais, Senlis, Noyon, Chantilly, Pont-Ste-Maxence, Clermont, Breteuil, St Just en Chaussée, Trosly-Breuil, Crépy-en-Valois, St-Maximin, Nanteuil-le-Haudouin, Ressons-sur-Matz, Estrées-St-Denis, Guiscard, Chambly, Crèvecoeur-le-Grand)</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Mise à jour automatique</td><td>Toutes les ~22 min via GitHub Actions (cron automatisé)</td><td class="status-auto">🔄 Auto</td></tr>
+            <tr><td>Carte interactive</td><td>Carte Leaflet avec marqueurs par zone, popup détaillé au clic</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>KPI en temps réel</td><td>Barre de KPI : température max, vent max, précipitations max</td><td class="status-ok">✅ Actif</td></tr>
+        </table>
+
+        <h3>2. Prévisions météo à 5 jours</h3>
+        <table>
+            <tr><th>Fonctionnalité</th><th>Détail</th><th>Statut</th></tr>
+            <tr><td>Prévisions J à J+4</td><td>Température min/max, précipitations, indice UV, risques par jour</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Par zone</td><td>Prévisions individuelles pour chaque site et ville voisine</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Badges de risques visuels</td><td>✅ RAS, 🌧️ Pluie, 💨 Vent fort, ❄️ Verglas, 🔥 UV élevé</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Source de données</td><td>API Open-Meteo (gratuite, fiable, sans clé API)</td><td class="status-ok">✅ Actif</td></tr>
+        </table>
+
+        <h3>3. Surveillance trafic routier</h3>
+        <table>
+            <tr><th>Fonctionnalité</th><th>Détail</th><th>Statut</th></tr>
+            <tr><td>Incidents en temps réel</td><td>Accidents, travaux, fermetures, brouillard, verglas, inondation, pannes</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>14 catégories d'incidents</td><td>Crash, Fog, Conditions, Rain, Ice, Traffic, Closure, Construction, Road work, Wind, Flood, Breakdown…</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Niveau de gravité</td><td>Faible / Moyen / Élevé — code couleur visuel</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Retards estimés</td><td>Délai en minutes par incident</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Rayon de surveillance</td><td>30 km autour de chaque zone</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Source de données</td><td>API TomTom (clé API dédiée)</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Cache intelligent</td><td>Mise en cache 30 min pour éviter les appels excessifs</td><td class="status-auto">🔄 Auto</td></tr>
+        </table>
+
+        <h3>4. Système d'alertes automatiques</h3>
+        <table>
+            <tr><th>Type d'alerte</th><th>Seuil de déclenchement</th><th>Notification</th></tr>
+            <tr><td>❄️ Verglas</td><td>Température ≤ 2°C + précipitations</td><td>Email automatique</td></tr>
+            <tr><td>💨 Vent fort</td><td>Rafales ≥ 50 km/h</td><td>Email automatique</td></tr>
+            <tr><td>🌧️ Pluie forte</td><td>Précipitations ≥ 5 mm/h</td><td>Email automatique</td></tr>
+            <tr><td>🔥 UV élevé</td><td>Indice UV ≥ 6</td><td>Email automatique</td></tr>
+            <tr><td>🚗 Trafic critique</td><td>Gravité élevée ou retard &gt; 15 min</td><td>Email automatique</td></tr>
+            <tr><td>⚠️ Alerte combinée</td><td>Météo dégradée + incident trafic simultané</td><td>Email automatique</td></tr>
+        </table>
+        <p style="margin-top: 10px; font-size: 0.9em; color: #7f8c8d;">
+            <strong>Anti-spam :</strong> Chaque alerte a un cooldown d'1h par zone/route pour éviter les doublons.
+        </p>
+
+        <h3>5. Gestion des tournées</h3>
+        <table>
+            <tr><th>Fonctionnalité</th><th>Détail</th><th>Statut</th></tr>
+            <tr><td>Création de tournées</td><td>Itinéraires personnalisés avec plusieurs étapes</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Auto-complétion villes</td><td>50+ villes de la région proposées automatiquement</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Météo par étape</td><td>Conditions météo et risques affichés pour chaque ville traversée</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Score de risque par tournée</td><td>Niveau de risque global : ✅ Faible / ⚠️ Modéré / 🚨 Élevé</td><td class="status-ok">✅ Actif</td></tr>
+        </table>
+
+        <h3>6. Rapport hebdomadaire automatique</h3>
+        <table>
+            <tr><th>Fonctionnalité</th><th>Détail</th><th>Statut</th></tr>
+            <tr><td>Envoi automatique</td><td>Chaque lundi à 8h00 (heure de Paris)</td><td class="status-auto">🔄 Auto</td></tr>
+            <tr><td>Contenu</td><td>Synthèse des alertes de la semaine + prévisions 5 jours pour chaque zone</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>KPI visuels</td><td>Nombre total d'alertes, zones touchées, types de risques</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Cartes prévisions</td><td>Bloc visuel par zone avec les 5 prochains jours détaillés</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Export Excel</td><td>Fichier .xlsx joint avec données complètes</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Destinataires</td><td>Configurable via variable d'environnement (liste d'emails)</td><td class="status-ok">✅ Actif</td></tr>
+        </table>
+
+        <h3>7. Dashboard web sécurisé</h3>
+        <table>
+            <tr><th>Fonctionnalité</th><th>Détail</th><th>Statut</th></tr>
+            <tr><td>Authentification</td><td>Login sécurisé avec JWT (token 24h), mots de passe hashés (bcrypt)</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>5 onglets</td><td>Vue générale · Prévisions · Trafic & Alertes · Tournées · Mon Compte</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Multi-tenant (SaaS)</td><td>Chaque client a ses propres zones, données et quotas</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Gestion des zones</td><td>Ajout/suppression de zones avec recherche géographique intégrée</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Quotas par plan</td><td>Limites de sites, voisins, emails et modifications selon l'abonnement</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Protection anti-brute force</td><td>Rate limiting : 10 tentatives/min (login), 5 inscriptions/min</td><td class="status-ok">✅ Actif</td></tr>
+            <tr><td>Responsive</td><td>Interface adaptée desktop</td><td class="status-ok">✅ Actif</td></tr>
+        </table>
+    </div>
+
+    <!-- PLANS D'ABONNEMENT -->
+    <div class="section">
+        <h2>💼 Plans d'abonnement disponibles</h2>
+        <table>
+            <tr><th>Plan</th><th>Sites</th><th>Villes voisines</th><th>Emails alertes</th><th>Modifications zones</th><th>Cible</th></tr>
+            <tr><td><strong>Standard</strong> (gratuit)</td><td>1</td><td>5</td><td>1</td><td>3</td><td>Découverte / petits sites</td></tr>
+            <tr><td><strong>Pro</strong></td><td>3</td><td>8</td><td>3</td><td>10</td><td>Sites multi-agences</td></tr>
+            <tr><td><strong>Groupe</strong></td><td>5</td><td>15</td><td>5</td><td>30</td><td>Grands groupes (ex: GEODIS)</td></tr>
+        </table>
+        <p style="margin-top: 10px; font-size: 0.9em; color: #555;">
+            <strong>GEODIS Le Meux</strong> est actuellement sur le plan <strong>Groupe</strong> (2 sites + 19 voisins).
+        </p>
+    </div>
+
+    <!-- ÉVOLUTION AVANT / APRÈS -->
+    <div class="section">
+        <h2>📈 Évolution : Avant vs. Aujourd'hui</h2>
+
+        <h3>Surveillance météo</h3>
+        <div class="evolution-grid">
+            <div class="evo-before">
+                <div class="evo-title">❌ AVANT</div>
+                <ul class="evo-list">
+                    <li>Consultation manuelle de sites météo (Météo France, etc.)</li>
+                    <li>Aucune donnée centralisée pour les zones GEODIS</li>
+                    <li>Pas de suivi automatique</li>
+                    <li>Aucune alerte proactive</li>
+                </ul>
+            </div>
+            <div class="evo-arrow">→</div>
+            <div class="evo-after">
+                <div class="evo-title">✅ AUJOURD'HUI</div>
+                <ul class="evo-list">
+                    <li>Dashboard centralisé avec 21 zones surveillées</li>
+                    <li>Mise à jour automatique toutes les ~22 min</li>
+                    <li>Carte interactive avec toutes les zones</li>
+                    <li>KPI en temps réel (temp, vent, pluie)</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Anticipation des risques</h3>
+        <div class="evolution-grid">
+            <div class="evo-before">
+                <div class="evo-title">❌ AVANT</div>
+                <ul class="evo-list">
+                    <li>Découverte des risques météo au moment de l'impact</li>
+                    <li>Pas de prévisions spécifiques aux zones GEODIS</li>
+                    <li>Décisions réactives, pas préventives</li>
+                </ul>
+            </div>
+            <div class="evo-arrow">→</div>
+            <div class="evo-after">
+                <div class="evo-title">✅ AUJOURD'HUI</div>
+                <ul class="evo-list">
+                    <li>Prévisions à 5 jours par zone avec risques identifiés</li>
+                    <li>Alertes automatiques par email (verglas, vent, pluie, UV)</li>
+                    <li>Rapport hebdomadaire chaque lundi avec synthèse complète</li>
+                    <li>Anticipation = décisions préventives</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Trafic et logistique</h3>
+        <div class="evolution-grid">
+            <div class="evo-before">
+                <div class="evo-title">❌ AVANT</div>
+                <ul class="evo-list">
+                    <li>Aucune visibilité sur les incidents routiers en cours</li>
+                    <li>Pas de lien entre météo et conditions de route</li>
+                    <li>Tournées planifiées sans données de risque</li>
+                </ul>
+            </div>
+            <div class="evo-arrow">→</div>
+            <div class="evo-after">
+                <div class="evo-title">✅ AUJOURD'HUI</div>
+                <ul class="evo-list">
+                    <li>Incidents trafic temps réel (TomTom) sur 30 km autour des sites</li>
+                    <li>Alertes combinées météo + trafic (ex : verglas + accident A1)</li>
+                    <li>Module tournées avec score de risque par étape</li>
+                    <li>Historique des incidents archivé</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Rapports et communication</h3>
+        <div class="evolution-grid">
+            <div class="evo-before">
+                <div class="evo-title">❌ AVANT</div>
+                <ul class="evo-list">
+                    <li>Aucun reporting météo/trafic structuré</li>
+                    <li>Pas de traçabilité des événements</li>
+                    <li>Communication informelle sur les risques</li>
+                </ul>
+            </div>
+            <div class="evo-arrow">→</div>
+            <div class="evo-after">
+                <div class="evo-title">✅ AUJOURD'HUI</div>
+                <ul class="evo-list">
+                    <li>Rapport hebdomadaire automatique (email + Excel)</li>
+                    <li>Historique complet des alertes et incidents</li>
+                    <li>Emails d'alerte en temps réel aux responsables</li>
+                    <li>Dashboard accessible 24/7 depuis un navigateur</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARCHITECTURE TECHNIQUE -->
+    <div class="section">
+        <h2>🏗️ Architecture technique</h2>
+        <table>
+            <tr><th>Composant</th><th>Technologie</th><th>Rôle</th></tr>
+            <tr><td>Backend API</td><td>FastAPI (Python 3.11)</td><td>Serveur REST, logique métier, authentification</td></tr>
+            <tr><td>Base de données</td><td>PostgreSQL (Render)</td><td>Stockage clients, zones, snapshots, alertes, prévisions</td></tr>
+            <tr><td>Frontend</td><td>HTML/CSS/JS + Leaflet</td><td>Dashboard interactif, carte, tableaux, formulaires</td></tr>
+            <tr><td>Hébergement</td><td>Render.com</td><td>Déploiement automatique, HTTPS, PostgreSQL managé</td></tr>
+            <tr><td>Automatisation</td><td>GitHub Actions</td><td>Cron météo (~22 min) + rapport hebdomadaire (lundi 8h)</td></tr>
+            <tr><td>API Météo</td><td>Open-Meteo</td><td>Données météo temps réel + prévisions (gratuit, sans clé)</td></tr>
+            <tr><td>API Trafic</td><td>TomTom</td><td>Incidents routiers en temps réel</td></tr>
+            <tr><td>Emails</td><td>Gmail SMTP</td><td>Alertes automatiques + rapports hebdomadaires</td></tr>
+            <tr><td>Sécurité</td><td>JWT + bcrypt + rate limiting</td><td>Tokens signés, mots de passe hashés, anti brute-force</td></tr>
+        </table>
+        <p style="margin-top: 12px; font-size: 0.9em; color: #555;">
+            <strong>URL d'accès :</strong> <a href="https://mah-meteo.onrender.com" target="_blank">https://mah-meteo.onrender.com</a>
+        </p>
+    </div>
+
+    <!-- ACTION REQUISE -->
+    <div class="section">
+        <h2>🎯 Prochaine étape</h2>
+        <div class="action-box">
+            <h3>📧 Configuration des destinataires d'alertes</h3>
+            <p style="margin-bottom: 15px;">
+                L'application est <strong>100% opérationnelle</strong>. La seule action requise est de définir
+                la liste des responsables qui recevront les alertes météo/trafic et le rapport hebdomadaire.
+            </p>
+            <table>
+                <tr><th>Type de notification</th><th>Fréquence</th><th>Destinataire(s) à définir</th></tr>
+                <tr><td>⚠️ Alertes météo critiques</td><td>Temps réel (avec cooldown 1h)</td><td>Responsable exploitation / Chef de quai</td></tr>
+                <tr><td>🚗 Alertes trafic critiques</td><td>Temps réel (gravité élevée uniquement)</td><td>Responsable transport / Exploitation</td></tr>
+                <tr><td>📊 Rapport hebdomadaire</td><td>Chaque lundi 8h00</td><td>Direction / Responsables site</td></tr>
+            </table>
+            <p style="margin-top: 15px; font-size: 0.95em;">
+                <strong>Action :</strong> Fournir les adresses email des responsables concernés pour activer la diffusion.
+                <br>La configuration se fait en une seule modification (variable d'environnement <code>RECEIVER_EMAILS</code>).
+            </p>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        Mah-Météo — Station météo connectée GEODIS — Développé par Mahamé Touré — Avril 2026
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+name: Rapport Hebdomadaire
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Lundi 8h00 Paris (6h UTC été)
+  workflow_dispatch:      # Déclenchement manuel possible
+
+jobs:
+  rapport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Validate required secrets
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -e
+          for key in SENDER_EMAIL SMTP_FROM RECEIVER_EMAILS BREVO_API_KEY EMAIL_PROVIDER RENDER_URL JWT_SECRET; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key"
+              exit 1
+            fi
+          done
+          echo "All required secrets are present."
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run rapport hebdomadaire
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          GITHUB_ACTIONS: 'true'
+        run: python rapport_hebdomadaire.py --force-send

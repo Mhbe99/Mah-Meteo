@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 Suivi Météo Logistique 🏭 Le Meux & Clairoix</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f9fa; color: #333; }
+    h1 { font-size: 28px; margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border: 1px solid #999; padding: 8px; text-align: center; }
+    th { background-color: #333; color: #fff; }
+    .section-title { font-weight: bold; font-size: 20px; background: #ddd; padding: 10px; margin-top: 40px; }
+    .emoji { font-size: 20px; }
+    .ok { color: green; }
+    .warn { color: orange; font-weight: bold; }
+    .alert { color: red; font-weight: bold; }
+
+    /* Carte Leaflet */
+    #map { height: 500px; margin-top: 40px; border: 1px solid #ccc; }
+
+    /* Icônes personnalisées Leaflet avec emoji */
+    .custom-camion-icon {
+      font-size: 28px;
+      color: #000;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .custom-point-icon {
+      font-size: 24px;
+      color: #007bff;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .leaflet-popup-content-wrapper {
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Suivi Météo Logistique 🏭 Le Meux & Clairoix</h1>
+
+  <div class="section-title">🅰️ Conditions Actuelles (Sites)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>🌡️ Temp</th>
+      <th>💨 Vent</th>
+      <th>🧭 Direction</th>
+      <th>🌤️ Ciel</th>
+      <th>⚠️ Risque</th>
+      <th>⏰ Maj</th>
+    </tr>
+    <tr><td>Le Meux 🏣</td><td>15.4°C</td><td>19.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:07</td></tr><tr><td>Clairoix 🏣</td><td>16.0°C</td><td>16.9 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr>
+  </table>
+
+  <div class="section-title">🏘️ Villes Voisines (Actuel)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>🌡️ Temp</th>
+      <th>💨 Vent</th>
+      <th>🧭 Direction</th>
+      <th>🌤️ Ciel</th>
+      <th>⚠️ Risque</th>
+      <th>⏰ Maj</th>
+    </tr>
+    <tr><td>Compiègne</td><td>16.1°C</td><td>17.3 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Creil</td><td>16.5°C</td><td>16.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Beauvais</td><td>16.4°C</td><td>15.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Chantilly</td><td>16.2°C</td><td>16.2 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Noyon</td><td>15.7°C</td><td>16.9 km/h</td><td>Sud-Ouest</td><td>🌧️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Senlis</td><td>15.9°C</td><td>16.5 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Méru</td><td>16.2°C</td><td>17.2 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Nogent-sur-Oise</td><td>16.8°C</td><td>16.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Clermont</td><td>15.6°C</td><td>15.5 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Montataire</td><td>16.4°C</td><td>17.8 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Liancourt</td><td>16.2°C</td><td>17.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Chaumont-en-Vexin</td><td>16.5°C</td><td>20.5 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Formerie</td><td>14.5°C</td><td>18.5 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Breteuil</td><td>15.7°C</td><td>19.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>St Just en Chaussée</td><td>15.2°C</td><td>20.9 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Trosly-Breuil</td><td>15.4°C</td><td>13.0 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Crépy-en-Valois</td><td>14.9°C</td><td>17.6 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Saint-Maximin</td><td>16.2°C</td><td>17.2 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Nanteuil-le-Haudouin</td><td>15.9°C</td><td>19.9 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Ressons-sur-Matz</td><td>15.0°C</td><td>17.6 km/h</td><td>Sud-Ouest</td><td>🌧️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Estrées-Saint-Denis</td><td>15.6°C</td><td>18.7 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Guiscard</td><td>14.9°C</td><td>18.7 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Chambly</td><td>16.6°C</td><td>19.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Crèvecoeur-le-Grand</td><td>14.7°C</td><td>18.1 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr><tr><td>Mouy</td><td>16.3°C</td><td>19.9 km/h</td><td>Sud-Ouest</td><td>☁️</td><td>✅ RAS</td><td>11:07:08</td></tr>
+  </table>
+
+  <div class="section-title">📅 Prévisions à 5 jours (Sites)</div>
+  <table>
+    <tr>
+      <th>📍 Zone</th>
+      <th>📅 Jour</th>
+      <th>🌡️ Min</th>
+      <th>🌡️ Max</th>
+      <th>🌧️ Pluie</th>
+      <th>☀️ UV</th>
+      <th>⚠️ Risque</th>
+    </tr>
+    <tr><td>Le Meux 🏣</td><td>Wed 03/06</td><td>11.9°C</td><td>17.6°C</td><td>0.4 mm</td><td>5.65</td><td>✅ RAS</td></tr><tr><td>Le Meux 🏣</td><td>Thu 04/06</td><td>12.7°C</td><td>17.1°C</td><td>10.4 mm</td><td>6.9</td><td>🌧️ Alerte pluie</td></tr><tr><td>Le Meux 🏣</td><td>Fri 05/06</td><td>10.9°C</td><td>18.3°C</td><td>0.0 mm</td><td>5.3</td><td>✅ RAS</td></tr><tr><td>Le Meux 🏣</td><td>Sat 06/06</td><td>11.4°C</td><td>19.0°C</td><td>3.1 mm</td><td>5.65</td><td>✅ RAS</td></tr><tr><td>Le Meux 🏣</td><td>Sun 07/06</td><td>11.1°C</td><td>19.0°C</td><td>0.0 mm</td><td>7.0</td><td>🔥 UV fort</td></tr><tr><td>Clairoix 🏣</td><td>Wed 03/06</td><td>12.9°C</td><td>18.8°C</td><td>0.3 mm</td><td>5.7</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Thu 04/06</td><td>13.6°C</td><td>18.1°C</td><td>10.7 mm</td><td>6.8</td><td>🌧️ Alerte pluie</td></tr><tr><td>Clairoix 🏣</td><td>Fri 05/06</td><td>11.6°C</td><td>20.0°C</td><td>0.03 mm</td><td>5.3</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Sat 06/06</td><td>11.1°C</td><td>18.6°C</td><td>2.7 mm</td><td>5.05</td><td>✅ RAS</td></tr><tr><td>Clairoix 🏣</td><td>Sun 07/06</td><td>10.8°C</td><td>19.0°C</td><td>0.0 mm</td><td>6.9</td><td>✅ RAS</td></tr>
+  </table>
+
+  <div class="section-title">🚗 Incidents Trafic (TomTom)</div>
+  
+  <!-- KPIs trafic -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Incidents actifs
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#c0392b">
+        83
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Retard maximum
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#b8660a">
+        +5 min
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0dbd2;border-radius:4px;padding:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px">
+        Derniere MAJ
+      </div>
+      <div style="font-size:24px;font-weight:700;font-family:monospace;color:#1c4f82">
+        11:07
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerte combinee meteor + trafic -->
+  
+
+  <!-- Tableau incidents -->
+  <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #e0dbd2;border-radius:4px">
+    <thead>
+      <tr style="background:#f4f3f0;border-bottom:1px solid #e0dbd2">
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Route
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Description
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Severite
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Retard
+        </th>
+        <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#888">
+          Zone
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue du 11 Novembre 1918 (D924) / Rue Anatole France → Route de Neuilly-en-Thelle (D49) / Place Descartes
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D92 / Boulevard Lebègue → Place du Maréchal Leclerc (D609) / Rue de Paris
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue du Général Delanne (D124) → Rue André Nouet
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Place Shepshed (D124) → Rue du Général Delanne (D124)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D124 — Domont - D11 - D301 - D370 (D124) → Andilly - D124E (D124)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D909 — Asnières-sur-Oise - D922 (D909Z) → Belloy-en-France - D909 (D909Z)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Saint-Maximin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue de Paris (D909) → Rue Élie Camus de Pontcarré
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Saint-Maximin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D370 — D316 (D370) → Villiers-le-Bel - D10 (D370)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] D44e — Avenue Claude Maillat / Chemin Latéral → Avenue de la Concorde (D370)
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +3 min
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D123 → Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Montataire</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e) → D123
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Montataire</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Allée de la Thève → Rue de l'Église
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Allée des Marronniers → Le Clos
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Montataire</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue de Nogent → Rue du Parc du Château
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Montataire</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue de Liancourt (D62) → Rue George Sand
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Liancourt</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Impasse de la Croix Blanche → Rue de Liancourt (D62)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Liancourt</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Avenue du Maréchal Joffre (D1016) → Rond-Point de Sylvie (D1016) / Rue d'Orgemont
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue des Prés / Hameau du Gué → Rue Eugène Pottier
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue Eugène Pottier → Rue des Prés / Hameau du Gué
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] Avenue Charles de Gaulle (D902) → Place du Pays de France / Rue Houdart
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +4 min
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Route du Noyer du Chat → Aérogare 1
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Route de la Commune → Route du Noyer du Chat
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] D1017 — La Chapelle-en-Serval [N17] - D924A (D1017) → Limite Oise / Val d'Oise [N17] - D317 (95) (D1017)
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +2 min
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] Rue de Rome → Rue de Paris
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +1 min
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D330 — Place des Arènes → D1330
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D330 — D1330 → Place des Arènes
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] D1017 — Senlis nord [N17] - D1330 (D1017) → Senlis centre [N17] - D330 - D924 - D1324 (D1017)
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +2 min
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Avenue Jean Jaurès (D1017) / Rue de la Vieille Montagne → Allée Jean-Jacques Rousseau
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D1017 → Rue des Joncs
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue des Joncs → D1017
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue Louis Braille (D404) / Chemin Rural → Rue du Général de Gaulle (D401) / Rue Notre-Dame
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D401 — Montgé-en-Goële - D41 (D401) → N2 (D401)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue du Savert → D84
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue Magenta (D332) → Rue Jeanne d'Arc / Rue Saint-Corneille
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Compiègne</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] N330 — Saint-Soupplets Sud - D401 (N330) → Penchard - Déviation de Meaux-Nord (N330)
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +5 min
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Boulevard Victor Hugo / Place du Général de Gaulle → Rue Saint-Lazare (D332) / Avenue de Grande-Bretagne
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clairoix 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue Saint-Lazare (D332) / Avenue de Grande-Bretagne → Boulevard Victor Hugo / Place du Général de Gaulle
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clairoix 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D136 → Avenue Paul Pauchet (D520)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D520 — Avenue Paul Pauchet → D136
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D25 — Boulevard Victor Hugo (D520) / Rue des Tournelles → Rue Hippolyte Clair
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D25 — Avenue Pasteur → Boulevard Victor Hugo (D520) / Rue des Tournelles
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D520 — Crépy-en-Valois → Rue Tassart
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D25 — Rue Henri Laroche → Avenue Pasteur
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue Henri Barbusse (D15) → Rue du Maréchal Joffre (D66)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clairoix 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue du Maréchal Joffre (D66) → Rue Henri Barbusse (D15)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clairoix 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D40 — Chemin de la Taille d'Humières → Rue Aristide Briand / Rue de Pimprez (D608)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Noyon</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D40 — Rue Aristide Briand / Rue de Pimprez (D608) → Chemin de la Taille d'Humières
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Noyon</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D32 — Route de Saint-Simon → Rue des 2 Lieutenants Lecomte et Larrmuzeaux / Rue de Tugny (D34)
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Guiscard</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] D32 — Rue des 2 Lieutenants Lecomte et Larrmuzeaux / Rue de Tugny (D34) → Route de Saint-Simon
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Guiscard</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Boulevard du Maréchal Lyautey → Boulevard Henri Martin
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Boulevard Henri Martin → Boulevard du Maréchal Lyautey
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [TRAFFIC] Rue de la Buerie / Rue de Jaulzy → Rue Saint-Martin / Rue du Commerce
+          </td>
+          <td>Bouchon</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            +5 min
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #c0392b;padding-left:8px">
+            [CLOSED] Rue de Belleu → Avenue de Château-Thierry
+          </td>
+          <td>Route fermée</td>
+          <td style="color:#c0392b;font-weight:600">
+            🔴 Grave
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #b8660a;padding-left:8px">
+            [TRAFFIC] D4d — Route Départementale (D4) → D924
+          </td>
+          <td>Trafic avec des à-coups</td>
+          <td style="color:#b8660a;font-weight:600">
+            🟡 Modere
+          </td>
+          <td style="font-weight:600">
+            +2 min
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #b8660a;padding-left:8px">
+            [TRAFFIC] D370 — Villiers-le-Bel - D10 (D370) → Arnouville - D208 (D370)
+          </td>
+          <td>Trafic avec des à-coups</td>
+          <td style="color:#b8660a;font-weight:600">
+            🟡 Modere
+          </td>
+          <td style="font-weight:600">
+            +3 min
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #b8660a;padding-left:8px">
+            [TRAFFIC] Terminal 2 → Tremblay-en-France
+          </td>
+          <td>Trafic avec des à-coups</td>
+          <td style="color:#b8660a;font-weight:600">
+            🟡 Modere
+          </td>
+          <td style="font-weight:600">
+            +2 min
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #b8660a;padding-left:8px">
+            [TRAFFIC] N2 — Aulnay centre - A104 (N2) → Z.I. Mitry - Compans - D212 (N2)
+          </td>
+          <td>Trafic avec des à-coups</td>
+          <td style="color:#b8660a;font-weight:600">
+            🟡 Modere
+          </td>
+          <td style="font-weight:600">
+            +4 min
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #b8660a;padding-left:8px">
+            [TRAFFIC] N330 — N2 → Route de Senlis
+          </td>
+          <td>Trafic avec des à-coups</td>
+          <td style="color:#b8660a;font-weight:600">
+            🟡 Modere
+          </td>
+          <td style="font-weight:600">
+            +1 min
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D4 — Persan → Persan
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] Place de Verdun (D44) → Avenue Glandaz (D44) / Rue Henri Dunant
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D124 — Andilly - D124E (D124) → Domont - D11 - D301 - D370 (D124)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chambly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D44 — Rue de Blaincourt (D17) / Rue de la Tour du Moulin → Rue de Beauvais / Rue de la Mairie
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Saint-Maximin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D916 — Route de Paris → Place Decuignières / Rue Pierre Viénot (D929)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clermont</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [TRAFFIC] D370 — Villiers-le-Bel - D10 (D370) → Gonesse - D84 (D370)
+          </td>
+          <td>Trafic ralenti</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +3 min
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D970 — Gonesse Est - D84 (D970) → D170 - D370 (D970)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D970 — Gonesse Est - D84 (D970) → Gonesse Nord - D47 (D970)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [TRAFFIC] D1016 — Chantilly nord [N16] - D44 - D924 (D1016) → Lamorlaye [N16] - D118 (D1016)
+          </td>
+          <td>Trafic ralenti</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +3 min
+          </td>
+          <td style="color:#888;font-size:11px">Chantilly</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [TRAFFIC] D123 — Rue Jean Jaurès (D123) / Rue du Port → Rue Gambetta (D916)
+          </td>
+          <td>Trafic ralenti</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +3 min
+          </td>
+          <td style="color:#888;font-size:11px">Nogent-sur-Oise</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D1324 → Autoroute du Nord (A1)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Senlis</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D13 — Othis - D26E (D13) → Dammartin-en-Goële - Avenue de l'Europe (D13)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +1 min
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D935 — Monchy Humieres - D73 (D935) → Ressons - A1 (D935)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Ressons-sur-Matz</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D100 — Rue de Conce (D582) → Rue de Bouleux / Rue de la Tannerie (D113)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D200 — D85 (D200) → Chevrières - A1 (D200)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Le Meux 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D200 — Chevrières - A1 (D200) → D85 (D200)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +1 min
+          </td>
+          <td style="color:#888;font-size:11px">Le Meux 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D98 — Rue de Compiègne / Rue Pasteur → Rue de la République
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +2 min
+          </td>
+          <td style="color:#888;font-size:11px">Le Meux 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D932 — Rue de la République / Impasse des Étangs → Rue de la Verrerie
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clairoix 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] Rue de Soissons (N31) / Place du 5ème Régiment de Dragons → D66
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Clairoix 🏣</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [CONSTRUCTION] N2 — Nanteuil nord - D136 (N2) → Lévignen est - D332 (N2)
+          </td>
+          <td>Une voie fermée</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +1 min
+          </td>
+          <td style="color:#888;font-size:11px">Nanteuil-le-Haudouin</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [CONSTRUCTION] N2 — Lévignen est - D332 (N2) → Nanteuil nord - D136 (N2)
+          </td>
+          <td>Circulation à double sens</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            +1 min
+          </td>
+          <td style="color:#888;font-size:11px">Crépy-en-Valois</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] D1032 — Le Joncquoy [N32] - D934 (D1032) → Noyon sud-ouest [N32] - D932 (D1032)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Noyon</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [CONSTRUCTION] N2 — Verte Feuille - D17 (N2) → Villers Cotterets nord - D231 (N2)
+          </td>
+          <td>Voie fermées</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [ALERT] N2 — Verte Feuille - D17 (N2) → Villers Cotterets nord - D231 (N2)
+          </td>
+          <td>Véhicule dangereux se déplaçant lentement</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+        <tr>
+          <td style="border-left:4px solid #27ae60;padding-left:8px">
+            [WORK] E46 — Soissons ouest - D6 (N31) → D17 (N31)
+          </td>
+          <td>Travaux</td>
+          <td style="color:#27ae60;font-weight:600">
+            🟢 Faible
+          </td>
+          <td style="font-weight:600">
+            Faible
+          </td>
+          <td style="color:#888;font-size:11px">Trosly-Breuil</td>
+        </tr>
+    </tbody>
+  </table>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  
+<div class="section-title">🗺️ Carte Interactive</div>
+<div id="map" style="height: 500px; margin-top: 20px;"></div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const camionIcon = L.divIcon({
+  className: 'custom-camion-icon',
+  html: '🚚',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32]
+});
+const pointIcon = L.divIcon({
+  className: 'custom-point-icon',
+  html: '📍',
+  iconSize: [20, 20],
+  iconAnchor: [10, 20],
+  popupAnchor: [0, -20]
+});
+const map = L.map('map').setView([49.4, 2.75], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+L.marker([49.378829, 2.750393], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Le Meux 🏣</b><br>🌡️ Actuel : 15.4°C<br>💨 Vent : 19.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:07<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 11.9°C / 🔺 Tmax : 17.6°C<br>☔ Pluie : 0.4 mm<br>🌞 UV max : 5.65<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4194, 2.8328], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clairoix 🏣</b><br>🌡️ Actuel : 16.0°C<br>💨 Vent : 16.9 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.9°C / 🔺 Tmax : 18.8°C<br>☔ Pluie : 0.3 mm<br>🌞 UV max : 5.7<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4176, 2.8261], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Compiègne</b><br>🌡️ Actuel : 16.1°C<br>💨 Vent : 17.3 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.1°C / 🔺 Tmax : 18.9°C<br>☔ Pluie : 0.4 mm<br>🌞 UV max : 5.7<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2561, 2.4834], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Creil</b><br>🌡️ Actuel : 16.5°C<br>💨 Vent : 16.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.8°C / 🔺 Tmax : 20.1°C<br>☔ Pluie : 0.7 mm<br>🌞 UV max : 4.6<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4304, 2.0876], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Beauvais</b><br>🌡️ Actuel : 16.4°C<br>💨 Vent : 15.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.0°C / 🔺 Tmax : 20.1°C<br>☔ Pluie : 0.1 mm<br>🌞 UV max : 2.9<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.1931, 2.4714], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chantilly</b><br>🌡️ Actuel : 16.2°C<br>💨 Vent : 16.2 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.3°C / 🔺 Tmax : 19.8°C<br>☔ Pluie : 0.5 mm<br>🌞 UV max : 3.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.5786, 3.0017], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Noyon</b><br>🌡️ Actuel : 15.7°C<br>💨 Vent : 16.9 km/h (Sud-Ouest)<br>🌧️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.7°C / 🔺 Tmax : 18.5°C<br>☔ Pluie : 0.7 mm<br>🌞 UV max : 5.5<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2079, 2.5849], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Senlis</b><br>🌡️ Actuel : 15.9°C<br>💨 Vent : 16.5 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 11.7°C / 🔺 Tmax : 19.4°C<br>☔ Pluie : 0.6 mm<br>🌞 UV max : 4.5<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2335, 2.1293], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Méru</b><br>🌡️ Actuel : 16.2°C<br>💨 Vent : 17.2 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.2°C / 🔺 Tmax : 19.4°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 2.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2661, 2.4706], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Nogent-sur-Oise</b><br>🌡️ Actuel : 16.8°C<br>💨 Vent : 16.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.1°C / 🔺 Tmax : 20.4°C<br>☔ Pluie : 0.7 mm<br>🌞 UV max : 4.6<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3763, 2.4151], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clermont</b><br>🌡️ Actuel : 15.6°C<br>💨 Vent : 15.5 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.6°C / 🔺 Tmax : 17.9°C<br>☔ Pluie : 0.7 mm<br>🌞 UV max : 3.15<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2641, 2.4436], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Montataire</b><br>🌡️ Actuel : 16.4°C<br>💨 Vent : 17.8 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.4°C / 🔺 Tmax : 19.8°C<br>☔ Pluie : 0.2 mm<br>🌞 UV max : 4.6<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3334, 2.4573], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Liancourt</b><br>🌡️ Actuel : 16.2°C<br>💨 Vent : 17.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.6°C / 🔺 Tmax : 19.6°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 3.15<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2761, 1.8759], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chaumont-en-Vexin</b><br>🌡️ Actuel : 16.5°C<br>💨 Vent : 20.5 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.5°C / 🔺 Tmax : 20.0°C<br>☔ Pluie : 0.1 mm<br>🌞 UV max : 2.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.65, 1.73], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Formerie</b><br>🌡️ Actuel : 14.5°C<br>💨 Vent : 18.5 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.2°C / 🔺 Tmax : 18.5°C<br>☔ Pluie : 2.7 mm<br>🌞 UV max : 4.15<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.633331, 2.3], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Breteuil</b><br>🌡️ Actuel : 15.7°C<br>💨 Vent : 19.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.4°C / 🔺 Tmax : 16.8°C<br>☔ Pluie : 0.4 mm<br>🌞 UV max : 3.95<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.5, 2.43333], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>St Just en Chaussée</b><br>🌡️ Actuel : 15.2°C<br>💨 Vent : 20.9 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.2°C / 🔺 Tmax : 17.1°C<br>☔ Pluie : 0.7 mm<br>🌞 UV max : 3.0<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.400002, 2.96667], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Trosly-Breuil</b><br>🌡️ Actuel : 15.4°C<br>💨 Vent : 13.0 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.1°C / 🔺 Tmax : 17.9°C<br>☔ Pluie : 0.2 mm<br>🌞 UV max : 4.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.23333, 2.9], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Crépy-en-Valois</b><br>🌡️ Actuel : 14.9°C<br>💨 Vent : 17.6 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 11.9°C / 🔺 Tmax : 19.7°C<br>☔ Pluie : 0.6 mm<br>🌞 UV max : 3.6<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.216671, 2.45], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Saint-Maximin</b><br>🌡️ Actuel : 16.2°C<br>💨 Vent : 17.2 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.4°C / 🔺 Tmax : 19.8°C<br>☔ Pluie : 0.3 mm<br>🌞 UV max : 4.6<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.133331, 2.8], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Nanteuil-le-Haudouin</b><br>🌡️ Actuel : 15.9°C<br>💨 Vent : 19.9 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.1°C / 🔺 Tmax : 19.8°C<br>☔ Pluie : 0.4 mm<br>🌞 UV max : 4.1<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.549999, 2.75], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Ressons-sur-Matz</b><br>🌡️ Actuel : 15.0°C<br>💨 Vent : 17.6 km/h (Sud-Ouest)<br>🌧️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.3°C / 🔺 Tmax : 17.5°C<br>☔ Pluie : 0.4 mm<br>🌞 UV max : 3.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.433331, 2.65], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Estrées-Saint-Denis</b><br>🌡️ Actuel : 15.6°C<br>💨 Vent : 18.7 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.3°C / 🔺 Tmax : 17.7°C<br>☔ Pluie : 0.5 mm<br>🌞 UV max : 5.65<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.650002, 3.05], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Guiscard</b><br>🌡️ Actuel : 14.9°C<br>💨 Vent : 18.7 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.2°C / 🔺 Tmax : 17.9°C<br>☔ Pluie : 0.4 mm<br>🌞 UV max : 5.5<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.166672, 2.25], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chambly</b><br>🌡️ Actuel : 16.6°C<br>💨 Vent : 19.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.2°C / 🔺 Tmax : 20.4°C<br>☔ Pluie : 0.2 mm<br>🌞 UV max : 2.9<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.599998, 2.08333], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Crèvecoeur-le-Grand</b><br>🌡️ Actuel : 14.7°C<br>💨 Vent : 18.1 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.2°C / 🔺 Tmax : 18.6°C<br>☔ Pluie : 1.8 mm<br>🌞 UV max : 3.6<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.316669, 2.31667], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Mouy</b><br>🌡️ Actuel : 16.3°C<br>💨 Vent : 19.9 km/h (Sud-Ouest)<br>☁️<br>🕒 Maj : 11:07:08<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.6°C / 🔺 Tmax : 19.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 3.15<br>⚠️ Risques : ✅ RAS</div>");
+const points = [{"name": "Le Meux 🏣", "lat": 49.378829, "lon": 2.750393}, {"name": "Clairoix 🏣", "lat": 49.4194, "lon": 2.8328}, {"name": "Compiègne", "lat": 49.4176, "lon": 2.8261}, {"name": "Creil", "lat": 49.2561, "lon": 2.4834}, {"name": "Beauvais", "lat": 49.4304, "lon": 2.0876}, {"name": "Chantilly", "lat": 49.1931, "lon": 2.4714}, {"name": "Noyon", "lat": 49.5786, "lon": 3.0017}, {"name": "Senlis", "lat": 49.2079, "lon": 2.5849}, {"name": "Méru", "lat": 49.2335, "lon": 2.1293}, {"name": "Nogent-sur-Oise", "lat": 49.2661, "lon": 2.4706}, {"name": "Clermont", "lat": 49.3763, "lon": 2.4151}, {"name": "Montataire", "lat": 49.2641, "lon": 2.4436}, {"name": "Liancourt", "lat": 49.3334, "lon": 2.4573}, {"name": "Chaumont-en-Vexin", "lat": 49.2761, "lon": 1.8759}, {"name": "Formerie", "lat": 49.65, "lon": 1.73}, {"name": "Breteuil", "lat": 49.633331, "lon": 2.3}, {"name": "St Just en Chaussée", "lat": 49.5, "lon": 2.43333}, {"name": "Trosly-Breuil", "lat": 49.400002, "lon": 2.96667}, {"name": "Crépy-en-Valois", "lat": 49.23333, "lon": 2.9}, {"name": "Saint-Maximin", "lat": 49.216671, "lon": 2.45}, {"name": "Nanteuil-le-Haudouin", "lat": 49.133331, "lon": 2.8}, {"name": "Ressons-sur-Matz", "lat": 49.549999, "lon": 2.75}, {"name": "Estrées-Saint-Denis", "lat": 49.433331, "lon": 2.65}, {"name": "Guiscard", "lat": 49.650002, "lon": 3.05}, {"name": "Chambly", "lat": 49.166672, "lon": 2.25}, {"name": "Crèvecoeur-le-Grand", "lat": 49.599998, "lon": 2.08333}, {"name": "Mouy", "lat": 49.316669, "lon": 2.31667}];
+
+let index = 0;
+function loopZoom() {
+  const p = points[index];
+  map.setView([p.lat, p.lon], 12, { animate: true });
+  map.eachLayer(function (layer) {
+    if (layer.getPopup && layer.getPopup()) {
+      const popup = layer.getPopup();
+      const content = popup.getContent();
+      if (content && content.includes(p.name)) {
+        layer.openPopup();
+      } else {
+        layer.closePopup();
+      }
+    }
+  });
+  index = (index + 1) % points.length;
+  setTimeout(loopZoom, 12000); // 12s par ville
+}
+loopZoom();
+</script>
+</script>
+</body>
+</html>

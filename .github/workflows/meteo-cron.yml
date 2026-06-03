@@ -1,0 +1,78 @@
+name: Meteo Cron Job
+
+on:
+  workflow_dispatch:  # Déclenché par cron-job.org via API GitHub
+
+jobs:
+  run-meteo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 15
+    concurrency:
+      group: meteo-cron
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Validate required secrets
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+        run: |
+          set -e
+          for key in SENDER_EMAIL SMTP_FROM RECEIVER_EMAILS BREVO_API_KEY EMAIL_PROVIDER JWT_SECRET RENDER_URL; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key"
+              exit 1
+            fi
+          done
+          echo "All required secrets are present."
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Wake up Render API
+        run: |
+          echo "🔄 Réveillage du service Render..."
+          curl -s https://mah-meteo.onrender.com/health || true
+          sleep 3
+      
+      - name: Run meteo script
+        env:
+          TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_ACTIONS: 'true'
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            export DATABASE_URL="sqlite:///./meteo_saas.db"
+          fi
+          python meteo_open.py
+
+      - name: Deploy to GitHub Pages
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan gh-pages
+          git reset
+          git add dashboard_meteo.html carte_tv.html exports/risques_meteo.xlsx -f
+          git commit -m "Update météo data"
+          git push origin gh-pages -f
