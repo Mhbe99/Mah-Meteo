@@ -1250,6 +1250,26 @@ loopZoom();
     except Exception as e:
         print(f"⚠️ Erreur génération carte TV: {e}")
 
+    # === DÉCLENCHEMENT BULLETIN HORAIRE sur Render ===
+    # On appelle /api/refresh/{client_id} pour que Render évalue
+    # si on est dans un créneau (06h30, 10h30, 12h, 15h, 17h30)
+    # et envoie le bulletin email si nécessaire.
+    try:
+        token_refresh = get_jwt_token(client_id=client_id, username=username)
+        if token_refresh:
+            r_refresh = requests.post(
+                f"{RENDER_URL}/api/refresh/{client_id}",
+                headers={"Authorization": f"Bearer {token_refresh}"},
+                timeout=30,
+            )
+            if r_refresh.status_code == 200:
+                resp_data = r_refresh.json()
+                print(f"[REFRESH] Render OK — {resp_data.get('updated', 0)} zones màj")
+            else:
+                print(f"[REFRESH] Render {r_refresh.status_code}: {r_refresh.text[:80]}")
+    except Exception as _re:
+        print(f"[REFRESH] Erreur appel Render refresh: {_re}")
+
     print(f"[CLIENT] Fin traitement {username}")
 
 
