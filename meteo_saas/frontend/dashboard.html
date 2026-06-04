@@ -2346,22 +2346,32 @@
                             const t = current.temperature_2m ?? legacy.temperature;
                             const w = current.wind_speed_10m ?? legacy.windspeed;
                             const wd = current.wind_direction_10m ?? legacy.winddirection;
+                            const prevT = zone.temp ?? zone.temperature;
+                            const prevW = zone.wind ?? zone.windspeed;
+                            const safeT = t ?? prevT;
+                            const safeW = w ?? prevW;
 
                             if (t != null || w != null) liveUpdatedCount += 1;
 
-                            zone.temp = t;
-                            zone.temperature = t;
+                            if (safeT != null) {
+                                zone.temp = safeT;
+                                zone.temperature = safeT;
+                            }
                             zone.apparent_temperature = current.apparent_temperature ?? null;
-                            zone.wind = w;
-                            zone.windspeed = w;
-                            zone.wind_direction = _windDir(wd || 0);
-                            zone.direction = zone.wind_direction;
+                            if (safeW != null) {
+                                zone.wind = safeW;
+                                zone.windspeed = safeW;
+                            }
+                            if (wd != null) {
+                                zone.wind_direction = _windDir(wd);
+                            }
+                            zone.direction = zone.wind_direction || zone.direction;
                             zone.precipitation = precip;
                             zone.cloudcover = cloud;
                             zone.uv_index = uv;
                             zone.uv = uv;
-                            zone.ciel = _cielIcon(precip, cloud, w || 0);
-                            zone.risques = _riskText(t || 0, w || 0, precip, uv);
+                            zone.ciel = _cielIcon(precip, cloud, safeW || 0);
+                            zone.risques = _riskText(safeT ?? 0, safeW ?? 0, precip, uv);
                         } catch(e) { console.warn('[OM batch]', zone.name, e); }
                         return zone;
                     });
@@ -2390,14 +2400,19 @@
                             const t = current.temperature_2m ?? legacy.temperature;
                             const w = current.wind_speed_10m ?? legacy.windspeed;
                             const wd = current.wind_direction_10m ?? legacy.winddirection;
+                            const prevT = zone.temp ?? zone.temperature;
+                            const prevW = zone.wind ?? zone.windspeed;
+                            const safeT = t ?? prevT;
+                            const safeW = w ?? prevW;
                             if (t != null || w != null) liveUpdatedCount += 1;
-                            zone.temp = t; zone.temperature = t;
+                            if (safeT != null) { zone.temp = safeT; zone.temperature = safeT; }
                             zone.apparent_temperature = current.apparent_temperature ?? null;
-                            zone.wind = w; zone.windspeed = w;
-                            zone.wind_direction = _windDir(wd || 0); zone.direction = zone.wind_direction;
+                            if (safeW != null) { zone.wind = safeW; zone.windspeed = safeW; }
+                            if (wd != null) { zone.wind_direction = _windDir(wd); }
+                            zone.direction = zone.wind_direction || zone.direction;
                             zone.precipitation = precip; zone.cloudcover = cloud; zone.uv_index = uv; zone.uv = uv;
-                            zone.ciel = _cielIcon(precip, cloud, w || 0);
-                            zone.risques = _riskText(t || 0, w || 0, precip, uv);
+                            zone.ciel = _cielIcon(precip, cloud, safeW || 0);
+                            zone.risques = _riskText(safeT ?? 0, safeW ?? 0, precip, uv);
                         } catch(e) { console.warn('[OM fallback]', zone.name, e); }
                         return zone;
                     });
