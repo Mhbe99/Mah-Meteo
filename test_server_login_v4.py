@@ -34,7 +34,10 @@ with open('server_log.txt', 'w') as log_file:
     if success:
         print('Testing login...')
         login_url = 'http://127.0.0.1:8000/auth/login'
-        credentials = {'username': 'geodis-lemeux', 'password': 'Geodis60'}
+        credentials = {
+            'username': os.getenv('TEST_USERNAME') or os.getenv('INIT_CLIENT_USERNAME', 'service-meteo'),
+            'password': os.getenv('TEST_PASSWORD') or os.getenv('INIT_CLIENT_PASSWORD', '')
+        }
         try:
             # Most FastAPI OAuth2 setups expect form data
             response = requests.post(login_url, data=credentials, timeout=10)

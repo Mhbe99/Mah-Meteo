@@ -151,7 +151,7 @@ voisin | Senlis                 | T= 14.0°C W=  4.8 km/h R=0.0mm UV=1.1 → ✅
 
 **Actions automatiques :**
 1. ✅ Vérifier cooldown (1h)
-2. ✅ Si OK → Envoyer email alert@geodis.fr
+2. ✅ Si OK → Envoyer email alerts@example.com
 3. ✅ Archiver AlerteLog en BD
 4. ✅ Mettre à jour last_alerts.json
 

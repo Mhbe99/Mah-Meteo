@@ -165,7 +165,7 @@ Value : [email1@example.com,email2@example.com]
 **VARIABLE 5 :**
 ```
 Key   : JWT_SECRET
-Value : geodis-secret-key-2024
+Value : your_jwt_secret_key_here
 [Add]
 ```
 

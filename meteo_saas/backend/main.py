@@ -42,7 +42,7 @@ from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_ale
 
 load_dotenv()
 
-ADMIN_PIN = os.getenv("ADMIN_PIN", "1909")
+ADMIN_PIN = os.getenv("ADMIN_PIN", "")
 COMBINED_ALERT_AUTO_ENABLED = os.getenv("COMBINED_ALERT_AUTO_ENABLED", "true").strip().lower() == "true"
 REFRESH_COOLDOWN_SECONDS = int(os.getenv("REFRESH_COOLDOWN_SECONDS", "600"))
 _refresh_locks: dict[int, Lock] = {}

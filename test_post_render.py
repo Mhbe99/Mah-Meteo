@@ -19,7 +19,7 @@ def get_jwt_token():
     """Reprendre la logique"""
     RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
     RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
-    JWT_SECRET = os.getenv("JWT_SECRET", "geodis-secret-key-2024")
+    JWT_SECRET = os.getenv("JWT_SECRET", "")
     
     try:
         response = requests.get(f"{RENDER_URL}/api/service/token", timeout=5)

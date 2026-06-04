@@ -1,6 +1,9 @@
+import os
 import requests
 
-TOMTOM_API_KEY = 'h6Gm30AiJWGE3VztO3vpHJSMyLeKZudx'
+TOMTOM_API_KEY = os.getenv("TOMTOM_API_KEY", "")
+if not TOMTOM_API_KEY:
+    raise SystemExit("TOMTOM_API_KEY manquante")
 zone_lat, zone_lon = 49.108829, 2.5003929999999997
 
 lat_min = zone_lat - 0.27

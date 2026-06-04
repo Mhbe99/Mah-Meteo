@@ -109,7 +109,7 @@ incidents = [
 ]
 
 # ── Envoi ────────────────────────────────────────────────────────────────────
-DEST = os.getenv("RECEIVER_EMAILS", "mahmeteo@gmail.com").split(",")[0].strip()
+DEST = os.getenv("RECEIVER_EMAILS", "test@example.com").split(",")[0].strip()
 
 print(f"\n[TEST] Envoi bulletin visuel → {DEST}")
 print(f"[TEST] Zones : {len(zones)} | Incidents : {len(incidents)}")

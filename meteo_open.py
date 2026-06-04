@@ -39,7 +39,7 @@ RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
 RENDER_API_URL = f"{RENDER_URL}/api/meteo/snapshot/add"
 RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
 GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
-JWT_SECRET = os.getenv("JWT_SECRET", "geodis-secret-key-2024")
+JWT_SECRET = os.getenv("JWT_SECRET", "")
 _RENDER_SERVICE_TOKEN = None
 _RENDER_TOKEN_CHECKED = False
 _RENDER_SYNC_DISABLED_REASON = None

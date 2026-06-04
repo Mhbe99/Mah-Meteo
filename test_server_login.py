@@ -2,6 +2,7 @@
 import time
 import requests
 import sys
+import os
 
 # 1. Start uvicorn
 print('Starting uvicorn...')
@@ -19,7 +20,10 @@ time.sleep(5)
 # 3. Test POST http://127.0.0.1:8000/auth/login
 print('Testing login...')
 login_url = 'http://127.0.0.1:8000/auth/login'
-credentials = {'username': 'geodis-lemeux', 'password': 'Geodis60'}
+credentials = {
+    'username': os.getenv('TEST_USERNAME') or os.getenv('INIT_CLIENT_USERNAME', 'service-meteo'),
+    'password': os.getenv('TEST_PASSWORD') or os.getenv('INIT_CLIENT_PASSWORD', '')
+}
 
 try:
     # Most FastAPI OAuth2/Login forms use Form data (x-www-form-urlencoded)

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Test: Lancer meteo_open.py manuellement et vérifier les données sur Render"""
+import os
 import requests
 import time
 
-RENDER_URL = 'https://mah-meteo.onrender.com'
+RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
+TEST_USERNAME = os.getenv("TEST_USERNAME") or os.getenv("INIT_CLIENT_USERNAME", "service-meteo")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "")
 
 print()
 print('╔' + '═'*62 + '╗')
@@ -13,7 +16,7 @@ print()
 
 # Login
 print('[1] Authentification...')
-r = requests.post(RENDER_URL + '/auth/login', json={'username': 'geodis-lemeux', 'password': 'demo1234'})
+r = requests.post(RENDER_URL + '/auth/login', json={'username': TEST_USERNAME, 'password': TEST_PASSWORD})
 if r.status_code != 200:
     print(f'❌ Login failed: {r.status_code}')
     exit(1)
