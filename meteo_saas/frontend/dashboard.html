@@ -1849,6 +1849,14 @@
     // Cache global des données pour le module Tournées
     const _METEO_CACHE_KEY = 'mah_meteo_last_good_v1';
     const _TRAFIC_CACHE_KEY = 'mah_trafic_last_good_v1';
+    const CAN_FETCH_OPEN_METEO_DIRECT = (() => {
+        try {
+            const host = (window.location && window.location.hostname || '').toLowerCase();
+            return host === 'localhost' || host === '127.0.0.1';
+        } catch (e) {
+            return false;
+        }
+    })();
 
     function _readJsonCache(key, fallback) {
         try {
@@ -2234,7 +2242,7 @@
         if (!TOKEN) return;
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
             const response = await fetch(`/api/refresh/${CLIENT_ID}`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${TOKEN}` },
@@ -2244,9 +2252,16 @@
             clearTimeout(timeoutId);
             if (!response.ok) {
                 console.warn(`[refreshServerMeteo] HTTP ${response.status}`);
+                return null;
+            }
+            try {
+                return await response.json();
+            } catch (e) {
+                return { status: 'ok' };
             }
         } catch (e) {
             console.warn("[refreshServerMeteo] indisponible:", e);
+            return null;
         }
     }
 
@@ -2260,8 +2275,12 @@
             _rapportCharge = false;
             _traficCharge = false;
 
-            // Rafraîchir d'abord le cache serveur pour éviter les données anciennes.
-            refreshServerMeteo().catch(() => {});
+            // Rafraîchir d'abord côté backend pour garantir des données temps réel
+            // avant de relire les endpoints /api/meteo et /api/previsions.
+            const refreshResult = await refreshServerMeteo();
+            if (refreshResult) {
+                console.log('[refreshData] refresh backend:', refreshResult);
+            }
             
             // AMÉLIORATION: Montrer les spinners de chargement
             const sitesTableBody = document.getElementById("sites-table").querySelector("tbody");
@@ -2285,8 +2304,9 @@
                 showNotif("Météo live indisponible: affichage du dernier cache local");
             }
 
-            // Open-Meteo direct depuis le navigateur (Render bloque les appels sortants)
-            if (meteo && meteo.length > 0) {
+            // Open-Meteo direct uniquement en local. En production Render, on garde les
+            // données backend pour éviter les blocages CORS et les 429 navigateur.
+            if (meteo && meteo.length > 0 && CAN_FETCH_OPEN_METEO_DIRECT) {
                 const _windDir = (deg) => {
                     const dirs = ['Nord','Nord-Est','Est','Sud-Est','Sud','Sud-Ouest','Ouest','Nord-Ouest'];
                     return dirs[Math.round(deg / 45) % 8];
@@ -2422,6 +2442,8 @@
                 if (liveUpdatedCount === 0) {
                     showNotif("Météo live indisponible: affichage des dernières données en cache");
                 }
+            } else if (meteo && meteo.length > 0 && !CAN_FETCH_OPEN_METEO_DIRECT) {
+                console.log('[refreshData] Open-Meteo direct désactivé en production; utilisation des données backend');
             }
 
             // Stocker pour le module Tournées
@@ -4093,11 +4115,11 @@
                 const chartsBackend = await _parseJsonSafe(resC, 'charts', {});
                 const pollutionWeekly = await _parseJsonSafe(resP, 'pollution-weekly', { labels: [], series: [], thresholds: { good: 40, moderate: 60, bad: 80 } });
 
-                // 2. Fetch Open-Meteo directement depuis le navigateur (contourne le blocage Render)
+                // 2. Fetch Open-Meteo directement uniquement en local.
                 let hourly = [], daily = [];
                 const lat = chartsBackend.ref_lat;
                 const lon = chartsBackend.ref_lon;
-                if (lat && lon) {
+                if (lat && lon && CAN_FETCH_OPEN_METEO_DIRECT) {
                     try {
                         const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation,windspeed_10m,cloudcover&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&past_days=1&forecast_days=7&timezone=auto`;
                         const omRes = await fetch(omUrl);
@@ -4125,6 +4147,8 @@
                             console.log('[loadRapport] Open-Meteo direct: hourly=' + hourly.length + ' daily=' + daily.length);
                         }
                     } catch(omErr) { console.warn('[loadRapport] Open-Meteo direct error:', omErr); }
+                } else if (!CAN_FETCH_OPEN_METEO_DIRECT) {
+                    console.log('[loadRapport] Open-Meteo direct désactivé en production');
                 }
 
                 // 3. Combiner les données
