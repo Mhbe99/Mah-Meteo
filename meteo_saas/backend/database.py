@@ -7,7 +7,7 @@ import os
 import json
 from datetime import datetime
 from fastapi import HTTPException, status
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text, inspect, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text, UniqueConstraint, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -183,6 +183,24 @@ class AlerteLog(Base):
     client = relationship("Client", back_populates="alertes_log")
 
 
+class BulletinLog(Base):
+    """Table bulletin_log : suivi des bulletins envoyés par créneau/jour/client."""
+    __tablename__ = "bulletin_log"
+
+    id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, nullable=False, index=True)
+    creneau = Column(String, nullable=False, index=True)
+    date_jour = Column(String, nullable=False, index=True)
+    sent_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "client_id", "creneau", "date_jour",
+            name="uq_bulletin_client_creneau_jour"
+        ),
+    )
+
+
 class ConnectionLog(Base):
     """Table connection_logs : historique des connexions"""
     __tablename__ = "connection_logs"
@@ -205,6 +223,8 @@ class ConnectionLog(Base):
 def init_db():
     """Crée les tables et applique les migrations"""
     Base.metadata.create_all(bind=engine)
+    # Sécurise explicitement la création de la table des bulletins (idempotent).
+    BulletinLog.__table__.create(bind=engine, checkfirst=True)
     print("✅ Bases de données initialisées")
     
     # Migration: ajouter les colonnes météo manquantes à la table zones

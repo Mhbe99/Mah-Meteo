@@ -230,6 +230,34 @@ def post_to_render(zone_name: str, temp, wind, direction, precip, cloudcover, uv
         print(f"⚠️ Erreur POST vers Render: {str(e)}")
 
 
+def _appeler_refresh_render(client_id: int, username: str = "geodis-lemeux"):
+    """
+    Appelle /api/refresh pour déclencher l'évaluation bulletin.
+    Appelé après chaque cycle de collecte météo.
+    """
+    render_url = os.getenv("RENDER_URL", "")
+    if not render_url:
+        return
+
+    token = get_jwt_token(client_id=client_id, username=username)
+    if not token:
+        print("[REFRESH] Pas de token disponible")
+        return
+
+    try:
+        resp = requests.post(
+            f"{render_url}/api/refresh/{client_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            print(f"[REFRESH] OK client {client_id}")
+        else:
+            print(f"[REFRESH] Erreur {resp.status_code}")
+    except Exception as e:
+        print(f"[REFRESH] Exception : {e}")
+
+
 def _load_json_file(path, default):
     try:
         if os.path.exists(path):
@@ -1174,25 +1202,8 @@ loopZoom();
     except Exception as e:
         print(f"⚠️ Erreur génération carte TV: {e}")
 
-    # === DÉCLENCHEMENT BULLETIN HORAIRE sur Render ===
-    # On appelle /api/refresh/{client_id} pour que Render évalue
-    # si on est dans un créneau (06h30, 10h30, 12h, 15h, 17h30)
-    # et envoie le bulletin email si nécessaire.
-    try:
-        token_refresh = get_jwt_token(client_id=client_id, username=username)
-        if token_refresh:
-            r_refresh = requests.post(
-                f"{RENDER_URL}/api/refresh/{client_id}",
-                headers={"Authorization": f"Bearer {token_refresh}"},
-                timeout=30,
-            )
-            if r_refresh.status_code == 200:
-                resp_data = r_refresh.json()
-                print(f"[REFRESH] Render OK — {resp_data.get('updated', 0)} zones màj")
-            else:
-                print(f"[REFRESH] Render {r_refresh.status_code}: {r_refresh.text[:80]}")
-    except Exception as _re:
-        print(f"[REFRESH] Erreur appel Render refresh: {_re}")
+    # Déclenche l'évaluation bulletin côté Render en fin de cycle client.
+    _appeler_refresh_render(client.get("id", 1), username=username)
 
     print(f"[CLIENT] Fin traitement {username}")
 

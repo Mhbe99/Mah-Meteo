@@ -729,46 +729,42 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
     incidents : liste d'incidents trafic [{route, description, severity, delay_minutes}]
     creneau : label ex: "06h30"
     """
-    incidents = incidents or []
-    now_str = datetime.now().strftime("%A %d %B %Y")
-    heure_str = datetime.now().strftime("%H:%M")
+    try:
+        incidents = incidents or []
+        now_str = datetime.now().strftime("%A %d %B %Y")
+        heure_str = datetime.now().strftime("%H:%M")
 
-    def _get(obj, attr, default=None):
-        val = (getattr(obj, attr, None) if not isinstance(obj, dict) else obj.get(attr))
-        return val if val is not None else default
+        def _get(obj, attr, default=None):
+            val = (getattr(obj, attr, None) if not isinstance(obj, dict) else obj.get(attr))
+            return val if val is not None else default
 
-    # Détecter les alertes actives
-    alertes_actives = []
-    for z in zones:
-        risques = _get(z, "risques", "") or ""
-        if risques and "RAS" not in risques and "✅" not in risques:
-            alertes_actives.append(((_get(z, "name") or "Zone"), risques))
+        alertes_actives = []
+        for z in zones:
+            risques = _get(z, "risques", "") or ""
+            if risques and "RAS" not in risques and "✅" not in risques:
+                alertes_actives.append(((_get(z, "name") or "Zone"), risques))
 
-    gros_retards = [i for i in incidents if (i.get("delay_minutes") or 0) >= 30]
-    nb_alertes = len(alertes_actives) + len(gros_retards)
-    retard_max = max((i.get("delay_minutes") or 0 for i in incidents), default=0)
+        gros_retards = [i for i in incidents if (i.get("delay_minutes") or 0) >= 30]
+        nb_alertes = len(alertes_actives) + len(gros_retards)
+        retard_max = max((i.get("delay_minutes") or 0 for i in incidents), default=0)
 
-    if alertes_actives or gros_retards:
-        accent = "#c53030"
-        status_bg = "#fff5f5"
-        status_border = "#feb2b2"
-        status_txt = "#c53030"
-        status_icon = "⚠️"
-        status_label = f"{nb_alertes} ALERTE{'S' if nb_alertes > 1 else ''} EN COURS"
-    else:
-        accent = "#276749"
-        status_bg = "#f0fff4"
-        status_border = "#9ae6b4"
-        status_txt = "#276749"
-        status_icon = "✅"
-        status_label = "TOUTES LES ZONES OK"
+        if alertes_actives or gros_retards:
+            accent = "#c53030"
+            status_bg = "#fff5f5"
+            status_border = "#feb2b2"
+            status_txt = "#c53030"
+            status_icon = "⚠️"
+            status_label = f"{nb_alertes} ALERTE{'S' if nb_alertes > 1 else ''} EN COURS"
+        else:
+            accent = "#276749"
+            status_bg = "#f0fff4"
+            status_border = "#9ae6b4"
+            status_txt = "#276749"
+            status_icon = "✅"
+            status_label = "TOUTES LES ZONES OK"
 
-    render_url = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
-
-    # ──────────────────────────────────────────────────────────
-    # Banniere statut
-    # ──────────────────────────────────────────────────────────
-    banniere = f"""
+        render_url = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
+        banniere = f"""
     <div style="background:{status_bg};border:1px solid {status_border};border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;">
         <span style="font-size:22px;margin-right:10px;">{status_icon}</span>
         <div style="flex:1;">
@@ -778,25 +774,21 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
         <a href="{render_url}" style="font-size:11px;background:{accent};color:#fff;padding:5px 12px;border-radius:12px;text-decoration:none;font-weight:600;white-space:nowrap;">Dashboard →</a>
     </div>"""
 
-    # ──────────────────────────────────────────────────────────
-    # Chips de stats rapides
-    # ──────────────────────────────────────────────────────────
-    # Calcul temp moyenne sites
-    sites = [z for z in zones if (_get(z, "type") or "voisin") == "site"]
-    temps = [_get(z, "temperature") for z in sites]
-    temps = [t for t in temps if isinstance(t, (int, float))]
-    temp_moy_str = f"{sum(temps)/len(temps):.1f}°C" if temps else "—"
+        sites = [z for z in zones if (_get(z, "type") or "voisin") == "site"]
+        temps = [_get(z, "temperature") for z in sites]
+        temps = [t for t in temps if isinstance(t, (int, float))]
+        temp_moy_str = f"{sum(temps)/len(temps):.1f}°C" if temps else "—"
 
-    winds = [_get(z, "windspeed") for z in zones]
-    winds = [w for w in winds if isinstance(w, (int, float))]
-    wind_max_str = f"{max(winds):.0f} km/h" if winds else "—"
+        winds = [_get(z, "windspeed") for z in zones]
+        winds = [w for w in winds if isinstance(w, (int, float))]
+        wind_max_str = f"{max(winds):.0f} km/h" if winds else "—"
 
-    retard_str = f"+{retard_max} min" if retard_max > 0 else "Fluide"
-    retard_chip_bg = "#fff5f5" if retard_max >= 30 else "#fffbeb" if retard_max >= 15 else "#f0fff4"
-    retard_chip_col = "#c53030" if retard_max >= 30 else "#c05621" if retard_max >= 15 else "#276749"
+        retard_str = f"+{retard_max} min" if retard_max > 0 else "Fluide"
+        retard_chip_bg = "#fff5f5" if retard_max >= 30 else "#fffbeb" if retard_max >= 15 else "#f0fff4"
+        retard_chip_col = "#c53030" if retard_max >= 30 else "#c05621" if retard_max >= 15 else "#276749"
 
-    def chip(icon, label, value, bg, col):
-        return f"""
+        def chip(icon, label, value, bg, col):
+            return f"""
         <td style="padding:0 4px;">
           <div style="background:{bg};border-radius:8px;padding:10px 12px;text-align:center;min-width:80px;">
             <div style="font-size:18px;margin-bottom:4px;">{icon}</div>
@@ -805,7 +797,7 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
           </div>
         </td>"""
 
-    chips_html = f"""
+        chips_html = f"""
     <table style="width:100%;border-collapse:separate;border-spacing:0;margin-bottom:20px;">
       <tr>
         {chip("🌡️", "Temp. moy.", temp_moy_str, "#ebf8ff", "#2b6cb0")}
@@ -815,43 +807,38 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
       </tr>
     </table>"""
 
-    # ──────────────────────────────────────────────────────────
-    # Cards zones (2 par ligne)
-    # ──────────────────────────────────────────────────────────
-    def zone_card(z):
-        name = _get(z, "name") or "Zone"
-        z_type = _get(z, "type") or "voisin"
-        temp = _get(z, "temperature")
-        wind = _get(z, "windspeed")
-        wind_dir = _get(z, "wind_direction") or ""
-        precip = _get(z, "precipitation")
-        uv = _get(z, "uv_index")
-        risques = _get(z, "risques") or "✅ RAS"
-        ciel_ico = _get(z, "ciel") or "☀️"
+        def zone_card(z):
+            name = _get(z, "name") or "Zone"
+            z_type = _get(z, "type") or "voisin"
+            temp = _get(z, "temperature")
+            wind = _get(z, "windspeed")
+            wind_dir = _get(z, "wind_direction") or ""
+            precip = _get(z, "precipitation")
+            uv = _get(z, "uv_index")
+            risques = _get(z, "risques") or "✅ RAS"
+            ciel_ico = _get(z, "ciel") or "☀️"
 
-        has_alert = "RAS" not in str(risques) and "✅" not in str(risques)
-        card_border = "#feb2b2" if has_alert else "#e2e8f0"
-        card_top_bg = "#fff5f5" if has_alert else "#f7fafc"
-        risques_col = "#c53030" if has_alert else "#276749"
-        badge_txt = "🏭 Site" if z_type == "site" else "📍 Zone"
-        badge_bg = "#ebf8ff" if z_type == "site" else "#f0fff4"
-        badge_col = "#2b6cb0" if z_type == "site" else "#276749"
+            has_alert = "RAS" not in str(risques) and "✅" not in str(risques)
+            card_border = "#feb2b2" if has_alert else "#e2e8f0"
+            card_top_bg = "#fff5f5" if has_alert else "#f7fafc"
+            risques_col = "#c53030" if has_alert else "#276749"
+            badge_txt = "🏭 Site" if z_type == "site" else "📍 Zone"
+            badge_bg = "#ebf8ff" if z_type == "site" else "#f0fff4"
+            badge_col = "#2b6cb0" if z_type == "site" else "#276749"
 
-        temp_str = f"{temp:.1f}°C" if isinstance(temp, (int, float)) else "—"
-        wind_str = f"{wind:.0f} km/h" if isinstance(wind, (int, float)) else "—"
-        precip_str = f"{precip:.1f} mm" if isinstance(precip, (int, float)) else "—"
-        uv_str = f"UV {uv:.0f}" if isinstance(uv, (int, float)) else "UV —"
+            temp_str = f"{temp:.1f}°C" if isinstance(temp, (int, float)) else "—"
+            wind_str = f"{wind:.0f} km/h" if isinstance(wind, (int, float)) else "—"
+            precip_str = f"{precip:.1f} mm" if isinstance(precip, (int, float)) else "—"
+            uv_str = f"UV {uv:.0f}" if isinstance(uv, (int, float)) else "UV —"
 
-        # Couleur température
-        if isinstance(temp, (int, float)):
-            t_col = "#c53030" if temp >= 35 else "#c05621" if temp >= 28 else "#2b6cb0" if temp <= 0 else "#2d3748"
-        else:
-            t_col = "#2d3748"
+            if isinstance(temp, (int, float)):
+                t_col = "#c53030" if temp >= 35 else "#c05621" if temp >= 28 else "#2b6cb0" if temp <= 0 else "#2d3748"
+            else:
+                t_col = "#2d3748"
 
-        # Couleur vent
-        w_col = "#c53030" if isinstance(wind, (int, float)) and wind >= 80 else "#c05621" if isinstance(wind, (int, float)) and wind >= 50 else "#4a5568"
+            w_col = "#c53030" if isinstance(wind, (int, float)) and wind >= 80 else "#c05621" if isinstance(wind, (int, float)) and wind >= 50 else "#4a5568"
 
-        return f"""
+            return f"""
         <div style="border:1px solid {card_border};border-radius:8px;overflow:hidden;margin-bottom:10px;">
           <div style="background:{card_top_bg};padding:8px 12px;display:flex;align-items:center;border-bottom:1px solid {card_border};">
             <span style="font-size:22px;margin-right:8px;">{ciel_ico}</span>
@@ -875,16 +862,15 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
           </div>
         </div>"""
 
-    # Grouper zones par paires (sites en premier)
-    sites_zones = [z for z in zones if (_get(z, "type") or "voisin") == "site"]
-    voisins_zones = [z for z in zones if (_get(z, "type") or "voisin") != "site"]
-    ordered = sites_zones + voisins_zones
+        sites_zones = [z for z in zones if (_get(z, "type") or "voisin") == "site"]
+        voisins_zones = [z for z in zones if (_get(z, "type") or "voisin") != "site"]
+        ordered = sites_zones + voisins_zones
 
-    cards_rows = ""
-    for i in range(0, len(ordered), 2):
-        left = zone_card(ordered[i])
-        right = zone_card(ordered[i + 1]) if i + 1 < len(ordered) else ""
-        cards_rows += f"""
+        cards_rows = ""
+        for i in range(0, len(ordered), 2):
+            left = zone_card(ordered[i])
+            right = zone_card(ordered[i + 1]) if i + 1 < len(ordered) else ""
+            cards_rows += f"""
         <table style="width:100%;border-collapse:separate;border-spacing:8px 0;margin-bottom:0;">
           <tr>
             <td style="width:50%;vertical-align:top;padding:0;">{left}</td>
@@ -892,25 +878,22 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
           </tr>
         </table>"""
 
-    zone_label = f"""
+        zone_label = f"""
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4a5568;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;">
         🌤 Conditions météo — {len(zones)} zone{'s' if len(zones) > 1 else ''}
     </div>"""
 
-    # ──────────────────────────────────────────────────────────
-    # Section trafic : cards incidents
-    # ──────────────────────────────────────────────────────────
-    if incidents:
-        inc_cards = ""
-        for i in sorted(incidents, key=lambda x: -(x.get("delay_minutes") or 0)):
-            delay = i.get("delay_minutes") or 0
-            if delay >= 30:
-                sev_bg, sev_col, sev_dot = "#fff5f5", "#c53030", "🔴"
-            elif delay >= 15:
-                sev_bg, sev_col, sev_dot = "#fffbeb", "#c05621", "🟠"
-            else:
-                sev_bg, sev_col, sev_dot = "#f7fafc", "#718096", "🟢"
-            inc_cards += f"""
+        if incidents:
+            inc_cards = ""
+            for i in sorted(incidents, key=lambda x: -(x.get("delay_minutes") or 0)):
+                delay = i.get("delay_minutes") or 0
+                if delay >= 30:
+                    sev_bg, sev_col, sev_dot = "#fff5f5", "#c53030", "🔴"
+                elif delay >= 15:
+                    sev_bg, sev_col, sev_dot = "#fffbeb", "#c05621", "🟠"
+                else:
+                    sev_bg, sev_col, sev_dot = "#f7fafc", "#718096", "🟢"
+                inc_cards += f"""
             <div style="border:1px solid #e2e8f0;border-left:4px solid {sev_col};border-radius:6px;padding:9px 12px;margin-bottom:8px;background:{sev_bg};display:flex;align-items:center;">
                 <span style="font-size:16px;margin-right:8px;">{sev_dot}</span>
                 <div style="flex:1;">
@@ -922,18 +905,18 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
                     <div style="font-size:10px;color:#718096;">min</div>
                 </div>
             </div>"""
-        trafic_section = f"""
+            trafic_section = f"""
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4a5568;margin:18px 0 10px 0;padding-bottom:6px;border-bottom:2px solid #e2e8f0;">
             🚗 Trafic en temps réel — {len(incidents)} incident{'s' if len(incidents) > 1 else ''}
         </div>
         {inc_cards}"""
-    else:
-        trafic_section = """
+        else:
+            trafic_section = """
         <div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:6px;padding:10px 14px;margin-top:16px;font-size:12px;color:#276749;font-weight:600;">
             🚗 Trafic fluide — Aucun incident signalé sur vos zones
         </div>"""
 
-    content = f"""
+        content = f"""
     {banniere}
     {chips_html}
     {zone_label}
@@ -941,16 +924,20 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
     {trafic_section}
     """
 
-    html = _build_email_shell(
-        title=f"Bulletin météo GEODIS",
-        subtitle=f"{company_name} · Créneau {creneau if creneau else heure_str} · {now_str}",
-        content_html=content,
-        accent=accent,
-    )
+        html = _build_email_shell(
+            title="Bulletin météo GEODIS",
+            subtitle=f"{company_name} · Créneau {creneau if creneau else heure_str} · {now_str}",
+            content_html=content,
+            accent=accent,
+        )
 
-    if alertes_actives:
-        subject = f"[Mah Météo] ALERTE {creneau} — {company_name}"
-    else:
-        subject = f"[Mah Météo] Bulletin {creneau} — {company_name} ({now_str})"
+        if alertes_actives:
+            subject = f"[Mah Météo] ALERTE {creneau} — {company_name}"
+        else:
+            subject = f"[Mah Météo] Bulletin {creneau} — {company_name} ({now_str})"
 
-    return _envoyer_email(subject, html, _get_all_recipients(to_email), from_name="Mah Météo")
+        sent = _envoyer_email(subject, html, _get_all_recipients(to_email), from_name="Mah Météo")
+        return bool(sent)
+    except Exception as exc:
+        print(f"[BULLETIN] Exception send_bulletin_email: {exc}")
+        return False

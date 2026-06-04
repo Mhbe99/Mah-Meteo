@@ -9,10 +9,10 @@ import ipaddress
 import httpx
 import time
 from threading import Lock
-from zoneinfo import ZoneInfo
 import secrets
 import string
 import re
+import pytz
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -31,7 +31,7 @@ from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address)
 
-from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog, AlerteLog, TrafficIncident
+from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog, AlerteLog, TrafficIncident, BulletinLog
 from .auth import create_token, verify_password, get_current_client, hash_password, verify_token
 from .models import LoginRequest, RegisterRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
 from pydantic import BaseModel
@@ -48,7 +48,6 @@ REFRESH_COOLDOWN_SECONDS = int(os.getenv("REFRESH_COOLDOWN_SECONDS", "600"))
 _refresh_locks: dict[int, Lock] = {}
 
 # ── Bulletins horaires ──
-_PARIS_TZ = ZoneInfo("Europe/Paris")
 # Créneaux (heure, minute) heure de Paris — tolérance 30 min
 _BULLETIN_WINDOWS = [
     (6, 30),   # 06h30 prise de poste nuit→matin
@@ -58,7 +57,6 @@ _BULLETIN_WINDOWS = [
     (17, 30),  # 17h30 fin tournées
 ]
 BULLETIN_WINDOW_MINUTES = int(os.getenv("BULLETIN_WINDOW_MINUTES", "30"))
-_last_bulletin_sent: dict[int, dict[str, datetime]] = {}
 
 
 # ============ DÉPENDANCE ADMIN ============
@@ -883,32 +881,124 @@ def _risk_text(temp, wind, precip, uv):
     return " | ".join(r) if r else "✅ RAS"
 
 
-def _get_bulletin_window_label() -> str:
-    """Retourne le label du créneau actuel (heure Paris) ou '' si hors créneau."""
-    now_paris = datetime.now(_PARIS_TZ)
-    now_min = now_paris.hour * 60 + now_paris.minute
+def _get_bulletin_window_label(now=None) -> str | None:
+    """
+    Retourne le label du créneau actuel (heure Paris)
+    ou None si hors fenêtre.
+    Tolérance de 30 min par créneau.
+    """
+    paris = pytz.timezone("Europe/Paris")
+    if now is None:
+        now = datetime.now(paris)
+    elif now.tzinfo is None:
+        now = paris.localize(now)
+    else:
+        now = now.astimezone(paris)
+
+    total_min = now.hour * 60 + now.minute
     for h, m in _BULLETIN_WINDOWS:
-        window_start = h * 60 + m
-        if window_start <= now_min < window_start + BULLETIN_WINDOW_MINUTES:
+        debut = h * 60 + m
+        fin = debut + BULLETIN_WINDOW_MINUTES
+        if debut <= total_min < fin:
             return f"{h:02d}h{m:02d}"
-    return ""
+    return None
 
 
-def _can_send_bulletin(client_id: int, creneau: str) -> bool:
-    """Vrai si ce créneau n'a pas encore été envoyé aujourd'hui pour ce client."""
-    today = datetime.now(_PARIS_TZ).date()
-    sent = _last_bulletin_sent.get(client_id, {}).get(creneau)
-    if sent is None:
-        return True
-    sent_paris = sent.replace(tzinfo=None)  # utcnow stocké naïf
-    # On compare date UTC ≈ date Paris (décalage max ±2h, suffisant pour éviter double-envoi)
-    return sent.date() < datetime.utcnow().date()
+def _can_send_bulletin(client_id: int, creneau: str, db: Session) -> bool:
+    """
+    Vérifie si le bulletin du créneau a déjà été envoyé aujourd'hui.
+    Utilise la DB pour résister aux redémarrages Render.
+    """
+    paris = pytz.timezone("Europe/Paris")
+    aujourd_hui = datetime.now(paris).strftime("%Y-%m-%d")
+
+    existing = db.query(BulletinLog).filter(
+        BulletinLog.client_id == client_id,
+        BulletinLog.creneau == creneau,
+        BulletinLog.date_jour == aujourd_hui,
+    ).first()
+    return existing is None
 
 
-def _mark_bulletin_sent(client_id: int, creneau: str) -> None:
-    if client_id not in _last_bulletin_sent:
-        _last_bulletin_sent[client_id] = {}
-    _last_bulletin_sent[client_id][creneau] = datetime.utcnow()
+def _mark_bulletin_sent(client_id: int, creneau: str, db: Session) -> None:
+    """
+    Marque le bulletin comme envoyé en DB.
+    Appelé UNIQUEMENT si l'envoi email a réussi.
+    """
+    paris = pytz.timezone("Europe/Paris")
+    aujourd_hui = datetime.now(paris).strftime("%Y-%m-%d")
+
+    try:
+        log = BulletinLog(
+            client_id=client_id,
+            creneau=creneau,
+            date_jour=aujourd_hui,
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[BULLETIN] Echec persistance bulletin {client_id}/{creneau}: {e}")
+
+
+def _try_send_bulletin_with_current_data(client_id: int, db: Session) -> None:
+    """
+    Vérifie si on est dans une fenêtre de bulletin.
+    Si oui et pas encore envoyé aujourd'hui -> envoie.
+    Lit les données courantes depuis la DB (pas besoin de refresh).
+    """
+    try:
+        paris = pytz.timezone("Europe/Paris")
+        maintenant = datetime.now(paris)
+
+        creneau = _get_bulletin_window_label(maintenant)
+        if not creneau:
+            return
+
+        if not _can_send_bulletin(client_id, creneau, db):
+            print(f"[BULLETIN] Déjà envoyé : {creneau} client {client_id}")
+            return
+
+        client_obj = db.query(Client).filter(Client.id == client_id).first()
+        if not client_obj:
+            return
+
+        zones = db.query(Zone).filter(Zone.client_id == client_id).all()
+        if not zones:
+            print(f"[BULLETIN] Aucune zone pour client {client_id}")
+            return
+
+        try:
+            zones_list = [
+                {"name": z.name, "lat": z.lat, "lon": z.lon, "type": z.type}
+                for z in zones
+            ]
+            trafic_data = get_incidents(zones_list, test_mode=False)
+            incidents = trafic_data.get("incidents", [])
+        except Exception:
+            incidents = []
+
+        to_email = client_obj.email or os.getenv("RECEIVER_EMAILS", "")
+        if not to_email:
+            print(f"[BULLETIN] Pas de destinataire pour client {client_id}")
+            return
+
+        succes = send_bulletin_email(
+            to_email=to_email,
+            company_name=client_obj.company_name or client_obj.username or f"Client {client_id}",
+            zones=zones,
+            incidents=incidents,
+            creneau=creneau,
+        )
+
+        if succes:
+            _mark_bulletin_sent(client_id, creneau, db)
+            print(f"[BULLETIN] Envoyé : {creneau} -> {to_email}")
+        else:
+            print(f"[BULLETIN] Echec envoi : {creneau} client {client_id}")
+            print("[BULLETIN] Non marqué envoyé : email échoué")
+    except Exception as e:
+        print(f"[BULLETIN] Erreur évaluation client {client_id}: {e}")
 
 
 @app.post("/api/refresh/{client_id}")
@@ -928,6 +1018,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
     try:
         zones = db.query(Zone).filter(Zone.client_id == client_id).all()
         if not zones:
+            _try_send_bulletin_with_current_data(client_id, db)
             return {"status": "ok", "updated": 0}
 
         # Cooldown côté serveur: évite de sur-solliciter Open-Meteo quand la vue générale déclenche plusieurs refresh.
@@ -937,6 +1028,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
             age_seconds = int((datetime.utcnow() - freshest).total_seconds())
             if age_seconds < REFRESH_COOLDOWN_SECONDS:
                 remaining = REFRESH_COOLDOWN_SECONDS - age_seconds
+                _try_send_bulletin_with_current_data(client_id, db)
                 return {
                     "status": "ok",
                     "updated": 0,
@@ -1034,6 +1126,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
                 print(f"[REFRESH] Batch Open-Meteo indisponible: {e} — fallback unitaire")
 
         if batch_rate_limited:
+            _try_send_bulletin_with_current_data(client_id, db)
             return {"status": "ok", "updated": 0, "total": len(zones), "skipped": "rate_limited"}
 
         for idx, zone in enumerate(zones):
@@ -1063,28 +1156,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
         print(f"[REFRESH] {updated}/{len(zones)} zones mises à jour pour client {client_id}")
 
         # ── Bulletin horaire ──────────────────────────────────────────────────
-        if updated > 0:
-            try:
-                creneau = _get_bulletin_window_label()
-                if creneau and _can_send_bulletin(client_id, creneau):
-                    client_obj = db.query(Client).filter(Client.id == client_id).first()
-                    if client_obj:
-                        zones_data = db.query(Zone).filter(Zone.client_id == client_id).all()
-                        zones_list_trafic = [{"name": z.name, "lat": z.lat, "lon": z.lon, "type": z.type} for z in zones_data]
-                        from .trafic import get_incidents as _gi
-                        trafic_resp = _gi(zones_list_trafic, test_mode=False)
-                        incidents = trafic_resp.get("incidents", [])
-                        send_bulletin_email(
-                            to_email=(client_obj.email or ""),
-                            company_name=(client_obj.company_name or client_obj.username or f"Client {client_id}"),
-                            zones=zones_data,
-                            incidents=incidents,
-                            creneau=creneau,
-                        )
-                        _mark_bulletin_sent(client_id, creneau)
-                        print(f"[BULLETIN] Envoyé client {client_id} — créneau {creneau}")
-            except Exception as _be:
-                print(f"[BULLETIN] Erreur envoi bulletin: {_be}")
+        _try_send_bulletin_with_current_data(client_id, db)
         # ─────────────────────────────────────────────────────────────────────
 
         return {"status": "ok", "updated": updated, "total": len(zones)}
