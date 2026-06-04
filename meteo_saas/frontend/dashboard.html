@@ -4037,6 +4037,22 @@
             if (_rapportCharge) { console.log('[loadRapport] déjà chargé, ignoré'); return; }
             _rapportCharge = true;
             try {
+                const _parseJsonSafe = async (res, label, fallback) => {
+                    if (!res || !res.ok) return fallback;
+                    const ctype = (res.headers.get('content-type') || '').toLowerCase();
+                    if (!ctype.includes('application/json')) {
+                        const sample = (await res.text()).slice(0, 260).replace(/\s+/g, ' ').trim();
+                        console.error(`[loadRapport] ${label} non-JSON (${res.status}, ${ctype || 'sans content-type'})`, sample);
+                        return fallback;
+                    }
+                    try {
+                        return await res.json();
+                    } catch (e) {
+                        console.error(`[loadRapport] ${label} JSON invalide`, e);
+                        return fallback;
+                    }
+                };
+
                 // 1. Fetch alertes + charts (zones_risks + coordonnées) depuis le backend
                 // Priorité aux 24h, puis fallback large pour garder des graphes exploitables en démo.
                 const [resA24, resC, resP] = await Promise.all([
@@ -4045,20 +4061,22 @@
                     fetch(`${API_URL}/api/pollution/weekly/${CLIENT_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
                 ]);
                 console.log('[loadRapport] alertes(24h) status:', resA24.status, '| charts status:', resC.status);
-                _allAlertes = resA24.ok ? await resA24.json() : [];
+                _allAlertes = await _parseJsonSafe(resA24, 'alertes(24h)', []);
 
                 if (!_allAlertes || _allAlertes.length === 0) {
-                    const resA7d = await fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=500&hours=168`, {
+                    const resA7d = await fetch(`${API_URL}/api/alertes/${CLIENT_ID}?limit=200&hours=168`, {
                         headers: { 'Authorization': 'Bearer ' + TOKEN }
                     });
                     if (resA7d.ok) {
-                        _allAlertes = await resA7d.json();
+                        _allAlertes = await _parseJsonSafe(resA7d, 'alertes(7d)', []);
                         console.log('[loadRapport] fallback alertes(7d):', _allAlertes.length);
+                    } else {
+                        console.warn('[loadRapport] fallback alertes(7d) HTTP', resA7d.status);
                     }
                 }
 
-                const chartsBackend = resC.ok ? await resC.json() : {};
-                const pollutionWeekly = resP.ok ? await resP.json() : { labels: [], series: [], thresholds: { good: 40, moderate: 60, bad: 80 } };
+                const chartsBackend = await _parseJsonSafe(resC, 'charts', {});
+                const pollutionWeekly = await _parseJsonSafe(resP, 'pollution-weekly', { labels: [], series: [], thresholds: { good: 40, moderate: 60, bad: 80 } });
 
                 // 2. Fetch Open-Meteo directement depuis le navigateur (contourne le blocage Render)
                 let hourly = [], daily = [];
@@ -4106,7 +4124,10 @@
                 _activeFilter = null;
                 _renderRapportCharts(_allAlertes, _allCharts);
                 console.log('[loadRapport] DONE');
-            } catch(e) { console.error('[loadRapport] ERREUR:', e); }
+            } catch(e) {
+                _rapportCharge = false;
+                console.error('[loadRapport] ERREUR:', e);
+            }
         }
 
         async function _applyFilter(kind, value) {
