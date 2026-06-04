@@ -308,6 +308,14 @@ def init_db():
         except Exception:
             db.rollback()
 
+        # Migration: index composite alertes_log (client_id, timestamp) pour accélérer les requêtes dashboard
+        try:
+            db.execute(text("CREATE INDEX IF NOT EXISTS ix_alertelog_client_ts ON alertes_log (client_id, timestamp)"))
+            db.commit()
+            print("  ✅ Index ix_alertelog_client_ts ajouté")
+        except Exception:
+            db.rollback()
+
         # Migration: ajouter colonne location à connection_logs
         try:
             db.execute(text("ALTER TABLE connection_logs ADD COLUMN location VARCHAR"))

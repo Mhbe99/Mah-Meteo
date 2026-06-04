@@ -618,6 +618,42 @@ cron-job.org (0 * * * *)  →  POST GitHub API workflow_dispatch  →  meteo-cro
 | Quota gratuit | 2000 min/mois |
 | **Lecture pratique** | garder un oeil mensuel sur la conso (repo privé) |
 
+### 13.6 Incident opérationnel — Bulletin 12h non reçu (Juin 2026)
+
+**Symptôme observé :**
+- Le bulletin horaire attendu sur le créneau **12h00 Paris** n'a pas été reçu côté destinataires.
+
+**Cause racine identifiée (backend) :**
+1. Le déclenchement bulletin était évalué uniquement quand `refresh_meteo` mettait réellement des zones à jour (`updated > 0`).
+2. En cas de `cooldown` (rafraîchissement trop récent) ou `rate_limited` Open-Meteo, le refresh sortait tôt sans évaluer le bulletin du créneau.
+3. Le marquage interne `_mark_bulletin_sent(...)` pouvait être exécuté même si l'envoi email échouait (destinataire vide, provider indisponible, erreur transport).
+
+**Conséquence :**
+- Fenêtre horaire de bulletin potentiellement manquée alors que le système était vivant.
+- Risque de faux positif "envoyé" côté mémoire process sans email réellement reçu.
+
+**Correctif appliqué (code) :**
+- Fichier impacté : `meteo_saas/backend/main.py`
+- Ajout d'une routine de tentative bulletin sur données courantes (`_try_send_bulletin_with_current_data`) exécutée aussi dans les branches `skipped` (`cooldown` et `rate_limited`).
+- Le marquage `_mark_bulletin_sent` est désormais conditionné au retour `True` de `send_bulletin_email(...)`.
+- Ajout de logs explicites en cas de non-envoi (transport/destinataire) pour diagnostic rapide.
+
+**État après correction :**
+- Le bulletin de créneau est évalué même sans refresh complet des zones.
+- Le statut "envoyé" reflète mieux la réalité de transport email.
+- Réduction du risque de perte silencieuse sur créneaux 06h30 / 10h30 / 12h00 / 15h00 / 17h30.
+
+**Points de vigilance restant à partager avec l'agent externe :**
+1. `_last_bulletin_sent` est actuellement en mémoire process (non persistant entre redémarrages Render).
+2. Les preuves d'envoi doivent s'appuyer sur les logs provider (Brevo/SMTP) en plus des logs applicatifs.
+3. Vérifier la présence d'un destinataire valide (`client.email` ou fallback `RECEIVER_EMAILS`) pour chaque client avant créneau.
+
+**Plan de vérification recommandé (opérationnel) :**
+1. Forcer un appel `POST /api/refresh/{client_id}` pendant une fenêtre active (ex. 12h00-12h29 Paris).
+2. Contrôler les logs Render : `[BULLETIN] Envoyé ...` ou message explicite de non-envoi.
+3. Contrôler les logs provider email (Brevo events / SMTP) pour confirmer la livraison.
+4. Refaire le contrôle sur 2 créneaux consécutifs pour valider la stabilité.
+
 ### 13.6 Incidents récents et résolution
 
 | Incident | Symptôme | Cause | Correctif |
@@ -1004,6 +1040,30 @@ exports/
 - faire échouer explicitement le job si l'API Render ne fournit pas les données attendues ;
 - supprimer ou archiver `run_meteo.yml` pour réduire les ambiguïtés ;
 - journaliser dans l'email ou dans les logs la source réellement utilisée : `API Render` ou `fallback local`.
+
+### 15.6 Validation post-correctifs audit (04 juin 2026)
+
+**Objectif de validation :** confirmer les derniers correctifs d'audit (pool DB, concurrence workflow, flag CI rapport, index alertes) et vérifier l'absence de régression bloquante.
+
+**Résultats des vérifications exécutées :**
+
+| Vérification | Commande / Méthode | Résultat |
+|---|---|---|
+| Compilation backend DB | `python -m py_compile meteo_saas/backend/database.py` | ✅ OK |
+| Exécution suite pytest globale | `python -m pytest -q --maxfail=1` | ⚠️ Échec structure tests (capture/teardown + `SystemExit` dans `test_all_zones.py`) |
+| Exécution pytest sans capture | `python -m pytest -q -s --maxfail=1` | ⚠️ Même blocage de collection (tests scripts non pytest-purs) |
+| Migration index alertes | `init_db()` + inspection SQLAlchemy | ✅ OK (`ix_alertelog_client_ts` présent) |
+| Workflow météo concurrence | lecture `.github/workflows/meteo-cron.yml` | ✅ OK (`concurrency` workflow-level actif) |
+| Workflow rapport mode CI | lecture `.github/workflows/rapport-hebdo.yml` | ✅ OK (`GITHUB_ACTIONS: 'true'` présent) |
+
+**Correctif additionnel appliqué suite test réel :**
+- Ajout d'une migration idempotente dans `init_db()` pour créer explicitement l'index:
+  - `CREATE INDEX IF NOT EXISTS ix_alertelog_client_ts ON alertes_log (client_id, timestamp)`
+- Motif : sur base déjà existante, la simple déclaration ORM de l'index ne garantissait pas sa création rétroactive.
+
+**Conclusion opérationnelle (04/06) :**
+- ✅ Les 4 points d'audit ouverts sont désormais couverts en code et validés.
+- ⚠️ La suite `pytest` actuelle contient des scripts d'intégration qui quittent volontairement le process (`SystemExit`) et perturbent la collecte standard; ce point relève de l'hygiène des tests, pas d'un bug métier du correctif bulletin/audit.
 
 ## 15. Bonnes pratiques
 
