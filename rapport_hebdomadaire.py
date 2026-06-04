@@ -12,6 +12,7 @@ import os
 import datetime
 from collections import defaultdict
 import requests
+from jose import jwt
 from dotenv import load_dotenv
 from meteo_saas.backend.email_alerts import _envoyer_email
 
@@ -31,6 +32,7 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") or GMAIL_PASSWORD
 SMTP_FROM = os.getenv("SMTP_FROM", "") or SENDER_EMAIL
 ALLOW_LOCAL_REPORT_FALLBACK = os.getenv("ALLOW_LOCAL_REPORT_FALLBACK", "false").lower() == "true"
 REPORT_REQUIRE_RENDER = os.getenv("REPORT_REQUIRE_RENDER", "true").lower() == "true"
+REPORT_CLIENT_SCAN_MAX = int(os.getenv("REPORT_CLIENT_SCAN_MAX", "50"))
 
 # Paths
 EXPORT_PATH = "exports"
@@ -125,6 +127,70 @@ def _charger_historique_local():
         return []
 
 
+def _build_local_client_token(client_id):
+    """Construit un JWT local pour interroger /api/alertes/{client_id} sans /api/service/*."""
+    if not JWT_SECRET:
+        return ""
+    payload = {
+        "client_id": client_id,
+        "username": f"report-client-{client_id}",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def _fetch_alertes_for_client_id(client_id, token):
+    """Récupère les alertes d'un client via token Bearer applicatif."""
+    ra = requests.get(
+        f"{RENDER_URL}/api/alertes/{client_id}",
+        params={"limit": 500},
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=15,
+    )
+    return ra
+
+
+def _collect_alertes_direct_jwt_scan(max_client_id):
+    """Fallback Render: scan des client_id actifs en JWT local quand /api/service/* renvoie 403."""
+    alertes = []
+    active_client_ids = []
+
+    for cid in range(1, max_client_id + 1):
+        token_c = _build_local_client_token(cid)
+        if not token_c:
+            break
+        try:
+            ra = _fetch_alertes_for_client_id(cid, token_c)
+        except Exception as e:
+            print(f"⚠️ Alertes client {cid} indisponibles: {e}")
+            continue
+
+        if ra.status_code == 200:
+            active_client_ids.append(cid)
+            for a in ra.json():
+                ts = a.get("timestamp") or a.get("created_at") or ""
+                ts_dt = _parse_iso(ts)
+                alertes.append({
+                    "timestamp": ts,
+                    "date": ts_dt.strftime("%Y-%m-%d") if ts_dt else (ts[:10] if ts else ""),
+                    "heure": ts_dt.strftime("%H:%M") if ts_dt else (ts[11:16] if len(ts) > 15 else ""),
+                    "jour_semaine": ts_dt.strftime("%A") if ts_dt else "",
+                    "zone": a.get("zone_name", ""),
+                    "risques": a.get("message", ""),
+                    "temp": "",
+                    "wind": "",
+                    "rain": "",
+                })
+            continue
+
+        if ra.status_code in (401, 403, 404):
+            continue
+
+        print(f"⚠️ Alertes client {cid} indisponibles: HTTP {ra.status_code}")
+
+    return alertes, active_client_ids
+
+
 def charger_historique():
     """Charge l'historique Render; fallback local uniquement si explicitement autorise."""
     service_headers = {}
@@ -143,56 +209,57 @@ def charger_historique():
             headers=service_headers,
             timeout=15,
         )
-        rc.raise_for_status()
-        clients = rc.json().get("clients", [])
-
         alertes = []
-        for client in clients:
-            cid = client.get("id") or client.get("client_id")
-            if not cid:
-                continue
+        if rc.status_code == 200:
+            clients = rc.json().get("clients", [])
 
-            # Token par client via endpoint service sécurisé
-            rt = requests.get(
-                f"{RENDER_URL}/api/service/token",
-                params={"client_id": cid},
-                headers=service_headers,
-                timeout=10,
-            )
-            if rt.status_code != 200:
-                print(f"⚠️ Token client {cid} indisponible: HTTP {rt.status_code}")
-                continue
+            for client in clients:
+                cid = client.get("id") or client.get("client_id")
+                if not cid:
+                    continue
 
-            td = rt.json()
-            token_c = td.get("access_token") or td.get("token", "")
-            if not token_c:
-                print(f"⚠️ Token vide pour client {cid}")
-                continue
+                # Token par client via endpoint service sécurisé
+                rt = requests.get(
+                    f"{RENDER_URL}/api/service/token",
+                    params={"client_id": cid},
+                    headers=service_headers,
+                    timeout=10,
+                )
+                if rt.status_code != 200:
+                    print(f"⚠️ Token client {cid} indisponible: HTTP {rt.status_code}")
+                    continue
 
-            ra = requests.get(
-                f"{RENDER_URL}/api/alertes/{cid}",
-                params={"limit": 500},
-                headers={"Authorization": f"Bearer {token_c}"},
-                timeout=15,
-            )
-            if ra.status_code != 200:
-                print(f"⚠️ Alertes client {cid} indisponibles: HTTP {ra.status_code}")
-                continue
+                td = rt.json()
+                token_c = td.get("access_token") or td.get("token", "")
+                if not token_c:
+                    print(f"⚠️ Token vide pour client {cid}")
+                    continue
 
-            for a in ra.json():
-                ts = a.get("timestamp") or a.get("created_at") or ""
-                ts_dt = _parse_iso(ts)
-                alertes.append({
-                    "timestamp": ts,
-                    "date": ts_dt.strftime("%Y-%m-%d") if ts_dt else (ts[:10] if ts else ""),
-                    "heure": ts_dt.strftime("%H:%M") if ts_dt else (ts[11:16] if len(ts) > 15 else ""),
-                    "jour_semaine": ts_dt.strftime("%A") if ts_dt else "",
-                    "zone": a.get("zone_name", ""),
-                    "risques": a.get("message", ""),
-                    "temp": "",
-                    "wind": "",
-                    "rain": "",
-                })
+                ra = _fetch_alertes_for_client_id(cid, token_c)
+                if ra.status_code != 200:
+                    print(f"⚠️ Alertes client {cid} indisponibles: HTTP {ra.status_code}")
+                    continue
+
+                for a in ra.json():
+                    ts = a.get("timestamp") or a.get("created_at") or ""
+                    ts_dt = _parse_iso(ts)
+                    alertes.append({
+                        "timestamp": ts,
+                        "date": ts_dt.strftime("%Y-%m-%d") if ts_dt else (ts[:10] if ts else ""),
+                        "heure": ts_dt.strftime("%H:%M") if ts_dt else (ts[11:16] if len(ts) > 15 else ""),
+                        "jour_semaine": ts_dt.strftime("%A") if ts_dt else "",
+                        "zone": a.get("zone_name", ""),
+                        "risques": a.get("message", ""),
+                        "temp": "",
+                        "wind": "",
+                        "rain": "",
+                    })
+        elif rc.status_code == 403:
+            print("[RAPPORT] /api/service/* refuse le secret (403), bascule en scan JWT direct")
+            alertes, active_ids = _collect_alertes_direct_jwt_scan(REPORT_CLIENT_SCAN_MAX)
+            print(f"[RAPPORT] Clients actifs détectés via JWT direct: {len(active_ids)}")
+        else:
+            rc.raise_for_status()
 
         if alertes:
             print(f"[RAPPORT] Source : API Render ({len(alertes)} alertes)")
