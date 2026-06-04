@@ -1201,12 +1201,23 @@ def get_pollution_weekly(client_id: int, current_client: int = Depends(get_curre
 SERVICE_SECRET = os.getenv("SERVICE_SECRET", os.getenv("JWT_SECRET", "")).strip()
 
 def _verify_service_secret(request: Request):
-    """Vérifie que le header X-Service-Secret correspond au JWT_SECRET (ou SERVICE_SECRET si défini)."""
+    """Valide le secret service via X-Service-Secret/X-Service-Key ou Authorization Bearer.
+
+    Secrets acceptés: JWT_SECRET, SERVICE_SECRET, RENDER_API_TOKEN.
+    """
     secret = request.headers.get("X-Service-Secret", "").strip()
-    # Accepter JWT_SECRET ET SERVICE_SECRET pour compatibilité cron GitHub Actions
+    if not secret:
+        secret = request.headers.get("X-Service-Key", "").strip()
+    if not secret:
+        auth = request.headers.get("Authorization", "").strip()
+        if auth.lower().startswith("bearer "):
+            secret = auth.split(" ", 1)[1].strip()
+
+    # Accepter JWT_SECRET, SERVICE_SECRET et RENDER_API_TOKEN pour compatibilité CI/Render
     jwt_secret = os.getenv("JWT_SECRET", "").strip()
     svc_secret = os.getenv("SERVICE_SECRET", "").strip()
-    valid_secrets = [s for s in [jwt_secret, svc_secret] if s]
+    render_api_token = os.getenv("RENDER_API_TOKEN", "").strip()
+    valid_secrets = [s for s in [jwt_secret, svc_secret, render_api_token] if s]
     if not secret or not valid_secrets:
         raise HTTPException(status_code=403, detail="Service secret invalide")
     if not any(hmac.compare_digest(secret.encode(), v.encode()) for v in valid_secrets):

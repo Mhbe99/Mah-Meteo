@@ -23,6 +23,7 @@ _receivers_raw = os.getenv("RECEIVER_EMAILS", "")
 RECEIVER_EMAILS = [e.strip() for e in _receivers_raw.split(",") if e.strip()]
 RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
 JWT_SECRET = os.getenv("JWT_SECRET", "")
+RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "") or SENDER_EMAIL
@@ -127,9 +128,14 @@ def _charger_historique_local():
 def charger_historique():
     """Charge l'historique Render; fallback local uniquement si explicitement autorise."""
     service_headers = {}
-    if JWT_SECRET:
-        # Compat: certains endpoints attendent X-Service-Key, d'autres X-Service-Secret.
-        service_headers = {"X-Service-Secret": JWT_SECRET, "X-Service-Key": JWT_SECRET}
+    service_auth_secret = (RENDER_API_TOKEN or JWT_SECRET or "").strip()
+    if service_auth_secret:
+        # Compat: certaines versions lisent X-Service-Secret/X-Service-Key, d'autres Authorization Bearer.
+        service_headers = {
+            "X-Service-Secret": service_auth_secret,
+            "X-Service-Key": service_auth_secret,
+            "Authorization": f"Bearer {service_auth_secret}",
+        }
 
     try:
         rc = requests.get(

@@ -45,6 +45,18 @@ _RENDER_TOKEN_CHECKED = False
 _RENDER_SYNC_DISABLED_REASON = None
 _RENDER_SYNC_SKIP_LOGGED = False
 
+
+def _service_auth_headers():
+    """Headers de compatibilité pour les endpoints /api/service/*."""
+    secret = (RENDER_API_TOKEN or JWT_SECRET or "").strip()
+    if not secret:
+        return {}
+    return {
+        "X-Service-Secret": secret,
+        "X-Service-Key": secret,
+        "Authorization": f"Bearer {secret}",
+    }
+
 # In GitHub Actions the local SQLite schema may be absent; Render sync remains the source of truth.
 if GITHUB_ACTIONS and DB_AVAILABLE:
     DB_AVAILABLE = False
@@ -59,7 +71,7 @@ def _charger_clients():
 
     # Priorité 1 : charger depuis l'API Render (inclut les clients self-service)
     try:
-        resp = requests.get(f"{RENDER_URL}/api/service/clients", headers={"X-Service-Secret": JWT_SECRET}, timeout=10)
+        resp = requests.get(f"{RENDER_URL}/api/service/clients", headers=_service_auth_headers(), timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             api_clients = data.get("clients", [])
@@ -125,7 +137,7 @@ def get_jwt_token(client_id=1, username="geodis-lemeux"):
         response = requests.get(
             f"{RENDER_URL}/api/service/token",
             params={"client_id": client_id},
-            headers={"X-Service-Secret": JWT_SECRET},
+            headers=_service_auth_headers(),
             timeout=5
         )
         if response.status_code == 200:
