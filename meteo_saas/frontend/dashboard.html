@@ -4115,41 +4115,10 @@
                 const chartsBackend = await _parseJsonSafe(resC, 'charts', {});
                 const pollutionWeekly = await _parseJsonSafe(resP, 'pollution-weekly', { labels: [], series: [], thresholds: { good: 40, moderate: 60, bad: 80 } });
 
-                // 2. Fetch Open-Meteo directement uniquement en local.
-                let hourly = [], daily = [];
-                const lat = chartsBackend.ref_lat;
-                const lon = chartsBackend.ref_lon;
-                if (lat && lon && CAN_FETCH_OPEN_METEO_DIRECT) {
-                    try {
-                        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation,windspeed_10m,cloudcover&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&past_days=1&forecast_days=7&timezone=auto`;
-                        const omRes = await fetch(omUrl);
-                        if (omRes.ok) {
-                            const om = await omRes.json();
-                            const h = om.hourly || {};
-                            const times = h.time || [];
-                            const temps = h.temperature_2m || [];
-                            const precs = h.precipitation || [];
-                            const winds = h.windspeed_10m || [];
-                            const clouds = h.cloudcover || [];
-                            for (let i = 0; i < times.length; i++) {
-                                hourly.push({ time: times[i], temp: temps[i]||0, precip: precs[i]||0, wind: winds[i]||0, cloud: clouds[i]||0 });
-                            }
-                            const d = om.daily || {};
-                            const dTimes = d.time || [];
-                            const dTmax = d.temperature_2m_max || [];
-                            const dTmin = d.temperature_2m_min || [];
-                            const dPrec = d.precipitation_sum || [];
-                            const dWind = d.windspeed_10m_max || [];
-                            const dUv = d.uv_index_max || [];
-                            for (let i = 0; i < dTimes.length; i++) {
-                                daily.push({ date: dTimes[i], tmax: dTmax[i]||0, tmin: dTmin[i]||0, precip: dPrec[i]||0, wind: dWind[i]||0, uv: dUv[i]||0 });
-                            }
-                            console.log('[loadRapport] Open-Meteo direct: hourly=' + hourly.length + ' daily=' + daily.length);
-                        }
-                    } catch(omErr) { console.warn('[loadRapport] Open-Meteo direct error:', omErr); }
-                } else if (!CAN_FETCH_OPEN_METEO_DIRECT) {
-                    console.log('[loadRapport] Open-Meteo direct désactivé en production');
-                }
+                // 2. Séries météo fournies par le backend (stable en prod, pas de dépendance navigateur->Open-Meteo).
+                const hourly = Array.isArray(chartsBackend.hourly) ? chartsBackend.hourly : [];
+                const daily = Array.isArray(chartsBackend.daily) ? chartsBackend.daily : [];
+                console.log('[loadRapport] backend hourly=' + hourly.length + ' daily=' + daily.length);
 
                 // 3. Combiner les données
                 _allCharts = {
@@ -4188,29 +4157,32 @@
             document.getElementById('filter-banner').style.display = 'flex';
             document.getElementById('filter-label').textContent = (kind === 'zone' ? '📍 ' : '⚡ ') + value + ' (' + filtered.length + ' alerte' + (filtered.length > 1 ? 's' : '') + ')';
 
-            // Pour un filtre zone : récupérer la météo spécifique à cette ville
+            // Pour un filtre zone : récupérer la météo spécifique via le backend
             let chartsToUse = _allCharts;
             if (kind === 'zone') {
-                const zoneKey = _normalizeZoneKey(value);
-                const zoneData = (_cachedMeteo || []).find(m => _normalizeZoneKey(m && m.name) === zoneKey);
-                if (zoneData && zoneData.lat && zoneData.lon) {
-                    document.getElementById('filter-label').textContent += ' — ⏳ chargement météo…';
-                    try {
-                        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${zoneData.lat}&longitude=${zoneData.lon}&hourly=temperature_2m,precipitation,windspeed_10m,cloudcover&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&past_days=1&forecast_days=7&timezone=auto`;
-                        const omRes = await fetch(omUrl);
-                        if (omRes.ok) {
-                            const om = await omRes.json();
-                            const h = om.hourly || {};
-                            const times = h.time || [];
-                            const hourly = times.map((t, i) => ({ time: t, temp: (h.temperature_2m||[])[i]||0, precip: (h.precipitation||[])[i]||0, wind: (h.windspeed_10m||[])[i]||0, cloud: (h.cloudcover||[])[i]||0 }));
-                            const dd = om.daily || {};
-                            const dTimes = dd.time || [];
-                            const daily = dTimes.map((t, i) => ({ date: t, tmax: (dd.temperature_2m_max||[])[i]||0, tmin: (dd.temperature_2m_min||[])[i]||0, precip: (dd.precipitation_sum||[])[i]||0, wind: (dd.windspeed_10m_max||[])[i]||0, uv: (dd.uv_index_max||[])[i]||0 }));
+                document.getElementById('filter-label').textContent += ' — ⏳ chargement météo…';
+                try {
+                    const zoneParam = encodeURIComponent(value || '');
+                    const res = await fetch(`${API_URL}/api/charts/${CLIENT_ID}?zone_name=${zoneParam}`, {
+                        headers: { 'Authorization': 'Bearer ' + TOKEN }
+                    });
+                    if (res.ok) {
+                        const ctype = (res.headers.get('content-type') || '').toLowerCase();
+                        if (ctype.includes('application/json')) {
+                            const zoneCharts = await res.json();
+                            const hourly = Array.isArray(zoneCharts.hourly) ? zoneCharts.hourly : [];
+                            const daily = Array.isArray(zoneCharts.daily) ? zoneCharts.daily : [];
                             chartsToUse = { ...chartsToUse, hourly, daily };
+                        } else {
+                            console.warn('[_applyFilter] charts zone non-JSON');
                         }
-                    } catch(omErr) { console.warn('[_applyFilter] Open-Meteo zone error:', omErr); }
-                    document.getElementById('filter-label').textContent = '📍 ' + value + ' (' + filtered.length + ' alerte' + (filtered.length > 1 ? 's' : '') + ')';
+                    } else {
+                        console.warn('[_applyFilter] charts zone HTTP', res.status);
+                    }
+                } catch(e) {
+                    console.warn('[_applyFilter] charts zone error:', e);
                 }
+                document.getElementById('filter-label').textContent = '📍 ' + value + ' (' + filtered.length + ' alerte' + (filtered.length > 1 ? 's' : '') + ')';
             }
             _renderRapportCharts(filtered, chartsToUse);
         }

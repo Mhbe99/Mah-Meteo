@@ -1165,20 +1165,164 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
 
 
 @app.get("/api/charts/{client_id}")
-def get_charts_data(client_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def get_charts_data(
+    client_id: int,
+    zone_name: Optional[str] = Query(default=None),
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
     """
     Données pour les graphiques interactifs du dashboard.
-    Retourne les zones_risks depuis la DB + coordonnées de référence.
-    Les données hourly/daily sont récupérées côté client (navigateur) directement depuis Open-Meteo.
+    Retourne les zones_risks depuis la DB + coordonnées de référence + séries hourly/daily.
+    En production, les séries sont construites côté backend pour éviter les erreurs CORS/429 côté navigateur.
     """
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
+    def _norm_zone_name(name: str) -> str:
+        if not name:
+            return ""
+        cleaned = re.sub(r"[^\w\s\-]", " ", str(name), flags=re.UNICODE)
+        return re.sub(r"\s+", " ", cleaned).strip().lower()
+
+    def _to_float(value, default=0.0):
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            return float(value)
+        txt = str(value).replace(",", ".")
+        m = re.search(r"-?\d+(?:\.\d+)?", txt)
+        return float(m.group(0)) if m else default
+
+    def _build_db_fallback_series(zone_obj: Zone):
+        now_utc = datetime.utcnow()
+        cutoff = now_utc - timedelta(hours=48)
+
+        snapshots = (
+            db.query(MeteoSnapshot)
+            .filter(MeteoSnapshot.zone_id == zone_obj.id, MeteoSnapshot.timestamp >= cutoff)
+            .order_by(MeteoSnapshot.timestamp.asc())
+            .all()
+        )
+
+        hourly_fb = [
+            {
+                "time": s.timestamp.isoformat(),
+                "temp": _to_float(s.temperature),
+                "precip": _to_float(s.precipitation),
+                "wind": _to_float(s.windspeed),
+                "cloud": _to_float(s.cloudcover),
+            }
+            for s in snapshots
+        ]
+
+        cache_rows = (
+            db.query(PrevisionCache)
+            .filter(PrevisionCache.zone_id == zone_obj.id)
+            .order_by(PrevisionCache.updated_at.asc(), PrevisionCache.id.asc())
+            .all()
+        )
+
+        daily_fb = []
+        if cache_rows:
+            latest = max((r.updated_at for r in cache_rows if r.updated_at), default=None)
+            if latest:
+                cache_rows = [r for r in cache_rows if r.updated_at and r.updated_at >= (latest - timedelta(hours=8))]
+
+            seen_days = set()
+            today = datetime.utcnow().date()
+            for row in cache_rows:
+                day_key = (row.jour or "").strip().lower()
+                if day_key in seen_days:
+                    continue
+                seen_days.add(day_key)
+                idx = len(daily_fb)
+                daily_fb.append({
+                    "date": (today + timedelta(days=idx)).isoformat(),
+                    "tmax": _to_float(row.tmax),
+                    "tmin": _to_float(row.tmin),
+                    "precip": _to_float(row.pluie),
+                    "wind": 0.0,
+                    "uv": _to_float(row.uv),
+                })
+                if len(daily_fb) >= 7:
+                    break
+
+        return hourly_fb, daily_fb
+
+    def _build_series(zone_obj: Zone):
+        hourly = []
+        daily = []
+        try:
+            om_url = (
+                f"https://api.open-meteo.com/v1/forecast?"
+                f"latitude={zone_obj.lat}&longitude={zone_obj.lon}"
+                f"&hourly=temperature_2m,precipitation,wind_speed_10m,cloudcover"
+                f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,uv_index_max"
+                f"&past_days=1&forecast_days=7&timezone=auto"
+            )
+            om_res = httpx.get(om_url, timeout=12)
+            if om_res.status_code == 200:
+                om = om_res.json()
+                h = om.get("hourly") or {}
+                times = h.get("time") or []
+                temps = h.get("temperature_2m") or []
+                precs = h.get("precipitation") or []
+                winds = h.get("wind_speed_10m") or h.get("windspeed_10m") or []
+                clouds = h.get("cloudcover") or []
+                for i in range(len(times)):
+                    hourly.append({
+                        "time": times[i],
+                        "temp": _to_float(temps[i] if i < len(temps) else 0),
+                        "precip": _to_float(precs[i] if i < len(precs) else 0),
+                        "wind": _to_float(winds[i] if i < len(winds) else 0),
+                        "cloud": _to_float(clouds[i] if i < len(clouds) else 0),
+                    })
+                if len(hourly) > 48:
+                    hourly = hourly[-48:]
+
+                d = om.get("daily") or {}
+                d_times = d.get("time") or []
+                d_tmax = d.get("temperature_2m_max") or []
+                d_tmin = d.get("temperature_2m_min") or []
+                d_prec = d.get("precipitation_sum") or []
+                d_wind = d.get("wind_speed_10m_max") or d.get("windspeed_10m_max") or []
+                d_uv = d.get("uv_index_max") or []
+                for i in range(len(d_times)):
+                    daily.append({
+                        "date": d_times[i],
+                        "tmax": _to_float(d_tmax[i] if i < len(d_tmax) else 0),
+                        "tmin": _to_float(d_tmin[i] if i < len(d_tmin) else 0),
+                        "precip": _to_float(d_prec[i] if i < len(d_prec) else 0),
+                        "wind": _to_float(d_wind[i] if i < len(d_wind) else 0),
+                        "uv": _to_float(d_uv[i] if i < len(d_uv) else 0),
+                    })
+            elif om_res.status_code == 429:
+                print(f"[charts] Open-Meteo 429 for zone {zone_obj.name}, fallback DB")
+        except Exception as e:
+            print(f"[charts] Open-Meteo unavailable for zone {zone_obj.name}: {e}")
+
+        fb_hourly, fb_daily = _build_db_fallback_series(zone_obj)
+        if not hourly:
+            hourly = fb_hourly
+        if not daily:
+            daily = fb_daily
+        return hourly, daily
+
     zones = db.query(Zone).filter(Zone.client_id == client_id).all()
     sites = [z for z in zones if z.type == "site"]
-    ref = sites[0] if sites else (zones[0] if zones else None)
+    ref = None
+    if zone_name:
+        target = _norm_zone_name(zone_name)
+        for z in zones:
+            if _norm_zone_name(z.name) == target:
+                ref = z
+                break
+    if ref is None:
+        ref = sites[0] if sites else (zones[0] if zones else None)
+
     if not ref:
-        return {"zones_risks": [], "zone_name": "", "ref_lat": 0, "ref_lon": 0}
+        return {"zones_risks": [], "zone_name": "", "ref_lat": 0, "ref_lon": 0, "hourly": [], "daily": []}
 
     # Données risques par zone (pour heatmap)
     zones_risks = []
@@ -1193,11 +1337,15 @@ def get_charts_data(client_id: int, current_client: int = Depends(get_current_cl
         if z.uv_index and z.uv_index >= 7: score += 2
         zones_risks.append({"name": z.name, "score": score, "type": z.type or "voisin"})
 
+    hourly, daily = _build_series(ref)
+
     return {
         "zone_name": ref.name,
         "ref_lat": ref.lat,
         "ref_lon": ref.lon,
         "zones_risks": zones_risks,
+        "hourly": hourly,
+        "daily": daily,
     }
 
 
