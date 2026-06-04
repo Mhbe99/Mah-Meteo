@@ -33,6 +33,7 @@ SMTP_FROM = os.getenv("SMTP_FROM", "") or SENDER_EMAIL
 ALLOW_LOCAL_REPORT_FALLBACK = os.getenv("ALLOW_LOCAL_REPORT_FALLBACK", "false").lower() == "true"
 REPORT_REQUIRE_RENDER = os.getenv("REPORT_REQUIRE_RENDER", "true").lower() == "true"
 REPORT_CLIENT_SCAN_MAX = int(os.getenv("REPORT_CLIENT_SCAN_MAX", "50"))
+GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
 
 # Paths
 EXPORT_PATH = "exports"
@@ -255,7 +256,14 @@ def charger_historique():
                         "rain": "",
                     })
         elif rc.status_code == 403:
-            print("[RAPPORT] /api/service/* refuse le secret (403), bascule en scan JWT direct")
+            if GITHUB_ACTIONS:
+                print("[RAPPORT] /api/service/* refuse le secret (403) en CI: verifier les secrets runtime Render/GitHub")
+            else:
+                print(
+                    "[RAPPORT] /api/service/* refuse le secret (403) en local: "
+                    "mismatch local possible, non bloquant si le workflow GitHub passe"
+                )
+            print("[RAPPORT] Bascule en scan JWT direct")
             alertes, active_ids = _collect_alertes_direct_jwt_scan(REPORT_CLIENT_SCAN_MAX)
             print(f"[RAPPORT] Clients actifs détectés via JWT direct: {len(active_ids)}")
         else:
