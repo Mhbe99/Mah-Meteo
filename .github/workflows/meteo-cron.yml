@@ -3,15 +3,16 @@ name: Meteo Cron Job
 on:
   workflow_dispatch:  # Déclenché par cron-job.org via API GitHub
 
+concurrency:
+  group: meteo-cron
+  cancel-in-progress: true
+
 jobs:
   run-meteo:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     timeout-minutes: 15
-    concurrency:
-      group: meteo-cron
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       

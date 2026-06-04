@@ -7,7 +7,7 @@ import os
 import json
 from datetime import datetime
 from fastapi import HTTPException, status
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text, UniqueConstraint, inspect, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text, UniqueConstraint, Index, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -178,6 +178,10 @@ class AlerteLog(Base):
     type_alerte = Column(String)  # "verglas", "vent_fort", "pluie", "uv", etc.
     valeur = Column(String)
     message = Column(Text)
+
+    __table_args__ = (
+        Index("ix_alertelog_client_ts", "client_id", "timestamp"),
+    )
 
     # Relations
     client = relationship("Client", back_populates="alertes_log")
