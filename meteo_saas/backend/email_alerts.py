@@ -738,6 +738,29 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
             val = (getattr(obj, attr, None) if not isinstance(obj, dict) else obj.get(attr))
             return val if val is not None else default
 
+        def _clean_city_name(name: str) -> str:
+            """Normalise l'affichage des villes pour lecture rapide côté collaborateurs."""
+            txt = str(name or "").replace("🏣", "").replace("📍", "").strip()
+            return " ".join(txt.split())
+
+        def _compute_ciel_icon(precip, cloud, wind, fallback="🌤️"):
+            """Recalcule l'icône météo pour éviter les incohérences visuelles zone par zone."""
+            try:
+                p = float(precip or 0)
+                c = float(cloud or 0)
+                w = float(wind or 0)
+            except Exception:
+                return fallback
+            if p > 0:
+                return "🌧️"
+            if c > 75:
+                return "☁️"
+            if c > 40:
+                return "🌤️"
+            if w > 30:
+                return "💨"
+            return "☀️"
+
         alertes_actives = []
         for z in zones:
             risques = _get(z, "risques", "") or ""
@@ -765,7 +788,7 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
 
         render_url = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
         banniere = f"""
-    <div style="background:{status_bg};border:1px solid {status_border};border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;">
+    <div style="background:{status_bg};border:1px solid {status_border};border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;">
         <span style="font-size:22px;margin-right:10px;">{status_icon}</span>
         <div style="flex:1;">
             <div style="font-size:13px;font-weight:700;color:{status_txt};">{status_label}</div>
@@ -798,31 +821,33 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
         </td>"""
 
         chips_html = f"""
-    <table style="width:100%;border-collapse:separate;border-spacing:0;margin-bottom:20px;">
-      <tr>
-        {chip("🌡️", "Temp. moy.", temp_moy_str, "#ebf8ff", "#2b6cb0")}
-        {chip("💨", "Vent max", wind_max_str, "#faf5ff", "#553c9a")}
-        {chip("🚗", "Trafic", retard_str, retard_chip_bg, retard_chip_col)}
-        {chip("🚨", "Alertes", str(nb_alertes) if nb_alertes > 0 else "Aucune", "#fff5f5" if nb_alertes > 0 else "#f0fff4", "#c53030" if nb_alertes > 0 else "#276749")}
-      </tr>
-    </table>"""
+        <table style="width:100%;border-collapse:separate;border-spacing:0;margin-bottom:16px;">
+            <tr>
+                {chip("🌡️", "Temp. moy.", temp_moy_str, "#ebf8ff", "#2b6cb0")}
+                {chip("💨", "Vent max", wind_max_str, "#faf5ff", "#553c9a")}
+                {chip("🚗", "Trafic", retard_str, retard_chip_bg, retard_chip_col)}
+                {chip("🚨", "Alertes", str(nb_alertes) if nb_alertes > 0 else "Aucune", "#fff5f5" if nb_alertes > 0 else "#f0fff4", "#c53030" if nb_alertes > 0 else "#276749")}
+            </tr>
+        </table>"""
 
         def zone_card(z):
-            name = _get(z, "name") or "Zone"
+            name = _clean_city_name(_get(z, "name") or "Zone")
             z_type = _get(z, "type") or "voisin"
             temp = _get(z, "temperature")
             wind = _get(z, "windspeed")
             wind_dir = _get(z, "wind_direction") or ""
             precip = _get(z, "precipitation")
+            cloud = _get(z, "cloudcover")
             uv = _get(z, "uv_index")
             risques = _get(z, "risques") or "✅ RAS"
-            ciel_ico = _get(z, "ciel") or "☀️"
+            ciel_ico = _compute_ciel_icon(precip, cloud, wind, fallback=(_get(z, "ciel") or "🌤️"))
 
             has_alert = "RAS" not in str(risques) and "✅" not in str(risques)
             card_border = "#feb2b2" if has_alert else "#e2e8f0"
-            card_top_bg = "#fff5f5" if has_alert else "#f7fafc"
+            card_top_bg = "#fff5f5" if has_alert else "#ffffff"
             risques_col = "#c53030" if has_alert else "#276749"
-            badge_txt = "🏭 Site" if z_type == "site" else "📍 Zone"
+            city_icon = "🏣" if z_type == "site" else "📍"
+            badge_txt = "Site GEODIS" if z_type == "site" else "Ville voisine"
             badge_bg = "#ebf8ff" if z_type == "site" else "#f0fff4"
             badge_col = "#2b6cb0" if z_type == "site" else "#276749"
 
@@ -839,12 +864,12 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
             w_col = "#c53030" if isinstance(wind, (int, float)) and wind >= 80 else "#c05621" if isinstance(wind, (int, float)) and wind >= 50 else "#4a5568"
 
             return f"""
-        <div style="border:1px solid {card_border};border-radius:8px;overflow:hidden;margin-bottom:10px;">
+                <div style="border:1px solid {card_border};border-radius:10px;overflow:hidden;margin-bottom:10px;">
           <div style="background:{card_top_bg};padding:8px 12px;display:flex;align-items:center;border-bottom:1px solid {card_border};">
             <span style="font-size:22px;margin-right:8px;">{ciel_ico}</span>
             <div style="flex:1;">
-              <div style="font-size:13px;font-weight:700;color:#2d3748;">{name}</div>
-              <span style="font-size:10px;font-weight:600;color:{badge_col};background:{badge_bg};padding:1px 7px;border-radius:10px;">{badge_txt}</span>
+                            <div style="font-size:13px;font-weight:700;color:#1f2937;">{city_icon} {name}</div>
+                            <span style="font-size:10px;font-weight:600;color:{badge_col};background:{badge_bg};padding:2px 8px;border-radius:10px;">{badge_txt}</span>
             </div>
             <span style="font-size:22px;font-weight:800;color:{t_col};">{temp_str}</span>
           </div>
@@ -862,8 +887,14 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
           </div>
         </div>"""
 
-        sites_zones = [z for z in zones if (_get(z, "type") or "voisin") == "site"]
-        voisins_zones = [z for z in zones if (_get(z, "type") or "voisin") != "site"]
+        sites_zones = sorted(
+            [z for z in zones if (_get(z, "type") or "voisin") == "site"],
+            key=lambda z: _clean_city_name(_get(z, "name") or "")
+        )
+        voisins_zones = sorted(
+            [z for z in zones if (_get(z, "type") or "voisin") != "site"],
+            key=lambda z: _clean_city_name(_get(z, "name") or "")
+        )
         ordered = sites_zones + voisins_zones
 
         cards_rows = ""
@@ -880,7 +911,7 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
 
         zone_label = f"""
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4a5568;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;">
-        🌤 Conditions météo — {len(zones)} zone{'s' if len(zones) > 1 else ''}
+        🗺️ Villes suivies — {len(zones)} zone{'s' if len(zones) > 1 else ''}
     </div>"""
 
         if incidents:
@@ -917,12 +948,13 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
         </div>"""
 
         content = f"""
+    <div style="background:#f8fbff;border:1px solid #dbeafe;border-radius:10px;padding:12px;">
     {banniere}
     {chips_html}
     {zone_label}
     {cards_rows}
     {trafic_section}
-    """
+    </div>"""
 
         html = _build_email_shell(
             title="Bulletin météo GEODIS",
