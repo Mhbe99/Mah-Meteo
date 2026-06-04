@@ -5,6 +5,7 @@ Utilise SMTP configurable via variables d'environnement.
 """
 
 import os
+import json
 import smtplib
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
@@ -429,6 +430,117 @@ def send_combined_alert(to_email: str, company_name: str, message: str):
     _envoyer_email(subject, html, _get_all_recipients(to_email))
 
 
+def send_pollution_alert(to_email: str, company_name: str, zones_alertes: list, state_file: str = "exports/last_pollution_alert.json") -> bool:
+    """
+    Envoie une alerte pollution (AQI >= 40) avec cooldown différencié:
+    - 40-59: 6h
+    - 60-79: 3h
+    - 80+: 1h
+    """
+    if not zones_alertes:
+        return False
+
+    # Grouper par seuil
+    zones_moderate = [z for z in zones_alertes if 40 <= (z.get("aqi") or 0) < 60]
+    zones_bad = [z for z in zones_alertes if 60 <= (z.get("aqi") or 0) < 80]
+    zones_very_bad = [z for z in zones_alertes if (z.get("aqi") or 0) >= 80]
+
+    max_aqi = max([z.get("aqi", 0) for z in zones_alertes], default=0)
+    if max_aqi >= 80:
+        cooldown_seconds = 1 * 3600
+        cooldown_key = "high"
+        max_level = "Très mauvais"
+    elif max_aqi >= 60:
+        cooldown_seconds = 3 * 3600
+        cooldown_key = "medium"
+        max_level = "Mauvais"
+    else:
+        cooldown_seconds = 6 * 3600
+        cooldown_key = "low"
+        max_level = "Modéré"
+
+    state = {}
+    try:
+        if os.path.exists(state_file):
+            with open(state_file, "r", encoding="utf-8") as f:
+                state = json.load(f)
+    except Exception:
+        state = {}
+
+    last = state.get(cooldown_key)
+    if last:
+        try:
+            delta = (datetime.now() - datetime.fromisoformat(last)).total_seconds()
+            if delta < cooldown_seconds:
+                print(f"[EMAIL] Cooldown pollution {cooldown_key} actif ({int(delta)}s/{cooldown_seconds}s)")
+                return False
+        except Exception:
+            pass
+
+    def render_section(zones: list, title: str, bg_color: str, border_color: str) -> str:
+        if not zones:
+            return ""
+        rows = ""
+        for z in zones:
+            pm25_txt = f"{z.get('pm25', 0):.1f} µg/m³" if z.get("pm25") else "—"
+            rows += f"""<tr style="border-bottom:1px solid #e2e8f0;">
+              <td style="padding:10px 14px;color:#1a202c;font-weight:600;">{z.get('zone', 'Inconnu')}</td>
+              <td style="padding:10px 14px;text-align:center;font-size:18px;font-weight:700;color:{border_color};">{round(z.get('aqi', 0))}</td>
+              <td style="padding:10px 14px;text-align:center;color:{border_color};font-weight:600;">{z.get('label', 'Inconnu')}</td>
+              <td style="padding:10px 14px;text-align:center;color:#4a5568;font-size:12px;">{pm25_txt}</td>
+            </tr>"""
+
+        return f"""<div style="margin:12px 0;border-left:4px solid {border_color};background:{bg_color};padding:12px;border-radius:4px;">
+          <div style="font-weight:700;color:{border_color};margin-bottom:8px;font-size:13px;">{title}</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#f7fafc;">
+                <th style="padding:8px 14px;text-align:left;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">Site</th>
+                <th style="padding:8px 14px;text-align:center;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">AQI</th>
+                <th style="padding:8px 14px;text-align:center;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">Niveau</th>
+                <th style="padding:8px 14px;text-align:center;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">PM2.5</th>
+              </tr>
+            </thead>
+            <tbody>{rows}</tbody>
+          </table>
+        </div>"""
+
+    sections_html = ""
+    if zones_very_bad:
+        sections_html += render_section(zones_very_bad, "Très mauvais (AQI 80+)", "#fef2f2", "#7b341e")
+    if zones_bad:
+        sections_html += render_section(zones_bad, "Mauvais (AQI 60-79)", "#fef2f2", "#e53e3e")
+    if zones_moderate:
+        sections_html += render_section(zones_moderate, "Modéré (AQI 40-59)", "#fffbeb", "#dd6b20")
+
+    content = f"""
+    <p style=\"margin-top:0;\">La qualité de l'air dépasse le seuil d'alerte sur <strong>{len(zones_alertes)} site(s)</strong>.</p>
+    {sections_html}
+    <div style=\"background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;margin-top:14px;font-size:11px;color:#718096;line-height:1.5;\">
+      <strong>Échelle AQI européen:</strong><br>
+      0-20 Bon · 20-40 Acceptable · <strong>40-60 Modéré</strong> · <strong>60-80 Mauvais</strong> · <strong style=\"color:#7b341e;\">80-100 Très mauvais</strong> · >100 Extrême
+    </div>
+    """
+    html = _build_email_shell(
+        title="Alerte pollution",
+        subtitle=f"{company_name} — surveillance qualité air",
+        content_html=content,
+        accent="#744210",
+    )
+    subject = f"[Mah Météo] Alerte pollution — {max_level} — {company_name}"
+
+    sent = _envoyer_email(subject, html, _get_all_recipients(to_email), from_name="Mah Météo")
+    if sent:
+        try:
+            state[cooldown_key] = datetime.now().isoformat()
+            os.makedirs(os.path.dirname(state_file), exist_ok=True)
+            with open(state_file, "w", encoding="utf-8") as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[EMAIL] Alerte pollution envoyée mais sauvegarde cooldown impossible: {e}")
+    return sent
+
+
 def _build_trial_block(trial_expires_at):
     """Génère le bloc essai PRO gratuit 7j (sauf si trial_expires_at est None)."""
     if not trial_expires_at:
@@ -841,4 +953,4 @@ def send_bulletin_email(to_email: str, company_name: str, zones: list, incidents
     else:
         subject = f"[Mah Météo] Bulletin {creneau} — {company_name} ({now_str})"
 
-    return _envoyer_email(subject, html, _get_all_recipients(to_email), from_name="Mah Météo GEODIS")
+    return _envoyer_email(subject, html, _get_all_recipients(to_email), from_name="Mah Météo")

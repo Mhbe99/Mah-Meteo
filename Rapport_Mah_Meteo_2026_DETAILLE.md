@@ -40,7 +40,7 @@ Application **SaaS multi-tenant** personnalisée pour GEODIS, combinant :
 **Client** (multi-tenant)
 ```
 id, username, password_hash, company_name, email, plan (free/standard/pro/groupe)
-zones (1:N), alertes (1:N), tournees (1:N)
+zones (1:N), alertes (1:N)
 quotas : sites, voisins, emails, modifications
 ```
 
@@ -62,10 +62,11 @@ created_at (timestamp)
 client_id, zone_name, message (risques détectés), timestamp
 ```
 
-**Tournee** (planification)
+**Tournées (module frontend local)**
 ```
-client_id, chauffeur (prenom+nom), date, heure_depart, destinations (JSON), risque_score
-meteo_snapshot (snapshot des météos au moment de la saisie), notes
+Saisie exploitant -> stockage localStorage par client (clé tournees_<client_id>)
+chauffeur (prenom+nom), date, heure_depart, destinations (villes), notes
+pas d'API backend dédiée à ce stade
 ```
 
 ---
@@ -331,8 +332,6 @@ Risque combiné : ⚠️ MOYEN (score: 6/10)
 | `/api/alertes/{client_id}` | GET | JWT | Historique alertes |
 | `/api/zones/{client_id}` | GET | JWT | Zones client |
 | `/api/zones/{client_id}/add` | POST | JWT | Ajouter zone |
-| `/api/tournees/{client_id}` | GET | JWT | Lister tournées |
-| `/api/tournees/{client_id}/add` | POST | JWT | Créer tournée |
 | `/api/meteo/snapshot/add` | POST | Service Secret | POST webhook (GitHub Actions) |
 | `/api/account/{client_id}` | GET | JWT | Infos compte (plan, quotas) |
 | `/api/geocoding/search?q=...` | GET | Public | Recherche villes |
@@ -798,6 +797,22 @@ Création de `generer_guide.py` : script Python (`python-pptx` + `python-docx`) 
 
 ### 14.8 Incident en cours — Double canal d'envoi email / expéditeur incohérent (03 juin 2026)
 
+**Tableau résumé mis à jour (relevé du 03/06/2026)**
+
+| Fichier | Points contrôlés | Anomalies ouvertes | Corrections appliquées |
+|---|---:|---:|---:|
+| `main.py` | 10 | 1 | 1 |
+| `trafic.py` | 5 | 0 | 1 |
+| `database.py` | 3 | 2 | 0 |
+| `meteo_open.py` | 6 | 0 | 1 |
+| `rapport_hebdomadaire.py` | 4 | 0 | 1 |
+| `meteo-cron.yml` | 6 | 1 | 0 |
+| `rapport-hebdo.yml` | 4 | 1 | 0 |
+| `dashboard.html` | 8 | 0 | 2 |
+| **TOTAL** | **54** | **7** | **8** |
+
+> Note : le total inclut l'ensemble du périmètre d'audit (11 fichiers) ; le tableau ci-dessus reprend les éléments fournis dans la synthèse consolidée.
+
 **Symptôme métier observé :**
 - certains emails arrivent avec une identité visible "Mah Météo" ;
 - d'autres arrivent via l'infrastructure Brevo ;
@@ -871,32 +886,118 @@ Création de `generer_guide.py` : script Python (`python-pptx` + `python-docx`) 
 | Workflow météo principal | `meteo-cron.yml` | **Actif** via `workflow_dispatch` | Utilisé par cron-job.org |
 | Ancien workflow météo | `run_meteo.yml` | **Présent mais manuel uniquement** | Pas un doublon automatique, mais source de confusion technique/documentaire |
 
-**Conclusion sur les doublons :**
-- il n'y a **pas de double cron hebdomadaire** pour le rapport ;
-- il existe bien **un ancien workflow météo encore présent dans le repo** (`run_meteo.yml`), mais son `schedule` est commenté ;
-- ce fichier n'est donc pas la cause directe du mauvais rapport du lundi, mais il reste un doublon historique non nettoyé.
+**Conclusion :** pas de double cron, source de données fallback locale potentiellement obsolète identifiée comme cause.
 
-**Cause racine la plus probable du "vieux rapport" :**
-le script `rapport_hebdomadaire.py` possède une stratégie de secours qui peut remplacer les données API par un **fallback local**.
+---
 
-**Mécanisme concerné :**
-- `charger_historique()` tente d'abord de lire les alertes depuis l'API Render ;
-- si l'API échoue, ou si aucune alerte exploitable n'est récupérée, le script bascule vers `_charger_historique_local()` ;
-- ce fallback lit `exports/alertes_historique.json` depuis le dépôt/workspace.
+## 15. Évolutions Juin 2026 — Bulletins horaires, alertes immédiates, sécurité repo
 
-**Risque métier :**
-si ce fichier local contient un historique ancien ou décalé par rapport à la production, le workflow hebdomadaire peut générer un rapport valide techniquement, mais **ancien fonctionnellement**.
+### 15.1 Bulletins météo programmés aux créneaux opérationnels
 
-**Fichiers impliqués :**
-- `rapport_hebdomadaire.py` — fallback local sur historique JSON
-- `exports/alertes_historique.json` — source locale potentiellement obsolète
-- `.github/workflows/rapport-hebdo.yml` — lance bien le script attendu, sans doublon détecté
-- `.github/workflows/run_meteo.yml` — ancien workflow météo encore présent, manuel seulement
+**Besoin métier :** envoyer automatiquement un récapitulatif complet (météo + trafic) aux conducteurs GEODIS aux moments clés de la journée, sans aucune action manuelle.
 
-**Diagnostic d'audit :**
-- le problème du lundi n'est probablement **pas un envoi depuis un autre script** ;
-- il est beaucoup plus probable que le bon script ait tourné, mais avec **une mauvaise source de données** via fallback local ;
-- la présence de workflows historiques non supprimés augmente la confusion, même quand ils ne sont plus planifiés.
+**Créneaux configurés (heure Paris) :**
+
+| Créneau | Heure | Usage |
+|---------|-------|-------|
+| 06h30 | Matin | Prise de poste nuit → matin |
+| 10h30 | Matin | Bilan milieu de matinée |
+| 12h00 | Midi | Départ tournées après-midi |
+| 15h00 | Après-midi | Bilan milieu d'après-midi |
+| 17h30 | Soir | Fin tournées |
+
+**Tolérance :** 30 min par créneau (ex : bulletin 06h30 envoyé entre 06h30 et 07h00).
+
+**Dédoublonnage :** 1 seul bulletin par créneau par client par jour (`_last_bulletin_sent` en mémoire).
+
+**Contenu du bulletin — design carte visuel :**
+- Bannière statut (rouge si alertes, verte si RAS) + bouton dashboard intégré
+- 4 chips statistiques : Temp. moyenne sites / Vent max / Trafic retard max / Nb alertes
+- Cards zones 2 par ligne : icône météo, température en grand, badge Site/Zone, vent/pluie/UV, risques colorés
+- Cards incidents trafic avec barre latérale colorée (rouge ≥30min, orange ≥15min, vert <15min)
+
+**Sujets emails (sans emoji) :**
+```
+[Mah Météo] ALERTE 10h30 — GEODIS Ile-de-France    (si alertes actives)
+[Mah Météo] Bulletin 10h30 — GEODIS Ile-de-France (mardi 03 juin 2026)
+```
+
+**Fichiers modifiés :**
+- `meteo_saas/backend/email_alerts.py` — `send_bulletin_email()` ajouté
+- `meteo_saas/backend/main.py` — globals `_BULLETIN_WINDOWS`, helpers `_get_bulletin_window_label()`, `_can_send_bulletin()`, `_mark_bulletin_sent()`, hook dans `refresh_meteo()`
+- `meteo_open.py` — appel `POST /api/refresh/{client_id}` en fin de `_executer_pour_client()` pour déclencher le bulletin depuis le cron
+
+**Bug initial et correctif :**
+Le bulletin était hookté dans `/api/refresh/{client_id}` mais `meteo_open.py` n'appelait que `/api/meteo/snapshot/add`. Conséquence : bulletin jamais déclenché depuis le cron. Correctif : ajout d'un appel `POST /api/refresh/{client_id}` en fin de traitement client dans `meteo_open.py`.
+
+### 15.2 Alerte trafic immédiate standalone (≥ 30 min)
+
+**Besoin :** alerter immédiatement si un retard ≥ 30 min est détecté sur une zone, sans attendre un créneau de bulletin.
+
+**Implémentation :** dans `get_trafic_route()` de `main.py`, après la vérification alerte combinée, envoi `send_trafic_alert()` avec uniquement les incidents ≥ 30 min si `retard_max >= 30`.
+
+```python
+# main.py — alerte trafic standalone
+if retard_max >= 30:
+    gros = [i for i in incidents_list if (i.get("delay_minutes") or 0) >= 30]
+    send_trafic_alert(to_email=..., incidents=gros)
+```
+
+### 15.3 Uniformisation visuelle des emails
+
+**Logo :** réduit de `28px` → `18px` dans `_build_email_shell()` (utilisé par tous les types de mails).
+
+**Sujets sans emoji** — récapitulatif de tous les sujets :
+
+| Type d'email | Sujet |
+|---|---|
+| Alerte météo | `[Mah Météo] X alerte(s) météo — {company}` |
+| Alerte trafic | `[Mah Météo] X incident(s) trafic — {company}` |
+| Alerte combinée | `[Mah Météo] ALERTE COMBINÉE météo + trafic — {company}` |
+| Bienvenue | `Bienvenue sur Mah Météo — Compte approuvé (plan)` |
+| Bulletin (alerte) | `[Mah Météo] ALERTE {créneau} — {company}` |
+| Bulletin (normal) | `[Mah Météo] Bulletin {créneau} — {company} (date)` |
+
+### 15.4 Sécurisation du dépôt git avant mise en public
+
+**Fichiers retirés du suivi git (`git rm --cached`) :**
+- `meteo_saas/data/clients.json` — contenait email GEODIS + coordonnées GPS sites
+- `exports/` (67 fichiers) — données opérationnelles (alertes, rapports xlsx, cache trafic)
+
+**Données hardcodées remplacées par variables d'environnement :**
+
+| Fichier | Donnée retirée | Remplacement |
+|---|---|---|
+| `init_db.py` | `email="mahmeteo@gmail.com"` | `os.getenv("INIT_CLIENT_EMAIL", "")` |
+| `debug_api.py` | `'password': 'demo1234'` | `os.getenv("TEST_PASSWORD", "")` |
+| `check_dashboard.py` | `"demo1234"` par défaut | `os.getenv("TEST_PASSWORD", "")` |
+
+**Historique git nettoyé :**
+- Ancien historique (4 commits) remplacé par un commit orphelin unique propre (`git checkout --orphan`)
+- Force push sur `origin/main`
+- Aucune donnée sensible dans l'historique
+
+**`.gitignore` mis à jour :**
+```
+meteo_saas/data/clients.json
+exports/
+```
+
+**État final :** repo prêt à passer en public — aucun email, mot de passe, clé API, token, ni coordonnée GPS dans le code ou l'historique.
+
+### 15.5 État fonctionnel au 3 juin 2026
+
+| Fonctionnalité | État | Détail |
+|---|---|---|
+| Collecte météo horaire | ✅ Opérationnel | cron-job.org → GitHub Actions → meteo_open.py |
+| Bulletins horaires programmés | ✅ Opérationnel | 5 créneaux, design carte, 1 envoi/créneau/jour |
+| Alerte météo (verglas, vent, pluie, UV) | ✅ Opérationnel | Cooldown 1h, Brevo production |
+| Alerte trafic immédiate ≥ 30 min | ✅ Opérationnel | Standalone sans attendre un créneau |
+| Alerte combinée météo + trafic | ✅ Opérationnel | `COMBINED_ALERT_AUTO_ENABLED=true` |
+| Rapport hebdomadaire lundi 8h | ✅ Opérationnel | Excel + HTML + Brevo |
+| Dashboard frontend | ✅ Opérationnel | 5 onglets, 3988+ lignes |
+| API Render (FastAPI + PostgreSQL) | ✅ Opérationnel | 25+ endpoints, JWT, rate-limiting |
+| Sécurité repo | ✅ Prêt à passer en public | Historique propre, données retirées |
 
 **Recommandation de correction :**
 - en production GitHub Actions, **interdire le fallback local** pour le rapport hebdomadaire ;

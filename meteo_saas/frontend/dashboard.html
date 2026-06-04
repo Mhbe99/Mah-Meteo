@@ -2170,9 +2170,13 @@
     }
 
     function logout() {
-        localStorage.removeItem("token");
-        localStorage.removeItem("client_id");
-        localStorage.removeItem("company_name");
+        try {
+            localStorage.removeItem("token");
+            localStorage.removeItem("client_id");
+            localStorage.removeItem("company_name");
+        } catch(e) {
+            console.warn('[localStorage] removeItem échoué:', e);
+        }
         location.reload();
     }
 
@@ -3619,7 +3623,11 @@
         }
 
         function _save(data) {
-            localStorage.setItem(_storageKey(), JSON.stringify(data));
+            try {
+                localStorage.setItem(_storageKey(), JSON.stringify(data));
+            } catch (e) {
+                console.warn('[tournees] localStorage indisponible, sauvegarde ignorée:', e);
+            }
         }
 
         // --- Sécurité : échapper le HTML ---

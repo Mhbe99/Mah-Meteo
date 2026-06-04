@@ -28,10 +28,30 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "") or SENDER_EMAIL
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") or GMAIL_PASSWORD
 SMTP_FROM = os.getenv("SMTP_FROM", "") or SENDER_EMAIL
+ALLOW_LOCAL_REPORT_FALLBACK = os.getenv("ALLOW_LOCAL_REPORT_FALLBACK", "false").lower() == "true"
+REPORT_REQUIRE_RENDER = os.getenv("REPORT_REQUIRE_RENDER", "true").lower() == "true"
 
 # Paths
 EXPORT_PATH = "exports"
 RAPPORT_FILE = os.path.join(EXPORT_PATH, "rapport_hebdomadaire.xlsx")
+
+# Emojis a exclure du rapport hebdomadaire (fichier Excel + libelles email)
+_REPORT_EMOJI_TOKENS = [
+    "🏣", "📍", "📊", "⚠️", "⚠", "📅", "🔥", "🗺️", "🗺", "📋",
+    "❄️", "💨", "🌧️", "🌧", "☀️", "☀", "✅", "❌", "🌫️", "🌫",
+    "🔴", "🟠", "⛔", "📎",
+]
+
+
+def _strip_report_emojis(value):
+    """Retire les emojis des libelles pour garantir un rapport hebdo sans emoji."""
+    if value is None:
+        return ""
+    text = str(value)
+    for token in _REPORT_EMOJI_TOKENS:
+        text = text.replace(token, "")
+    text = text.replace("\ufe0f", "")
+    return " ".join(text.split())
 
 
 def _build_email_shell(title, subtitle, content_html, accent="#2c3e50"):
@@ -105,8 +125,7 @@ def _charger_historique_local():
 
 
 def charger_historique():
-    """Charge l'historique Render et interdit le fallback local en CI."""
-    is_ci = os.getenv("GITHUB_ACTIONS") == "true"
+    """Charge l'historique Render; fallback local uniquement si explicitement autorise."""
     service_headers = {}
     if JWT_SECRET:
         # Compat: certains endpoints attendent X-Service-Key, d'autres X-Service-Secret.
@@ -174,24 +193,22 @@ def charger_historique():
             return alertes, "API Render (production)"
 
         print("[RAPPORT] API Render sans alerte exploitable")
-        if is_ci:
-            print("[RAPPORT] Mode CI : fallback local INTERDIT")
-            print("[RAPPORT] Le rapport sera généré sans données d'alertes")
-            return [], "API Render vide (production)"
+        if ALLOW_LOCAL_REPORT_FALLBACK:
+            local_alertes = _charger_historique_local()
+            print(f"[RAPPORT] Source : fallback local ({len(local_alertes)} alertes)")
+            return local_alertes, "Fallback local"
 
-        local_alertes = _charger_historique_local()
-        print(f"[RAPPORT] Source : fallback local ({len(local_alertes)} alertes)")
-        return local_alertes, "Fallback local"
+        print("[RAPPORT] Fallback local désactivé (ALLOW_LOCAL_REPORT_FALLBACK=false)")
+        return [], "API Render vide (production)"
     except Exception as e:
         print(f"[RAPPORT] Erreur API Render : {e}")
-        if is_ci:
-            print("[RAPPORT] Mode CI : fallback local INTERDIT")
-            print("[RAPPORT] Le rapport sera généré sans données d'alertes")
-            return [], "API Render indisponible (fallback local interdit)"
+        if ALLOW_LOCAL_REPORT_FALLBACK:
+            local_alertes = _charger_historique_local()
+            print(f"[RAPPORT] Source : fallback local ({len(local_alertes)} alertes)")
+            return local_alertes, "Fallback local"
 
-        local_alertes = _charger_historique_local()
-        print(f"[RAPPORT] Source : fallback local ({len(local_alertes)} alertes)")
-        return local_alertes, "Fallback local"
+        print("[RAPPORT] Fallback local désactivé (ALLOW_LOCAL_REPORT_FALLBACK=false)")
+        return [], "API Render indisponible"
 
 def get_semaine_precedente():
     """Retourner la date de début et fin de la semaine précédente (lundi-dimanche)"""
@@ -429,8 +446,8 @@ def build_pollution_section():
           <td style="padding:8px 12px;text-align:center;color:{color};">{emoji} {label}</td>
         </tr>"""
     
-    return f"""<div style="background:#fffbeb;border-left:4px solid #dd6b20;padding:14px;border-radius:6px;margin:14px 0;">
-      <div style="font-weight:700;color:#dd6b20;margin-bottom:10px;font-size:14px;">🌫️ Qualité de l'air actuellement</div>
+        return f"""<div style="background:#fffbeb;border-left:4px solid #dd6b20;padding:14px;border-radius:6px;margin:14px 0;">
+            <div style="font-weight:700;color:#dd6b20;margin-bottom:10px;font-size:14px;">Qualite de l'air actuellement</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead>
           <tr style="background:#fef5e7;">
@@ -504,7 +521,7 @@ def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file,
     {kpi_html}
     {build_pollution_section()}
 
-    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">⚠️ Risques par type</h3>
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">Risques par type</h3>
     <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
         <thead>
             <tr style="background:#f7fafc;">
@@ -515,7 +532,7 @@ def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file,
         <tbody>{risques_rows if risques_rows else '<tr><td colspan="2" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucun risque détecté</td></tr>'}</tbody>
     </table>
 
-    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">🗺️ Zones les plus affectées</h3>
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">Zones les plus affectees</h3>
     <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
         <thead>
             <tr style="background:#f7fafc;">
@@ -526,23 +543,23 @@ def envoyer_rapport_email(semaine_debut, semaine_fin, stats, rapport_file,
         <tbody>{zones_rows if zones_rows else '<tr><td colspan="2" style="padding:10px 12px;font-size:13px;color:#a0aec0;">Aucune zone affectée</td></tr>'}</tbody>
     </table>
 
-    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">🏣 Prévisions 5 jours — Sites</h3>
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">Previsions 5 jours - Sites</h3>
     {prev_sites_html if prev_sites_html else '<p style="font-size:13px;color:#a0aec0;">Aucune prévision disponible</p>'}
 
-    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">📍 Prévisions 5 jours — Villes voisines</h3>
+    <h3 style="margin:20px 0 10px 0;font-size:14px;color:#2d3748;border-bottom:2px solid #f0f4f8;padding-bottom:6px;">Previsions 5 jours - Villes voisines</h3>
     {prev_voisins_html if prev_voisins_html else '<p style="font-size:13px;color:#a0aec0;">Aucune prévision disponible</p>'}
 
-    <p style="margin-top:20px;font-size:12px;color:#a0aec0;">📎 Rapport Excel détaillé en pièce jointe.</p>
+    <p style="margin-top:20px;font-size:12px;color:#a0aec0;">Rapport Excel detaille en piece jointe.</p>
     <p style="color:#888;font-size:11px">Source : {source_donnees}</p>
     """
     html_body = _build_email_shell(
-        title="📊 Rapport hebdomadaire des risques météo",
+        title="Rapport hebdomadaire des risques meteo",
         subtitle=f"Semaine du {semaine_debut} au {semaine_fin}",
         content_html=content_html,
         accent="#2c3e50",
     )
 
-    subject = f"📊 Rapport Hebdomadaire Météo - {semaine_debut} au {semaine_fin}"
+    subject = f"Rapport Hebdomadaire Meteo - {semaine_debut} au {semaine_fin}"
     attachments = []
     if os.path.exists(rapport_file):
         try:
@@ -580,18 +597,19 @@ def generer_excel(alertes_semaine, stats):
         from openpyxl import Workbook
         from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
         from openpyxl.chart import BarChart, LineChart, Reference
+        from openpyxl.chart.label import DataLabelList
         from openpyxl.utils import get_column_letter
         
         wb = Workbook()
         wb.remove(wb.active)
         
         # ===== ONGLET 1: SYNTHÈSE OPÉRATIONNELLE =====
-        ws_synthese = wb.create_sheet("📊 Synthèse", 0)
+        ws_synthese = wb.create_sheet("Synthese", 0)
         
         # En-tête
         ws_synthese.merge_cells('A1:F1')
         header = ws_synthese['A1']
-        header.value = "📊 RAPPORT OPÉRATIONNEL — MÉTÉO & ALERTES"
+        header.value = "RAPPORT OPERATIONNEL - METEO & ALERTES"
         header.font = Font(size=16, bold=True, color="FFFFFF")
         header.fill = PatternFill(start_color="2c3e50", end_color="2c3e50", fill_type="solid")
         header.alignment = Alignment(horizontal="center", vertical="center")
@@ -630,7 +648,7 @@ def generer_excel(alertes_semaine, stats):
             row += 1
         
         # Risques
-        ws_synthese['A11'] = "⚠️ RISQUES DÉTECTÉS"
+        ws_synthese['A11'] = "RISQUES DETECTES"
         ws_synthese['A11'].font = Font(size=12, bold=True, color="FFFFFF")
         ws_synthese['A11'].fill = PatternFill(start_color="e74c3c", end_color="e74c3c", fill_type="solid")
         ws_synthese.merge_cells('A11:B11')
@@ -644,7 +662,7 @@ def generer_excel(alertes_semaine, stats):
         risk_row = 13
         risk_last_row = risk_row
         for risque, count in sorted(stats['risques'].items(), key=lambda x: x[1], reverse=True):
-            ws_synthese[f'A{risk_row}'] = risque
+            ws_synthese[f'A{risk_row}'] = _strip_report_emojis(risque)
             ws_synthese[f'B{risk_row}'] = count
             ws_synthese[f'B{risk_row}'].alignment = Alignment(horizontal="center")
             if risk_row % 2 == 0:
@@ -664,11 +682,13 @@ def generer_excel(alertes_semaine, stats):
             chart_risk.set_categories(cats_risk)
             chart_risk.height = 8
             chart_risk.width = 15
-            chart_risk.legend = None
+            chart_risk.dLbls = DataLabelList()
+            chart_risk.dLbls.showCatName = True
+            chart_risk.dLbls.showVal = True
             ws_synthese.add_chart(chart_risk, "D11")
         
         # Alertes par jour
-        ws_synthese['A25'] = "📅 ALERTES PAR JOUR"
+        ws_synthese['A25'] = "ALERTES PAR JOUR"
         ws_synthese['A25'].font = Font(size=12, bold=True, color="FFFFFF")
         ws_synthese['A25'].fill = PatternFill(start_color="27ae60", end_color="27ae60", fill_type="solid")
         ws_synthese.merge_cells('A25:B25')
@@ -725,7 +745,7 @@ def generer_excel(alertes_semaine, stats):
         ws_synthese.column_dimensions['B'].width = 15
         
         # ===== ONGLET 2: HEATMAP ZONE-HEURE =====
-        ws_heatmap = wb.create_sheet("🔥 Heatmap", 1)
+        ws_heatmap = wb.create_sheet("Heatmap", 1)
         
         ws_heatmap['A1'] = "Zone"
         for h in range(24):
@@ -784,7 +804,7 @@ def generer_excel(alertes_semaine, stats):
         ws_heatmap.column_dimensions[get_column_letter(26)].width = 10
         
         # ===== ONGLET 3: TOP ZONES =====
-        ws_zones = wb.create_sheet("🗺️ Top Zones", 2)
+        ws_zones = wb.create_sheet("Top Zones", 2)
         
         ws_zones['A1'] = "Zone"
         ws_zones['B1'] = "Alertes"
@@ -800,7 +820,7 @@ def generer_excel(alertes_semaine, stats):
         zone_last_row = zone_row
         
         for zone, count in sorted(stats["zones"].items(), key=lambda x: x[1], reverse=True):
-            ws_zones[f'A{zone_row}'] = zone
+            ws_zones[f'A{zone_row}'] = _strip_report_emojis(zone)
             ws_zones[f'B{zone_row}'] = count
             ws_zones[f'C{zone_row}'] = round(count / total_all * 100, 1) if total_all > 0 else 0
             
@@ -826,7 +846,9 @@ def generer_excel(alertes_semaine, stats):
             chart_zones.set_categories(cats_zones)
             chart_zones.height = 12
             chart_zones.width = 15
-            chart_zones.legend = None
+            chart_zones.dLbls = DataLabelList()
+            chart_zones.dLbls.showCatName = True
+            chart_zones.dLbls.showVal = True
             ws_zones.add_chart(chart_zones, "E2")
         
         ws_zones.column_dimensions['A'].width = 20
@@ -834,7 +856,7 @@ def generer_excel(alertes_semaine, stats):
         ws_zones.column_dimensions['C'].width = 12
         
         # ===== ONGLET 4: HISTORIQUE COMPLET =====
-        ws_historique = wb.create_sheet("📋 Historique", 3)
+        ws_historique = wb.create_sheet("Historique", 3)
         
         ws_historique['A1'] = "Date"
         ws_historique['B1'] = "Heure"
@@ -850,8 +872,8 @@ def generer_excel(alertes_semaine, stats):
         for alerte in sorted(alertes_semaine, key=lambda x: x.get("timestamp", ""), reverse=True):
             ws_historique[f'A{hist_row}'] = alerte.get("date", "")
             ws_historique[f'B{hist_row}'] = alerte.get("heure", "")
-            ws_historique[f'C{hist_row}'] = alerte.get("zone", "")
-            ws_historique[f'D{hist_row}'] = alerte.get("risques", "")
+            ws_historique[f'C{hist_row}'] = _strip_report_emojis(alerte.get("zone", ""))
+            ws_historique[f'D{hist_row}'] = _strip_report_emojis(alerte.get("risques", ""))
             ws_historique[f'E{hist_row}'] = f"T:{alerte.get('temp','?')} V:{alerte.get('wind','?')} P:{alerte.get('rain','?')}"
             
             if hist_row % 2 == 0:
@@ -909,6 +931,11 @@ def main(dry_run=False, force_send=False):
     
     # Charger historique
     alertes, source_donnees = charger_historique()
+    if REPORT_REQUIRE_RENDER and source_donnees in {"Fallback local", "API Render indisponible"}:
+        raise RuntimeError(
+            "Source Render obligatoire: impossible de générer le rapport sans API Render. "
+            "Configurer JWT_SECRET/RENDER_URL ou autoriser explicitement ALLOW_LOCAL_REPORT_FALLBACK=true."
+        )
     print(f"\n📁 Historique total: {len(alertes)} alertes")
     
     # Filtrer semaine précédente

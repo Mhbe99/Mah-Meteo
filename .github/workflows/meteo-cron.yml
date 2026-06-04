@@ -30,6 +30,7 @@ jobs:
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           RENDER_URL: ${{ secrets.RENDER_URL }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
         run: |
           set -e
           for key in SENDER_EMAIL SMTP_FROM RECEIVER_EMAILS BREVO_API_KEY EMAIL_PROVIDER JWT_SECRET RENDER_URL; do
@@ -38,6 +39,9 @@ jobs:
               exit 1
             fi
           done
+          if [ -z "$RENDER_API_TOKEN" ]; then
+            echo "Warning: RENDER_API_TOKEN not set (optional, service-token flow used by default)."
+          fi
           echo "All required secrets are present."
       
       - name: Install dependencies
@@ -57,6 +61,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           RENDER_URL: ${{ secrets.RENDER_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
           GITHUB_ACTIONS: 'true'
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}

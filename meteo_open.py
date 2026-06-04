@@ -12,7 +12,7 @@ import time
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
-from meteo_saas.backend.email_alerts import _envoyer_email
+from meteo_saas.backend.email_alerts import _envoyer_email, send_pollution_alert
 
 # Imports SaaS
 try:
@@ -314,7 +314,7 @@ def send_email_alerte_risque(zone, risk_item, context, client_id=1):
     <p style=\"color:#718096;font-size:12px;\">Cooldown actif par zone et type de risque: {ALERT_COOLDOWN_SECONDS // 60} minutes.</p>
     """
     body = _build_email_shell("Alerte météo temps réel", f"Zone: {zone}", content, accent="#2c3e50")
-    subject = f"⚠️ Alerte météo — {risk_item} — {zone}"
+    subject = f"[Mah Météo] Alerte météo — {risk_item} — {zone}"
 
     if _send_email_html(subject, body):
         state[key] = datetime.datetime.now().isoformat()
@@ -459,107 +459,19 @@ def send_email_pollution(zones_alertes: list):
     - AQI 60-79: Mauvais (🔴 rouge) — cooldown 3h  
     - AQI 80+: Très mauvais (🔴⛔ bordeaux) — cooldown 1h
     """
-    global SENDER_EMAIL, RECEIVER_EMAILS, GMAIL_PASSWORD
     if not zones_alertes or not RECEIVER_EMAILS:
         return
-
-    # Grouper par seuil
-    zones_moderate = [z for z in zones_alertes if 40 <= z.get("aqi", 0) < 60]
-    zones_bad = [z for z in zones_alertes if 60 <= z.get("aqi", 0) < 80]
-    zones_very_bad = [z for z in zones_alertes if z.get("aqi", 0) >= 80]
-    
-    # Vérifier le cooldown selon le plus haut seuil
-    max_aqi = max([z.get("aqi", 0) for z in zones_alertes], default=0)
-    if max_aqi >= 80:
-        cooldown_seconds = 1 * 3600  # 1h
-        cooldown_key = "high"
-    elif max_aqi >= 60:
-        cooldown_seconds = 3 * 3600  # 3h
-        cooldown_key = "medium"
-    else:
-        cooldown_seconds = 6 * 3600  # 6h
-        cooldown_key = "low"
-
-    COOLDOWN_FILE = "exports/last_pollution_alert.json"
     try:
-        state = {}
-        if os.path.exists(COOLDOWN_FILE):
-            with open(COOLDOWN_FILE, "r", encoding="utf-8") as f:
-                state = json.load(f)
-        last = state.get(cooldown_key)
-        if last:
-            delta = (datetime.datetime.now() - datetime.datetime.fromisoformat(last)).total_seconds()
-            if delta < cooldown_seconds:
-                print(f"[POLLUTION] Cooldown {cooldown_key} actif ({int(delta)}s/{cooldown_seconds}s)")
-                return
-    except Exception:
-        state = {}
-
-    now_str = datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')
-
-    def render_section(zones: list, title: str, bg_color: str, border_color: str) -> str:
-        if not zones:
-            return ""
-        rows = ""
-        for z in zones:
-            pm25_txt = f"{z.get('pm25', 0):.1f} µg/m³" if z.get("pm25") else "—"
-            rows += f"""<tr style="border-bottom:1px solid #e2e8f0;">
-              <td style="padding:10px 14px;color:#1a202c;font-weight:600;">{z['zone']}</td>
-              <td style="padding:10px 14px;text-align:center;font-size:18px;font-weight:700;color:{border_color};">{round(z['aqi'])}</td>
-              <td style="padding:10px 14px;text-align:center;color:{border_color};font-weight:600;">{z['label']}</td>
-              <td style="padding:10px 14px;text-align:center;color:#4a5568;font-size:12px;">{pm25_txt}</td>
-            </tr>"""
-        return f"""<div style="margin:12px 0;border-left:4px solid {border_color};background:{bg_color};padding:12px;border-radius:4px;">
-          <div style="font-weight:700;color:{border_color};margin-bottom:8px;font-size:13px;">{title}</div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead>
-              <tr style="background:#f7fafc;">
-                <th style="padding:8px 14px;text-align:left;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">Site</th>
-                <th style="padding:8px 14px;text-align:center;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">AQI</th>
-                <th style="padding:8px 14px;text-align:center;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">Niveau</th>
-                <th style="padding:8px 14px;text-align:center;border-bottom:1px solid {border_color};color:#2d3748;font-weight:600;">PM2.5</th>
-              </tr>
-            </thead>
-            <tbody>{rows}</tbody>
-          </table>
-        </div>"""
-
-    sections_html = ""
-    if zones_very_bad:
-        sections_html += render_section(zones_very_bad, "⛔ Très mauvais (AQI 80+)", "#fef2f2", "#7b341e")
-    if zones_bad:
-        sections_html += render_section(zones_bad, "🔴 Mauvais (AQI 60-79)", "#fef2f2", "#e53e3e")
-    if zones_moderate:
-        sections_html += render_section(zones_moderate, "🟠 Modéré (AQI 40-59)", "#fffbeb", "#dd6b20")
-
-    max_lvl = "Très mauvais" if zones_very_bad else ("Mauvais" if zones_bad else "Modéré")
-    subject = f"⚠️ Alerte Pollution — Qualité air {max_lvl}"
-
-    content = f"""
-    <p style=\"margin-top:0;\">La qualité de l'air dépasse le seuil d'alerte sur <strong>{len(zones_alertes)} site(s) GEODIS</strong>.</p>
-    {sections_html}
-    <div style=\"background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;margin-top:14px;font-size:11px;color:#718096;line-height:1.5;\">
-      <strong>Échelle AQI européen:</strong><br>
-      0-20 Bon · 20-40 Acceptable · <strong>40-60 Modéré</strong> · <strong>60-80 Mauvais</strong> · <strong style=\"color:#7b341e;\">80-100 Très mauvais</strong> · >100 Extrême
-    </div>
-    """
-    body = _build_email_shell(
-        title="Alerte pollution",
-        subtitle=f"Surveillance qualité air — {now_str}",
-        content_html=content,
-        accent="#744210",
-    )
-
-    try:
-        if _send_email_html(subject, body):
-            counts = f"({len(zones_very_bad)} très mauvais, {len(zones_bad)} mauvais, {len(zones_moderate)} modéré)" if len(zones_alertes) > 1 else ""
-            print(f"[POLLUTION] 📧 Alerte envoyée {counts} → {len(RECEIVER_EMAILS)} destinataires")
-            state[cooldown_key] = datetime.datetime.now().isoformat()
-            os.makedirs("exports", exist_ok=True)
-            with open(COOLDOWN_FILE, "w", encoding="utf-8") as f:
-                json.dump(state, f)
+        sent = send_pollution_alert(
+            to_email="",
+            company_name="GEODIS",
+            zones_alertes=zones_alertes,
+            state_file="exports/last_pollution_alert.json",
+        )
+        if sent:
+            print(f"[POLLUTION] Alerte pollution envoyée -> {len(RECEIVER_EMAILS)} destinataires")
         else:
-            print("[POLLUTION] Email non envoyé (SMTP indisponible ou config manquante)")
+            print("[POLLUTION] Alerte pollution non envoyée (cooldown/config)")
     except Exception as e:
         print(f"[POLLUTION] Erreur email: {e}")
 

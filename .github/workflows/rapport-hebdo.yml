@@ -26,6 +26,7 @@ jobs:
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
           RENDER_URL: ${{ secrets.RENDER_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
         run: |
           set -e
           for key in SENDER_EMAIL SMTP_FROM RECEIVER_EMAILS BREVO_API_KEY EMAIL_PROVIDER RENDER_URL JWT_SECRET; do
@@ -34,6 +35,9 @@ jobs:
               exit 1
             fi
           done
+          if [ -z "$RENDER_API_TOKEN" ]; then
+            echo "Warning: RENDER_API_TOKEN not set (optional for weekly report)."
+          fi
           echo "All required secrets are present."
 
       - name: Install dependencies
@@ -46,7 +50,10 @@ jobs:
           RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
           RENDER_URL: ${{ secrets.RENDER_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          REPORT_REQUIRE_RENDER: 'true'
+          ALLOW_LOCAL_REPORT_FALLBACK: 'false'
           GITHUB_ACTIONS: 'true'
         run: python rapport_hebdomadaire.py --force-send

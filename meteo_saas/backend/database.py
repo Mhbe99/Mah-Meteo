@@ -90,6 +90,15 @@ class Zone(Base):
     precipitation = Column(Float, nullable=True)
     cloudcover = Column(Float, nullable=True)
     uv_index = Column(Float, nullable=True)
+
+    @property
+    def temp(self):
+        # Alias de compatibilite pour le frontend historique
+        return self.temperature
+
+    @temp.setter
+    def temp(self, value):
+        self.temperature = value
     risques = Column(Text, nullable=True)
     ciel = Column(String, nullable=True)
     aqi = Column(Float, nullable=True)           # Indice qualité air européen (0-100)
