@@ -141,7 +141,7 @@ Réponse :
 
 **Email d'alerte :**
 ```
-À : alert@geodis.fr, manager@geodis.fr
+À : alerts@example.com, ops@example.com
 Sujet : Alerte météo détectée à Le Meux 🏣
 
 Risques détectés :
@@ -181,7 +181,7 @@ Actions recommandées :
 
 **Email d'alerte pollution :**
 ```
-À : alert@geodis.fr, manager@geodis.fr
+À : alerts@example.com, ops@example.com
 Sujet : ⚠️ Alerte Pollution — Qualité air Très mauvais (80+)
 
 Le Meux 🏣 : AQI 85 ⛔ Très mauvais → PM2.5 = 32.1 µg/m³
@@ -443,7 +443,7 @@ Rapport inclut :
   - Graphiques + prévisions
   - Excel attaché
 
-Destinataires : alert@geodis.fr, manager@geodis.fr
+Destinataires : alerts@example.com, ops@example.com
 
 Résultat : Manager reçoit synthèse complète chaque lundi
 ```
@@ -768,7 +768,7 @@ Création de `generer_guide.py` : script Python (`python-pptx` + `python-docx`) 
 - Maintien de l'adresse expéditrice Mah Météo comme identité d'envoi, a condition qu'elle soit vérifiée côté Brevo.
 
 **Pourquoi l'adresse Mah Météo n'a pas "disparu" :**
-- L'identité expéditrice peut rester `mahmeteo@gmail.com` (ou toute adresse validée).
+- L'identité expéditrice peut rester `sender@example.com` (ou toute adresse validée).
 - Ce qui a changé n'est pas l'adresse visible par le destinataire, mais le canal technique d'envoi.
 - Avant : `application -> SMTP direct`.
 - Maintenant : `application -> API Brevo en HTTPS -> livraison email`.
@@ -1004,7 +1004,7 @@ if retard_max >= 30:
 
 | Fichier | Donnée retirée | Remplacement |
 |---|---|---|
-| `init_db.py` | `email="mahmeteo@gmail.com"` | `os.getenv("INIT_CLIENT_EMAIL", "")` |
+| `init_db.py` | `email="sender@example.com"` | `os.getenv("INIT_CLIENT_EMAIL", "")` |
 | `debug_api.py` | `'password': 'demo1234'` | `os.getenv("TEST_PASSWORD", "")` |
 | `check_dashboard.py` | `"demo1234"` par défaut | `os.getenv("TEST_PASSWORD", "")` |
 

@@ -3,6 +3,7 @@ import time
 import requests
 import sys
 import psutil
+import os
 
 def kill_proc_tree(pid, including_parent=True):
     parent = psutil.Process(pid)
@@ -38,7 +39,10 @@ with open('server_log.txt', 'w') as log_file:
         print('Testing login...')
         login_url = 'http://127.0.0.1:8000/auth/login'
         # Try both form and JSON if needed, but start with Form for OAuth2
-        credentials = {'username': 'geodis-lemeux', 'password': 'Geodis60'}
+        credentials = {
+            'username': os.getenv('TEST_USERNAME') or os.getenv('INIT_CLIENT_USERNAME', 'service-meteo'),
+            'password': os.getenv('TEST_PASSWORD') or os.getenv('INIT_CLIENT_PASSWORD', '')
+        }
         try:
             response = requests.post(login_url, data=credentials, timeout=10)
             print(f'Status Code: {response.status_code}')

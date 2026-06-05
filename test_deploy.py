@@ -1,9 +1,13 @@
-﻿import requests
+import os
+import requests
 import time
 import sys
 
-BASE_URL = 'https://mah-meteo.onrender.com'
-LOGIN_DATA = {'username': 'geodis-lemeux', 'password': 'Geodis60'}
+BASE_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
+LOGIN_DATA = {
+    'username': os.getenv('TEST_USERNAME') or os.getenv('INIT_CLIENT_USERNAME', 'service-meteo'),
+    'password': os.getenv('TEST_PASSWORD') or os.getenv('INIT_CLIENT_PASSWORD', '')
+}
 
 def test_deploy():
     token = None

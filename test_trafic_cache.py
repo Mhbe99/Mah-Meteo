@@ -7,9 +7,13 @@ Test du système de cache trafic
 import requests
 import json
 import time
+import os
 
 BASE_URL = "http://localhost:8080"
-LOGIN_CREDS = {"username": "geodis-lemeux", "password": "geodis123"}
+LOGIN_CREDS = {
+    "username": os.getenv("TEST_USERNAME") or os.getenv("INIT_CLIENT_USERNAME", "service-meteo"),
+    "password": os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "")
+}
 
 def test_trafic_api():
     """Test l'API trafic avec le nouveau système de cache"""

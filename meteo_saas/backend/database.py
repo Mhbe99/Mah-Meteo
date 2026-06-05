@@ -366,7 +366,7 @@ def init_clients_from_json(json_path):
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        admin_username = os.getenv("ADMIN_USERNAME", "geodis-lemeux")
+        admin_username = os.getenv("ADMIN_USERNAME", os.getenv("INIT_CLIENT_USERNAME", "service-meteo"))
 
         db = SessionLocal()
 

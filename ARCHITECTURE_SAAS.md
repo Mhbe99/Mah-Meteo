@@ -355,10 +355,10 @@ TOMTOM_API_KEY=  # Vide = désactivé
 {
   "clients": [
     {
-      "username": "geodis-lemeux",
-      "password": "demo1234",
+      "username": "service-meteo",
+      "password": "example-password",
       "company_name": "GEODIS",
-      "email": "mahame.toure@geodis.com",
+      "email": "client@example.com",
       "plan": "pro",
       "zones": { "sites": [...], "voisins": [...] }
     }

@@ -105,7 +105,7 @@ Accessible sans authentification — aucun appel API.
 - **Alerte combinée** : météo + trafic simultanés
 
 **Multi-destinataires** : `_get_all_recipients()` combine `to_email` + `RECEIVER_EMAILS` du `.env`.
-Testé et validé le 9 avril — envoi confirmé vers `mahmeteo@gmail.com` ET `mahame.toure@geodis.com`.
+Testé et validé le 9 avril — envoi confirmé vers `sender@example.com` ET `client@example.com`.
 
 ### 7. Corrections UX
 

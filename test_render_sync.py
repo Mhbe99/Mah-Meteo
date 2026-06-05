@@ -16,8 +16,8 @@ load_dotenv()
 RENDER_URL = os.getenv("RENDER_URL", "https://mah-meteo.onrender.com")
 RENDER_API_TOKEN = os.getenv("RENDER_API_TOKEN", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "")
-TEST_USERNAME = os.getenv("TEST_USERNAME", "geodis-lemeux")
-TEST_PASSWORD = os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "demo1234")
+TEST_USERNAME = os.getenv("TEST_USERNAME") or os.getenv("INIT_CLIENT_USERNAME", "service-meteo")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD") or os.getenv("INIT_CLIENT_PASSWORD", "")
 RENDER_API_URL = f"{RENDER_URL}/api/meteo/snapshot/add"
 CLIENT_ID = 1
 
