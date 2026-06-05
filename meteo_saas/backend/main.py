@@ -45,6 +45,7 @@ load_dotenv()
 ADMIN_PIN = os.getenv("ADMIN_PIN", "")
 COMBINED_ALERT_AUTO_ENABLED = os.getenv("COMBINED_ALERT_AUTO_ENABLED", "true").strip().lower() == "true"
 REFRESH_COOLDOWN_SECONDS = int(os.getenv("REFRESH_COOLDOWN_SECONDS", "600"))
+DIAGNOSTICS_PUBLIC = os.getenv("DIAGNOSTICS_PUBLIC", "false").strip().lower() == "true"
 _refresh_locks: dict[int, Lock] = {}
 
 # ── Bulletins horaires ──
@@ -1861,6 +1862,9 @@ def health():
 @app.get("/api/health/detailed")
 def health_detailed(db: Session = Depends(get_db)):
     """Expose un diagnostic rapide DB/API/clé email pour les tests de robustesse."""
+    if not DIAGNOSTICS_PUBLIC:
+        raise HTTPException(status_code=404, detail="Not found")
+
     results = {}
 
     try:
@@ -1903,6 +1907,9 @@ def health_detailed(db: Session = Depends(get_db)):
 @app.get("/api/diagnostics")
 def diagnostics(db: Session = Depends(get_db)):
     """Endpoint diagnostique pour tester la connexion BD et détecter les erreurs."""
+    if not DIAGNOSTICS_PUBLIC:
+        raise HTTPException(status_code=404, detail="Not found")
+
     try:
         # Test 1: Query the database
         client_count = db.query(Client).count()
