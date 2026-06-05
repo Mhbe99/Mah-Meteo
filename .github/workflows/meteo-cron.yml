@@ -102,14 +102,26 @@ jobs:
 
       - name: Deploy to GitHub Pages
         run: |
+          set -euo pipefail
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git checkout --orphan gh-pages
           git rm -rf . >/dev/null 2>&1 || true
-          cp site/dashboard_meteo.html ./dashboard_meteo.html
-          cp site/carte_tv.html ./carte_tv.html
+
+          DASHBOARD_FILE="$(find site -type f -name 'dashboard_meteo.html' | head -n 1)"
+          CARTE_FILE="$(find site -type f -name 'carte_tv.html' | head -n 1)"
+          XLSX_FILE="$(find site -type f -name 'risques_meteo.xlsx' | head -n 1)"
+
+          if [ -z "$DASHBOARD_FILE" ] || [ -z "$CARTE_FILE" ] || [ -z "$XLSX_FILE" ]; then
+            echo "Missing expected publication files in artifact"
+            find site -maxdepth 4 -type f | sort
+            exit 1
+          fi
+
+          cp "$DASHBOARD_FILE" ./dashboard_meteo.html
+          cp "$CARTE_FILE" ./carte_tv.html
           mkdir -p exports
-          cp site/exports/risques_meteo.xlsx ./exports/risques_meteo.xlsx
+          cp "$XLSX_FILE" ./exports/risques_meteo.xlsx
           git add dashboard_meteo.html carte_tv.html exports/risques_meteo.xlsx
           if git diff --cached --quiet; then
             echo "No publication changes to deploy"
