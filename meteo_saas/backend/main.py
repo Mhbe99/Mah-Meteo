@@ -1860,10 +1860,11 @@ def health():
 
 
 @app.get("/api/health/detailed")
-def health_detailed(db: Session = Depends(get_db)):
+def health_detailed(request: Request, db: Session = Depends(get_db)):
     """Expose un diagnostic rapide DB/API/clé email pour les tests de robustesse."""
     if not DIAGNOSTICS_PUBLIC:
         raise HTTPException(status_code=404, detail="Not found")
+    _verify_service_secret(request)
 
     results = {}
 
@@ -1874,8 +1875,8 @@ def health_detailed(db: Session = Depends(get_db)):
             "status": "ok",
             "latency_ms": round((time.time() - start) * 1000),
         }
-    except Exception as exc:
-        results["db"] = {"status": "error", "detail": str(exc)}
+    except Exception:
+        results["db"] = {"status": "error"}
 
     try:
         start = time.time()
@@ -1887,8 +1888,8 @@ def health_detailed(db: Session = Depends(get_db)):
             "status": "ok" if response.status_code == 200 else "error",
             "latency_ms": round((time.time() - start) * 1000),
         }
-    except Exception as exc:
-        results["open_meteo"] = {"status": "timeout", "detail": str(exc)}
+    except Exception:
+        results["open_meteo"] = {"status": "timeout"}
 
     tomtom_key = os.getenv("TOMTOM_API_KEY", "")
     brevo_key = os.getenv("BREVO_API_KEY", "")
@@ -1905,10 +1906,11 @@ def health_detailed(db: Session = Depends(get_db)):
 
 
 @app.get("/api/diagnostics")
-def diagnostics(db: Session = Depends(get_db)):
+def diagnostics(request: Request, db: Session = Depends(get_db)):
     """Endpoint diagnostique pour tester la connexion BD et détecter les erreurs."""
     if not DIAGNOSTICS_PUBLIC:
         raise HTTPException(status_code=404, detail="Not found")
+    _verify_service_secret(request)
 
     try:
         # Test 1: Query the database
@@ -1927,12 +1929,10 @@ def diagnostics(db: Session = Depends(get_db)):
             "has_trial_expires_at": "trial_expires_at" in columns
         }
     except Exception as e:
-        import traceback
         return {
             "status": "error",
             "error_type": type(e).__name__,
-            "error_message": str(e),
-            "traceback": traceback.format_exc()
+            "error_message": "internal_error"
         }
 
 

@@ -11,7 +11,7 @@ jobs:
   run-meteo:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -73,12 +73,47 @@ jobs:
           fi
           python meteo_open.py
 
+      - name: Upload publication artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: meteo-public-assets
+          if-no-files-found: error
+          path: |
+            dashboard_meteo.html
+            carte_tv.html
+            exports/risques_meteo.xlsx
+
+  deploy-gh-pages:
+    runs-on: ubuntu-latest
+    needs: run-meteo
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download publication artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: meteo-public-assets
+          path: site
+
       - name: Deploy to GitHub Pages
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git checkout --orphan gh-pages
-          git reset
-          git add dashboard_meteo.html carte_tv.html exports/risques_meteo.xlsx -f
+          git rm -rf . >/dev/null 2>&1 || true
+          cp site/dashboard_meteo.html ./dashboard_meteo.html
+          cp site/carte_tv.html ./carte_tv.html
+          mkdir -p exports
+          cp site/exports/risques_meteo.xlsx ./exports/risques_meteo.xlsx
+          git add dashboard_meteo.html carte_tv.html exports/risques_meteo.xlsx
+          if git diff --cached --quiet; then
+            echo "No publication changes to deploy"
+            exit 0
+          fi
           git commit -m "Update météo data"
           git push origin gh-pages -f
