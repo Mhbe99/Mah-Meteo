@@ -907,6 +907,13 @@ def _get_bulletin_window_label(now=None) -> str | None:
     return None
 
 
+def _should_skip_refresh_due_to_cooldown(age_seconds: int, now_paris=None) -> bool:
+    """Autorise un refresh forcé pendant les fenêtres bulletin malgré le cooldown."""
+    if age_seconds >= REFRESH_COOLDOWN_SECONDS:
+        return False
+    return _get_bulletin_window_label(now_paris) is None
+
+
 def _can_send_bulletin(client_id: int, creneau: str, db: Session) -> bool:
     """
     Vérifie si le bulletin du créneau a déjà été envoyé aujourd'hui.
@@ -1025,11 +1032,12 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
             return {"status": "ok", "updated": 0}
 
         # Cooldown côté serveur: évite de sur-solliciter Open-Meteo quand la vue générale déclenche plusieurs refresh.
+        paris_now = datetime.now(pytz.timezone("Europe/Paris"))
         last_updates = [z.updated_at for z in zones if z.updated_at]
         if last_updates:
             freshest = max(last_updates)
             age_seconds = int((datetime.utcnow() - freshest).total_seconds())
-            if age_seconds < REFRESH_COOLDOWN_SECONDS:
+            if _should_skip_refresh_due_to_cooldown(age_seconds, paris_now):
                 remaining = REFRESH_COOLDOWN_SECONDS - age_seconds
                 _try_send_bulletin_with_current_data(client_id, db)
                 return {
