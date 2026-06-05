@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 meteo_saas.db
 *.log
+server_log.txt
 
 # Données clients et opérationnelles — NE PAS versionner
 meteo_saas/data/clients.json

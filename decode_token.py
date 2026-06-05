@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 import jwt
 import json
+import os
 
-token_str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfaWQiOjEsInVzZXJuYW1lIjoiZ2VvZGlzLWxlbWV1eCIsImV4cCI6MTc3NDUzNTAwM30.wEaCM0vcXViWSkgH6RL81R07ZZy32EEBH4AQglA-HBg"
+token_str = os.getenv("TOKEN_TO_DECODE", "").strip()
+
+if not token_str:
+    print("Set TOKEN_TO_DECODE in environment to decode a token payload.")
+    raise SystemExit(1)
 
 try:
     # Decode without verification (just to see payload)
