@@ -1012,7 +1012,12 @@ def _try_send_bulletin_with_current_data(client_id: int, db: Session) -> None:
 
 
 @app.post("/api/refresh/{client_id}")
-def refresh_meteo(client_id: int, current_client: int = Depends(get_current_client), db: Session = Depends(get_db)):
+def refresh_meteo(
+    client_id: int,
+    force: bool = Query(default=False),
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db),
+):
     """
     Rafraîchit les données météo en direct depuis Open-Meteo pour toutes les zones du client.
     Appelé au login du dashboard pour avoir des données fraîches.
@@ -1023,13 +1028,19 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
     # Empêche les refresh simultanés pour un même client (rafales multi-onglets / retries frontend).
     lock = _refresh_locks.setdefault(client_id, Lock())
     if not lock.acquire(blocking=False):
-        return {"status": "ok", "updated": 0, "total": 0, "skipped": "refresh_in_progress"}
+        return {
+            "status": "ok",
+            "updated": 0,
+            "total": 0,
+            "skipped": "refresh_in_progress",
+            "forced": force,
+        }
 
     try:
         zones = db.query(Zone).filter(Zone.client_id == client_id).all()
         if not zones:
             _try_send_bulletin_with_current_data(client_id, db)
-            return {"status": "ok", "updated": 0}
+            return {"status": "ok", "updated": 0, "forced": force}
 
         # Cooldown côté serveur: évite de sur-solliciter Open-Meteo quand la vue générale déclenche plusieurs refresh.
         paris_now = datetime.now(pytz.timezone("Europe/Paris"))
@@ -1037,7 +1048,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
         if last_updates:
             freshest = max(last_updates)
             age_seconds = int((datetime.utcnow() - freshest).total_seconds())
-            if _should_skip_refresh_due_to_cooldown(age_seconds, paris_now):
+            if not force and _should_skip_refresh_due_to_cooldown(age_seconds, paris_now):
                 remaining = REFRESH_COOLDOWN_SECONDS - age_seconds
                 _try_send_bulletin_with_current_data(client_id, db)
                 return {
@@ -1046,6 +1057,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
                     "total": len(zones),
                     "skipped": "cooldown",
                     "cooldown_remaining": remaining,
+                    "forced": force,
                 }
 
         def _fetch_json_with_retries(url: str, retries: int = 3):
@@ -1138,7 +1150,13 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
 
         if batch_rate_limited:
             _try_send_bulletin_with_current_data(client_id, db)
-            return {"status": "ok", "updated": 0, "total": len(zones), "skipped": "rate_limited"}
+            return {
+                "status": "ok",
+                "updated": 0,
+                "total": len(zones),
+                "skipped": "rate_limited",
+                "forced": force,
+            }
 
         for idx, zone in enumerate(zones):
             try:
@@ -1170,7 +1188,7 @@ def refresh_meteo(client_id: int, current_client: int = Depends(get_current_clie
         _try_send_bulletin_with_current_data(client_id, db)
         # ─────────────────────────────────────────────────────────────────────
 
-        return {"status": "ok", "updated": updated, "total": len(zones)}
+        return {"status": "ok", "updated": updated, "total": len(zones), "forced": force}
     finally:
         lock.release()
 
