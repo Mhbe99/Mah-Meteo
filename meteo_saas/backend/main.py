@@ -52,7 +52,7 @@ _refresh_locks: dict[int, Lock] = {}
 # Fenêtre 31 min par défaut pour capter le refresh horaire de H+1:00
 # sur les créneaux en H:30 (ex: 10h30 capté à 11h00).
 _BULLETIN_WINDOWS = [
-    (6, 30),   # 06h30 prise de poste nuit→matin
+    (6, 0),    # 06h00 brief tournées du matin
     (10, 30),  # 10h30 bilan milieu de matinée
     (12, 0),   # 12h00 départ tournées après-midi
     (15, 0),   # 15h00 bilan milieu d'après-midi
