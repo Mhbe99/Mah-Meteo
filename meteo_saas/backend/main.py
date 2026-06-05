@@ -48,7 +48,9 @@ REFRESH_COOLDOWN_SECONDS = int(os.getenv("REFRESH_COOLDOWN_SECONDS", "600"))
 _refresh_locks: dict[int, Lock] = {}
 
 # ── Bulletins horaires ──
-# Créneaux (heure, minute) heure de Paris — tolérance 30 min
+# Créneaux (heure, minute) heure de Paris.
+# Fenêtre 31 min par défaut pour capter le refresh horaire de H+1:00
+# sur les créneaux en H:30 (ex: 10h30 capté à 11h00).
 _BULLETIN_WINDOWS = [
     (6, 30),   # 06h30 prise de poste nuit→matin
     (10, 30),  # 10h30 bilan milieu de matinée
@@ -56,7 +58,7 @@ _BULLETIN_WINDOWS = [
     (15, 0),   # 15h00 bilan milieu d'après-midi
     (17, 30),  # 17h30 fin tournées
 ]
-BULLETIN_WINDOW_MINUTES = int(os.getenv("BULLETIN_WINDOW_MINUTES", "30"))
+BULLETIN_WINDOW_MINUTES = int(os.getenv("BULLETIN_WINDOW_MINUTES", "31"))
 
 
 # ============ DÉPENDANCE ADMIN ============
