@@ -112,17 +112,20 @@ jobs:
           CARTE_FILE="$(find site -type f -name 'carte_tv.html' | head -n 1)"
           XLSX_FILE="$(find site -type f -name 'risques_meteo.xlsx' | head -n 1)"
 
-          if [ -z "$DASHBOARD_FILE" ] || [ -z "$CARTE_FILE" ] || [ -z "$XLSX_FILE" ]; then
-            echo "Missing expected publication files in artifact"
+          if [ -z "$DASHBOARD_FILE" ] || [ -z "$CARTE_FILE" ]; then
+            echo "Missing expected required publication files in artifact"
             find site -maxdepth 4 -type f | sort
             exit 1
           fi
 
           cp "$DASHBOARD_FILE" ./dashboard_meteo.html
           cp "$CARTE_FILE" ./carte_tv.html
-          mkdir -p exports
-          cp "$XLSX_FILE" ./exports/risques_meteo.xlsx
-          git add dashboard_meteo.html carte_tv.html exports/risques_meteo.xlsx
+          if [ -n "$XLSX_FILE" ]; then
+            mkdir -p exports
+            cp "$XLSX_FILE" ./exports/risques_meteo.xlsx
+            git add exports/risques_meteo.xlsx
+          fi
+          git add dashboard_meteo.html carte_tv.html
           if git diff --cached --quiet; then
             echo "No publication changes to deploy"
             exit 0
