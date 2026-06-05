@@ -30,11 +30,11 @@ L'app démarre sur http://localhost:8000
 
 ## 🔐 Authentification
 
-### Données de test
+### Données d'exemple
 
 ```
 Utilisateur : geodis-lemeux
-Mot de passe : demo1234
+Mot de passe : variable TEST_PASSWORD (non versionnée)
 ```
 
 (Ces données viennent de `data/clients.json`)

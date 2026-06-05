@@ -1005,8 +1005,8 @@ if retard_max >= 30:
 | Fichier | Donnée retirée | Remplacement |
 |---|---|---|
 | `init_db.py` | `email="sender@example.com"` | `os.getenv("INIT_CLIENT_EMAIL", "")` |
-| `debug_api.py` | `'password': 'demo1234'` | `os.getenv("TEST_PASSWORD", "")` |
-| `check_dashboard.py` | `"demo1234"` par défaut | `os.getenv("TEST_PASSWORD", "")` |
+| `debug_api.py` | mot de passe en clair | `os.getenv("TEST_PASSWORD", "")` |
+| `check_dashboard.py` | mot de passe par défaut en clair | `os.getenv("TEST_PASSWORD", "")` |
 
 **Historique git nettoyé :**
 - Ancien historique (4 commits) remplacé par un commit orphelin unique propre (`git checkout --orphan`)

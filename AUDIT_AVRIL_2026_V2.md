@@ -16,7 +16,7 @@ Depuis l'audit V2.1 du 9 avril 2026, **12 commits** supplémentaires ont été l
 | Rate-limiting | ❌ Inexistant | ✅ **slowapi** (10/min login, 5/min register) | ✅ **NOUVEAU** |
 | CORS production | localhost autorisé 🟡 | **Dynamique** — prod: domaine Render uniquement | ✅ **Corrigé** |
 | Multi-tenant | Verrouillé client_id=1 🔴 | **Boucle multi-clients** (API + JSON) | ✅ **Corrigé** |
-| Mot de passe JSON | En clair `"demo1234"` 🔴 | **Supprimé** — hash bcrypt en DB uniquement | ✅ **Corrigé** |
+| Mot de passe JSON | Valeur en clair historique 🔴 | **Supprimé** — hash bcrypt en DB uniquement | ✅ **Corrigé** |
 | Inscription | ❌ Inexistant | ✅ **Self-service** (register + quotas plan) | ✅ **NOUVEAU** |
 | Email anti-spam | ❌ Pas de limite | ✅ **Cooldown 1h/zone/type** | ✅ **NOUVEAU** |
 | JWT frontend | Pas d'expiration visible | ✅ **Check toutes les 5 min, auto-logout** | ✅ **Corrigé** |
@@ -125,7 +125,7 @@ Testé et validé le 9 avril — envoi confirmé vers `sender@example.com` ET `c
 | `942dfab` | 09/04 | **Rate-limiting** — `slowapi` : 10/min login, 5/min register |
 | `32c20a3` | 10/04 | **CORS dynamique** — prod (PostgreSQL) : domaine Render uniquement, dev : localhost |
 | `32c20a3` | 10/04 | **Mot de passe supprimé** de `clients.json` — hash bcrypt en DB uniquement |
-| `cee8daf` | 10/04 | **Placeholders login** nettoyés — plus de `geodis-lemeux` / `demo1234` visibles |
+| `cee8daf` | 10/04 | **Placeholders login** nettoyés — plus de valeurs sensibles visibles |
 
 ### 9. Multi-tenant complet
 
