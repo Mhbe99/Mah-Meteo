@@ -31,6 +31,7 @@ EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").strip().lower()
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 BREVO_SMTP_FALLBACK = os.getenv("BREVO_SMTP_FALLBACK", "true").strip().lower() == "true"
 BREVO_SMTP_FALLBACK_ON_TIMEOUT = os.getenv("BREVO_SMTP_FALLBACK_ON_TIMEOUT", "false").strip().lower() == "true"
+DISABLE_EMAIL_WEEKENDS = os.getenv("DISABLE_EMAIL_WEEKENDS", "false").strip().lower() == "true"
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
 
@@ -86,6 +87,11 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
 
     if not ALERT_ENABLED:
         print(f"[EMAIL] Désactivé — sujet: {subject}")
+        return False
+
+    # Option métier: couper les envois le week-end (samedi=5, dimanche=6) heure de Paris.
+    if DISABLE_EMAIL_WEEKENDS and _paris_now().weekday() >= 5:
+        print(f"[EMAIL] Week-end bloqué — sujet: {subject}")
         return False
 
     recipients = _normalize_recipients(to_emails)

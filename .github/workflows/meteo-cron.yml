@@ -67,6 +67,7 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          DISABLE_EMAIL_WEEKENDS: ${{ secrets.DISABLE_EMAIL_WEEKENDS }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             export DATABASE_URL="sqlite:///./meteo_saas.db"
@@ -86,6 +87,7 @@ jobs:
           REPORT_REQUIRE_RENDER: 'true'
           ALLOW_LOCAL_REPORT_FALLBACK: 'false'
           GITHUB_ACTIONS: 'true'
+          DISABLE_EMAIL_WEEKENDS: ${{ secrets.DISABLE_EMAIL_WEEKENDS }}
         run: |
           PARIS_DOW="$(TZ=Europe/Paris date +%u)"
           PARIS_HOUR="$(TZ=Europe/Paris date +%H)"

@@ -56,4 +56,5 @@ jobs:
           REPORT_REQUIRE_RENDER: 'true'
           ALLOW_LOCAL_REPORT_FALLBACK: 'false'
           GITHUB_ACTIONS: 'true'
+          DISABLE_EMAIL_WEEKENDS: ${{ secrets.DISABLE_EMAIL_WEEKENDS }}
         run: python rapport_hebdomadaire.py --force-send
