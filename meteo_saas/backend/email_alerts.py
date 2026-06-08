@@ -7,6 +7,7 @@ Utilise SMTP configurable via variables d'environnement.
 import os
 import json
 import smtplib
+from zoneinfo import ZoneInfo
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -28,6 +29,11 @@ RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS", "")
 ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
 EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").strip().lower()
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+PARIS_TZ = ZoneInfo("Europe/Paris")
+
+
+def _paris_now() -> datetime:
+    return datetime.now(PARIS_TZ)
 
 # Cooldown anti-spam : 1 email par clé (zone+type) par heure
 _COOLDOWN_SECONDS = 3600
@@ -191,7 +197,7 @@ def _get_all_recipients(to_email: str):
 # ============ TEMPLATES EMAIL ============
 
 def _build_email_shell(title: str, subtitle: str, content_html: str, accent: str = "#2c3e50"):
-        now_str = datetime.now().strftime('%d/%m/%Y %H:%M')
+        now_str = _paris_now().strftime('%d/%m/%Y %H:%M')
         import base64
         logo_b64 = ""
         try:
@@ -577,8 +583,9 @@ def render_bulletin_email_html(to_email: str, company_name: str, zones: list, in
     pour éviter que le HTML de prévisualisation diverge du bulletin envoyé.
     """
     incidents = incidents or []
-    now_str = datetime.now().strftime("%A %d %B %Y")
-    heure_str = datetime.now().strftime("%H:%M")
+    now = _paris_now()
+    now_str = now.strftime("%A %d %B %Y")
+    heure_str = now.strftime("%H:%M")
 
     def _get(obj, attr, default=None):
         val = (getattr(obj, attr, None) if not isinstance(obj, dict) else obj.get(attr))
@@ -958,7 +965,7 @@ def send_welcome_email(to_email: str, username: str, temp_password: str, company
         <!-- Pied de page -->
         <div style="padding:12px 24px;background:#f7fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;text-align:center;">
             Mah Météo — Supervision météo & trafic pour vos trajets<br>
-            Envoyé le {datetime.now().strftime('%d/%m/%Y à %H:%M')}
+            Envoyé le {_paris_now().strftime('%d/%m/%Y à %H:%M')}
         </div>
     </div>
     """

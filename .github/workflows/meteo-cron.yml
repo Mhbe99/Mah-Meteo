@@ -73,6 +73,29 @@ jobs:
           fi
           python meteo_open.py
 
+      - name: Weekly report fallback (Monday 08:00 Paris)
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          REPORT_REQUIRE_RENDER: 'true'
+          ALLOW_LOCAL_REPORT_FALLBACK: 'false'
+          GITHUB_ACTIONS: 'true'
+        run: |
+          PARIS_DOW="$(TZ=Europe/Paris date +%u)"
+          PARIS_HOUR="$(TZ=Europe/Paris date +%H)"
+          if [ "$PARIS_DOW" = "1" ] && [ "$PARIS_HOUR" = "08" ]; then
+            echo "Running weekly report fallback from meteo cron"
+            python rapport_hebdomadaire.py --force-send
+          else
+            echo "Skip weekly report fallback (Paris dow=$PARIS_DOW hour=$PARIS_HOUR)"
+          fi
+
       - name: Upload publication artifacts
         uses: actions/upload-artifact@v4
         with:

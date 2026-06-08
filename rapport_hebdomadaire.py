@@ -10,6 +10,7 @@ Généré chaque lundi matin avec :
 import json
 import os
 import datetime
+from zoneinfo import ZoneInfo
 from collections import defaultdict
 import requests
 from jose import jwt
@@ -34,6 +35,7 @@ ALLOW_LOCAL_REPORT_FALLBACK = os.getenv("ALLOW_LOCAL_REPORT_FALLBACK", "false").
 REPORT_REQUIRE_RENDER = os.getenv("REPORT_REQUIRE_RENDER", "true").lower() == "true"
 REPORT_CLIENT_SCAN_MAX = int(os.getenv("REPORT_CLIENT_SCAN_MAX", "50"))
 GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
+PARIS_TZ = ZoneInfo("Europe/Paris")
 
 # Paths
 EXPORT_PATH = "exports"
@@ -59,8 +61,8 @@ def _strip_report_emojis(value):
 
 
 def _build_email_shell(title, subtitle, content_html, accent="#2c3e50"):
-        now_str = datetime.datetime.now().strftime("%d/%m/%Y à %H:%M")
-        return f"""<!DOCTYPE html>
+    now_str = datetime.datetime.now(PARIS_TZ).strftime("%d/%m/%Y à %H:%M")
+    return f"""<!DOCTYPE html>
 <html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>
 <body style=\"margin:0;padding:0;background:#eef1f5;font-family:'Segoe UI',Arial,sans-serif;\">
     <div style=\"max-width:680px;margin:24px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;\">
@@ -293,7 +295,7 @@ def charger_historique():
 
 def get_semaine_precedente():
     """Retourner la date de début et fin de la semaine précédente (lundi-dimanche)"""
-    today = datetime.datetime.now()
+    today = datetime.datetime.now(PARIS_TZ)
     # Lundi de la semaine précédente
     jours_avant = (today.weekday() + 7) % 7
     lundi = today - datetime.timedelta(days=jours_avant + 7)
@@ -697,7 +699,7 @@ def generer_excel(alertes_semaine, stats):
         ws_synthese.row_dimensions[1].height = 30
         
         ws_synthese['A2'] = "Rapport généré:"
-        ws_synthese['B2'] = datetime.datetime.now().strftime("%d/%m/%Y à %H:%M")
+        ws_synthese['B2'] = datetime.datetime.now(PARIS_TZ).strftime("%d/%m/%Y à %H:%M")
         ws_synthese['A2'].font = Font(bold=True)
         
         # KPIs
