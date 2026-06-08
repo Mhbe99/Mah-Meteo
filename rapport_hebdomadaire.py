@@ -1031,7 +1031,7 @@ def main(dry_run=False, force_send=False):
     if len(alertes_semaine) == 0:
         print("✅ Aucune alerte cette semaine!")
         if not dry_run and not force_send:
-            return
+            return True
     
     # Générer statistiques
     stats = generer_statistiques(alertes_semaine)
@@ -1050,15 +1050,23 @@ def main(dry_run=False, force_send=False):
     # Envoyer par email
     print("\n📧 Envoi du rapport par email...")
     # joindre aussi le fichier prévisions si disponible
-    envoyer_rapport_email(lundi, dimanche, stats, RAPPORT_FILE,
-                         previsions_sites=previsions_sites,
-                         previsions_voisins=previsions_voisins,
-                         dry_run=dry_run,
-                         source_donnees=source_donnees)
+    sent_ok = envoyer_rapport_email(
+        lundi,
+        dimanche,
+        stats,
+        RAPPORT_FILE,
+        previsions_sites=previsions_sites,
+        previsions_voisins=previsions_voisins,
+        dry_run=dry_run,
+        source_donnees=source_donnees,
+    )
+    if not sent_ok:
+        raise RuntimeError("Echec envoi rapport hebdomadaire (provider/fallback)")
     
     print("\n" + "=" * 60)
     print("✅ Rapport hebdomadaire terminé")
     print("=" * 60)
+    return True
 
 if __name__ == "__main__":
     import argparse
@@ -1066,4 +1074,6 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="Forcer génération et sauvegarder l'email localement sans l'envoyer")
     parser.add_argument("--force-send", action="store_true", help="Forcer envoi de l'email même sans alertes")
     args = parser.parse_args()
-    main(dry_run=args.dry_run, force_send=args.force_send)
+    ok = main(dry_run=args.dry_run, force_send=args.force_send)
+    if ok is False:
+        raise SystemExit(1)

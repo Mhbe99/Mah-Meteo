@@ -53,6 +53,12 @@ jobs:
           RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BREVO_SMTP_FALLBACK: ${{ secrets.BREVO_SMTP_FALLBACK }}
+          BREVO_SMTP_FALLBACK_ON_TIMEOUT: ${{ secrets.BREVO_SMTP_FALLBACK_ON_TIMEOUT }}
           REPORT_REQUIRE_RENDER: 'true'
           ALLOW_LOCAL_REPORT_FALLBACK: 'false'
           GITHUB_ACTIONS: 'true'
