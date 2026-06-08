@@ -7,6 +7,7 @@ Utilise SMTP configurable via variables d'environnement.
 import os
 import json
 import smtplib
+import base64
 from zoneinfo import ZoneInfo
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
@@ -90,14 +91,161 @@ def _build_smtp_message(subject: str, html_content: str, to_emails: list, from_n
     return msg
 
 
-def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: str = "Mah Météo", attachments=None) -> bool:
+def _normalize_attachments(attachments=None, attachment_base64=None, attachment_name=None):
+    """Normalise les PJ pour supporter à la fois l'API legacy et la version base64."""
+    normalized = []
+    for attachment in attachments or []:
+        name = attachment.get("name")
+        content = attachment.get("content")
+        if name and content is not None:
+            normalized.append({"name": name, "content": content})
+
+    if attachment_base64:
+        try:
+            decoded = base64.b64decode(attachment_base64)
+            normalized.append({
+                "name": attachment_name or "attachment.bin",
+                "content": decoded,
+            })
+        except Exception as exc:
+            print(f"[EMAIL] Pièce jointe base64 invalide: {exc}")
+
+    return normalized
+
+
+def _paris_quota_reset_label() -> str:
+    now = _paris_now()
+    reset = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if now >= reset:
+        from datetime import timedelta
+        reset = reset + timedelta(days=1)
+    return reset.strftime("%d/%m/%Y %H:%M")
+
+
+def _is_brevo_quota_error(status_code: int, response_text: str) -> bool:
+    text = (response_text or "").lower()
+    if status_code == 429:
+        return True
+    if status_code == 400 and any(token in text for token in ("quota", "limit", "exceeded")):
+        return True
+    return False
+
+
+def _envoyer_via_brevo(subject: str, html_content: str, recipients: list, from_name: str, sender_email: str, attachments=None):
+    """Envoi via Brevo API. Retourne (ok: bool, reason: str)."""
+    brevo_key = os.getenv("BREVO_API_KEY", "").strip()
+    if not brevo_key:
+        return False, "BREVO_API_KEY absente"
+
+    payload = {
+        "sender": {"name": from_name, "email": sender_email},
+        "to": [{"email": email} for email in recipients],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+
+    if attachments:
+        payload["attachment"] = [
+            {
+                "name": attachment["name"],
+                "content": base64.b64encode(attachment["content"]).decode("utf-8"),
+            }
+            for attachment in attachments
+        ]
+
+    try:
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key": brevo_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+    except requests.exceptions.Timeout as exc:
+        return False, f"timeout: {exc}"
+    except Exception as exc:
+        return False, f"exception: {exc}"
+
+    if resp.status_code in (200, 201, 202):
+        msg_id = ""
+        try:
+            msg_id = (resp.json() or {}).get("messageId") or ""
+        except Exception:
+            msg_id = ""
+        if msg_id:
+            print(f"[EMAIL] Brevo OK : {subject[:50]} | messageId={msg_id}")
+        else:
+            print(f"[EMAIL] Brevo OK : {subject[:50]}")
+        return True, "ok"
+
+    body_preview = (resp.text or "")[:300]
+    if _is_brevo_quota_error(resp.status_code, body_preview):
+        reset_label = _paris_quota_reset_label()
+        print(
+            "[EMAIL] Brevo quota atteint "
+            f"(HTTP {resp.status_code}) — reprise estimée vers {reset_label} (Europe/Paris)"
+        )
+        return False, f"quota: HTTP {resp.status_code}: {body_preview}"
+
+    return False, f"HTTP {resp.status_code}: {body_preview}"
+
+
+def _envoyer_via_smtp(subject: str, html_content: str, recipients: list, from_name: str, sender_email: str, attachments=None) -> bool:
+    """Envoi SMTP sécurisé STARTTLS uniquement (port 587)."""
+    smtp_host = (os.getenv("SMTP_HOST") or SMTP_HOST).strip()
+    smtp_port = 587
+    smtp_user = (os.getenv("SMTP_USER") or sender_email).strip()
+    smtp_password = (
+        os.getenv("SMTP_PASSWORD")
+        or os.getenv("SMTP_PASS")
+        or os.getenv("GMAIL_PASSWORD", "")
+    ).strip()
+
+    if not smtp_user or not smtp_password:
+        print(f"[EMAIL] SMTP non configuré — sujet: {subject}")
+        return False
+
+    try:
+        msg = _build_smtp_message(
+            subject,
+            html_content,
+            recipients,
+            from_name,
+            sender_email,
+            attachments=attachments,
+        )
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(sender_email, recipients, msg.as_string())
+        print(f"[EMAIL] SMTP OK : {subject[:50]}")
+        return True
+    except smtplib.SMTPAuthenticationError as exc:
+        print(f"[EMAIL] SMTP auth erreur : {exc}")
+        return False
+    except Exception as exc:
+        print(f"[EMAIL] SMTP erreur : {exc}")
+        return False
+
+
+def _envoyer_email(
+    subject: str,
+    html_content: str,
+    to_emails: list,
+    from_name: str = "Mah Météo",
+    attachments=None,
+    attachment_base64: str | None = None,
+    attachment_name: str | None = None,
+) -> bool:
     """
     Fonction centrale unique d'envoi email.
     Brevo uniquement si EMAIL_PROVIDER=brevo.
     SMTP reste un fallback local si aucun provider n'est imposé.
     """
-    import base64
-
     if not ALERT_ENABLED:
         print(f"[EMAIL] Désactivé — sujet: {subject}")
         return False
@@ -112,117 +260,68 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
         print(f"[EMAIL] Aucun destinataire — sujet: {subject}")
         return False
 
-    recipients_masked = ", ".join(_mask_email(r) for r in recipients)
-    print(f"[EMAIL] Tentative provider={provider or 'smtp'} recipients={len(recipients)} [{recipients_masked}]")
-
-    provider = os.getenv("EMAIL_PROVIDER", "").strip().lower()
-    brevo_key = os.getenv("BREVO_API_KEY", "").strip()
-    sender_email = (os.getenv("SMTP_FROM") or os.getenv("SENDER_EMAIL") or os.getenv("SMTP_USER") or "").strip()
-
-    brevo_failed_reason = None
-    brevo_delivery_uncertain = False
-
-    # Brevo prioritaire ; fallback SMTP possible en cas d'echec.
-    if provider == "brevo":
-        if not brevo_key:
-            brevo_failed_reason = "BREVO_API_KEY absente"
-        if not sender_email:
-            brevo_failed_reason = "SMTP_FROM/SENDER_EMAIL absent"
-
-        if not brevo_failed_reason:
-            try:
-                payload = {
-                    "sender": {"name": from_name, "email": sender_email},
-                    "to": [{"email": email} for email in recipients],
-                    "subject": subject,
-                    "htmlContent": html_content,
-                }
-                if attachments:
-                    payload["attachment"] = [
-                        {
-                            "name": attachment["name"],
-                            "content": base64.b64encode(attachment["content"]).decode("utf-8"),
-                        }
-                        for attachment in attachments
-                    ]
-
-                resp = requests.post(
-                    "https://api.brevo.com/v3/smtp/email",
-                    headers={
-                        "api-key": brevo_key,
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                    },
-                    json=payload,
-                    timeout=15,
-                )
-                if resp.status_code in (200, 201, 202):
-                    msg_id = ""
-                    try:
-                        msg_id = (resp.json() or {}).get("messageId") or ""
-                    except Exception:
-                        msg_id = ""
-                    if msg_id:
-                        print(f"[EMAIL] Brevo OK : {subject[:50]} | messageId={msg_id}")
-                    else:
-                        print(f"[EMAIL] Brevo OK : {subject[:50]}")
-                    return True
-                brevo_failed_reason = f"HTTP {resp.status_code}: {resp.text[:200]}"
-                # Certains statuts (5xx/429) sont des échecs explicites côté API Brevo.
-                brevo_delivery_uncertain = False
-            except requests.exceptions.Timeout as exc:
-                brevo_failed_reason = f"timeout: {exc}"
-                # Timeout = statut final incertain (Brevo a peut-être accepté avant coupure).
-                brevo_delivery_uncertain = True
-            except Exception as exc:
-                brevo_failed_reason = f"exception: {exc}"
-                brevo_delivery_uncertain = False
-
-        if not BREVO_SMTP_FALLBACK:
-            print(f"[EMAIL] Brevo échec sans fallback SMTP ({brevo_failed_reason})")
-            return False
-        if brevo_delivery_uncertain and not BREVO_SMTP_FALLBACK_ON_TIMEOUT:
-            print(
-                "[EMAIL] Brevo timeout: fallback SMTP ignoré pour éviter doublon "
-                f"({brevo_failed_reason})"
-            )
-            return False
-        print(f"[EMAIL] Brevo échec, tentative SMTP fallback ({brevo_failed_reason})")
-
-    # En local/dev, SMTP reste disponible si aucun provider n'est imposé.
-    smtp_host = os.getenv("SMTP_HOST", SMTP_HOST)
-    smtp_port = int(os.getenv("SMTP_PORT", str(SMTP_PORT)))
-    smtp_user = (os.getenv("SMTP_USER") or sender_email).strip()
-    smtp_password = (
-        os.getenv("SMTP_PASSWORD")
-        or os.getenv("SMTP_PASS")
-        or os.getenv("GMAIL_PASSWORD", "")
+    provider = os.getenv("EMAIL_PROVIDER", EMAIL_PROVIDER).strip().lower()
+    sender_email = (
+        os.getenv("SMTP_FROM")
+        or os.getenv("SENDER_EMAIL")
+        or os.getenv("SMTP_USER")
+        or SMTP_FROM
     ).strip()
+    normalized_attachments = _normalize_attachments(
+        attachments=attachments,
+        attachment_base64=attachment_base64,
+        attachment_name=attachment_name,
+    )
 
-    if not smtp_user or not smtp_password:
-        print(f"[EMAIL] SMTP fallback non configuré — sujet: {subject}")
+    recipients_masked = ", ".join(_mask_email(r) for r in recipients)
+    print(f"[EMAIL] Tentative provider={provider or 'brevo'} recipients={len(recipients)} [{recipients_masked}]")
+
+    if not sender_email:
+        print("[EMAIL] SMTP_FROM/SENDER_EMAIL absent")
         return False
 
-    try:
-        msg = _build_smtp_message(subject, html_content, recipients, from_name, smtp_user, attachments=attachments)
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_user, recipients, msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_user, recipients, msg.as_string())
-        print(f"[EMAIL] SMTP fallback OK : {subject[:50]}")
+    if provider == "smtp":
+        return _envoyer_via_smtp(
+            subject,
+            html_content,
+            recipients,
+            from_name,
+            sender_email,
+            attachments=normalized_attachments,
+        )
+
+    ok_brevo, brevo_reason = _envoyer_via_brevo(
+        subject,
+        html_content,
+        recipients,
+        from_name,
+        sender_email,
+        attachments=normalized_attachments,
+    )
+    if ok_brevo:
         return True
-    except smtplib.SMTPAuthenticationError as exc:
-        print(f"[EMAIL] SMTP auth erreur : {exc}")
+
+    if not BREVO_SMTP_FALLBACK:
+        print(f"[EMAIL] Brevo échec sans fallback SMTP ({brevo_reason})")
         return False
-    except Exception as exc:
-        print(f"[EMAIL] SMTP fallback erreur : {exc}")
+
+    brevo_timeout = brevo_reason.startswith("timeout:")
+    if brevo_timeout and not BREVO_SMTP_FALLBACK_ON_TIMEOUT:
+        print(
+            "[EMAIL] Brevo timeout: fallback SMTP ignoré pour éviter doublon "
+            f"({brevo_reason})"
+        )
         return False
+
+    print(f"[EMAIL] Brevo échec, tentative SMTP fallback ({brevo_reason})")
+    return _envoyer_via_smtp(
+        subject,
+        html_content,
+        recipients,
+        from_name,
+        sender_email,
+        attachments=normalized_attachments,
+    )
 
 
 def _send_email(to_emails, subject: str, html_body: str):
