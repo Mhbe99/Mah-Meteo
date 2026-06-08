@@ -58,6 +58,19 @@ def _normalize_recipients(to_emails):
     return [email.strip() for email in (to_emails or []) if email and email.strip()]
 
 
+def _mask_email(email: str) -> str:
+    """Masque les emails pour le debug CI sans exposer les adresses complètes."""
+    try:
+        local, domain = (email or "").split("@", 1)
+        if len(local) <= 2:
+            local_masked = "*" * len(local)
+        else:
+            local_masked = local[:2] + "***"
+        return f"{local_masked}@{domain}"
+    except Exception:
+        return "***"
+
+
 def _build_smtp_message(subject: str, html_content: str, to_emails: list, from_name: str, sender_email: str, attachments=None):
     """Construit le MIME SMTP local en gardant le même rendu HTML."""
     msg = MIMEMultipart("mixed")
@@ -98,6 +111,9 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
     if not recipients:
         print(f"[EMAIL] Aucun destinataire — sujet: {subject}")
         return False
+
+    recipients_masked = ", ".join(_mask_email(r) for r in recipients)
+    print(f"[EMAIL] Tentative provider={provider or 'smtp'} recipients={len(recipients)} [{recipients_masked}]")
 
     provider = os.getenv("EMAIL_PROVIDER", "").strip().lower()
     brevo_key = os.getenv("BREVO_API_KEY", "").strip()
@@ -141,7 +157,15 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
                     timeout=15,
                 )
                 if resp.status_code in (200, 201, 202):
-                    print(f"[EMAIL] Brevo OK : {subject[:50]}")
+                    msg_id = ""
+                    try:
+                        msg_id = (resp.json() or {}).get("messageId") or ""
+                    except Exception:
+                        msg_id = ""
+                    if msg_id:
+                        print(f"[EMAIL] Brevo OK : {subject[:50]} | messageId={msg_id}")
+                    else:
+                        print(f"[EMAIL] Brevo OK : {subject[:50]}")
                     return True
                 brevo_failed_reason = f"HTTP {resp.status_code}: {resp.text[:200]}"
                 # Certains statuts (5xx/429) sont des échecs explicites côté API Brevo.
