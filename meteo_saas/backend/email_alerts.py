@@ -30,6 +30,7 @@ ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
 EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").strip().lower()
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 BREVO_SMTP_FALLBACK = os.getenv("BREVO_SMTP_FALLBACK", "true").strip().lower() == "true"
+BREVO_SMTP_FALLBACK_ON_TIMEOUT = os.getenv("BREVO_SMTP_FALLBACK_ON_TIMEOUT", "false").strip().lower() == "true"
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
 
@@ -97,6 +98,7 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
     sender_email = (os.getenv("SMTP_FROM") or os.getenv("SENDER_EMAIL") or os.getenv("SMTP_USER") or "").strip()
 
     brevo_failed_reason = None
+    brevo_delivery_uncertain = False
 
     # Brevo prioritaire ; fallback SMTP possible en cas d'echec.
     if provider == "brevo":
@@ -136,11 +138,24 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
                     print(f"[EMAIL] Brevo OK : {subject[:50]}")
                     return True
                 brevo_failed_reason = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                # Certains statuts (5xx/429) sont des échecs explicites côté API Brevo.
+                brevo_delivery_uncertain = False
+            except requests.exceptions.Timeout as exc:
+                brevo_failed_reason = f"timeout: {exc}"
+                # Timeout = statut final incertain (Brevo a peut-être accepté avant coupure).
+                brevo_delivery_uncertain = True
             except Exception as exc:
                 brevo_failed_reason = f"exception: {exc}"
+                brevo_delivery_uncertain = False
 
         if not BREVO_SMTP_FALLBACK:
             print(f"[EMAIL] Brevo échec sans fallback SMTP ({brevo_failed_reason})")
+            return False
+        if brevo_delivery_uncertain and not BREVO_SMTP_FALLBACK_ON_TIMEOUT:
+            print(
+                "[EMAIL] Brevo timeout: fallback SMTP ignoré pour éviter doublon "
+                f"({brevo_failed_reason})"
+            )
             return False
         print(f"[EMAIL] Brevo échec, tentative SMTP fallback ({brevo_failed_reason})")
 
