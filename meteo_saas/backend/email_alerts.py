@@ -29,6 +29,7 @@ RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS", "")
 ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
 EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").strip().lower()
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+BREVO_SMTP_FALLBACK = os.getenv("BREVO_SMTP_FALLBACK", "true").strip().lower() == "true"
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
 
@@ -95,50 +96,53 @@ def _envoyer_email(subject: str, html_content: str, to_emails: list, from_name: 
     brevo_key = os.getenv("BREVO_API_KEY", "").strip()
     sender_email = (os.getenv("SMTP_FROM") or os.getenv("SENDER_EMAIL") or os.getenv("SMTP_USER") or "").strip()
 
-    # En production on force Brevo: pas de bascule silencieuse vers SMTP.
+    brevo_failed_reason = None
+
+    # Brevo prioritaire ; fallback SMTP possible en cas d'echec.
     if provider == "brevo":
         if not brevo_key:
-            print("[EMAIL] Brevo demandé mais BREVO_API_KEY est absente")
-            return False
+            brevo_failed_reason = "BREVO_API_KEY absente"
         if not sender_email:
-            print("[EMAIL] Brevo demandé mais SMTP_FROM/SENDER_EMAIL est absent")
-            return False
+            brevo_failed_reason = "SMTP_FROM/SENDER_EMAIL absent"
 
-        try:
-            payload = {
-                "sender": {"name": from_name, "email": sender_email},
-                "to": [{"email": email} for email in recipients],
-                "subject": subject,
-                "htmlContent": html_content,
-            }
-            if attachments:
-                payload["attachment"] = [
-                    {
-                        "name": attachment["name"],
-                        "content": base64.b64encode(attachment["content"]).decode("utf-8"),
-                    }
-                    for attachment in attachments
-                ]
+        if not brevo_failed_reason:
+            try:
+                payload = {
+                    "sender": {"name": from_name, "email": sender_email},
+                    "to": [{"email": email} for email in recipients],
+                    "subject": subject,
+                    "htmlContent": html_content,
+                }
+                if attachments:
+                    payload["attachment"] = [
+                        {
+                            "name": attachment["name"],
+                            "content": base64.b64encode(attachment["content"]).decode("utf-8"),
+                        }
+                        for attachment in attachments
+                    ]
 
-            resp = requests.post(
-                "https://api.brevo.com/v3/smtp/email",
-                headers={
-                    "api-key": brevo_key,
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                json=payload,
-                timeout=15,
-            )
-            if resp.status_code in (200, 201, 202):
-                print(f"[EMAIL] Brevo OK : {subject[:50]}")
-                return True
+                resp = requests.post(
+                    "https://api.brevo.com/v3/smtp/email",
+                    headers={
+                        "api-key": brevo_key,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json=payload,
+                    timeout=15,
+                )
+                if resp.status_code in (200, 201, 202):
+                    print(f"[EMAIL] Brevo OK : {subject[:50]}")
+                    return True
+                brevo_failed_reason = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            except Exception as exc:
+                brevo_failed_reason = f"exception: {exc}"
 
-            print(f"[EMAIL] Brevo erreur {resp.status_code} : {resp.text[:200]}")
+        if not BREVO_SMTP_FALLBACK:
+            print(f"[EMAIL] Brevo échec sans fallback SMTP ({brevo_failed_reason})")
             return False
-        except Exception as exc:
-            print(f"[EMAIL] Brevo exception : {exc}")
-            return False
+        print(f"[EMAIL] Brevo échec, tentative SMTP fallback ({brevo_failed_reason})")
 
     # En local/dev, SMTP reste disponible si aucun provider n'est imposé.
     smtp_host = os.getenv("SMTP_HOST", SMTP_HOST)
