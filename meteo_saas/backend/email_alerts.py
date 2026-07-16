@@ -56,7 +56,20 @@ def _normalize_recipients(to_emails):
     """Normalise la liste des destinataires pour tous les appels email."""
     if isinstance(to_emails, str):
         to_emails = [to_emails]
-    return [email.strip() for email in (to_emails or []) if email and email.strip()]
+
+    recipients = []
+    for raw in (to_emails or []):
+        if not raw:
+            continue
+        # Accepte plusieurs séparateurs (",", ";", retours ligne) pour simplifier la saisie.
+        parts = str(raw).replace(";", ",").replace("\n", ",").split(",")
+        for email in parts:
+            email = email.strip()
+            if email:
+                recipients.append(email)
+
+    # Déduplication en conservant l'ordre d'apparition.
+    return list(dict.fromkeys(recipients))
 
 
 def _mask_email(email: str) -> str:
@@ -331,15 +344,13 @@ def _send_email(to_emails, subject: str, html_body: str):
 
 def _get_all_recipients(to_email: str):
     """Combine le destinataire spécifique + RECEIVER_EMAILS du .env."""
-    recipients = set()
+    recipients = []
     if to_email:
-        recipients.add(to_email.strip())
+        recipients.extend(_normalize_recipients(to_email))
     if RECEIVER_EMAILS:
-        for e in RECEIVER_EMAILS.split(","):
-            e = e.strip()
-            if e:
-                recipients.add(e)
-    return list(recipients)
+        recipients.extend(_normalize_recipients(RECEIVER_EMAILS))
+    # Déduplication stable (ordre conservé)
+    return list(dict.fromkeys(recipients))
 
 
 # ============ TEMPLATES EMAIL ============
