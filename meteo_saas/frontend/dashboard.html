@@ -5073,6 +5073,7 @@
                     const controls = document.querySelector('.controls');
                     if (!controls) return;
                     if (document.getElementById('btn-push')) return;
+                    if (document.getElementById('btn-push-test')) return;
                     if (!('Notification' in window)) return;
                     if (!('PushManager' in window)) return;
 
@@ -5109,6 +5110,38 @@
                     _majBouton();
                     controls.insertBefore(btn,
                         controls.querySelector('.refresh-btn')
+                    );
+
+                    /* Bouton de test push-only */
+                    const btnTest = document.createElement('button');
+                    btnTest.id = 'btn-push-test';
+                    btnTest.className = 'refresh-btn';
+                    btnTest.style.cssText = 'font-size:11px;padding:6px 12px;';
+                    btnTest.textContent = '🧪 Test push';
+                    btnTest.onclick = async function() {
+                        if (!TOKEN || !CLIENT_ID) {
+                            showNotif('Connexion requise pour tester le push');
+                            return;
+                        }
+                        try {
+                            const resp = await fetch(`/api/push/test/${CLIENT_ID}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Bearer ' + TOKEN
+                                },
+                                signal: AbortSignal.timeout(10000)
+                            });
+                            const data = await resp.json().catch(() => ({}));
+                            if (!resp.ok) {
+                                throw new Error(data.detail || 'Erreur test push');
+                            }
+                            showNotif('Push de test déclenché (' + (data.sent || 0) + ' envoi(s))');
+                        } catch (e) {
+                            showNotif(e.message || 'Erreur test push');
+                        }
+                    };
+                    controls.insertBefore(btnTest,
+                        controls.querySelector('.logout-btn')
                     );
 
                     /* Mettre à jour après demande permission */
