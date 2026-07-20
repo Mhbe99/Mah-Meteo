@@ -994,7 +994,7 @@
 
             header {
                 flex-direction: column !important;
-                align-items: flex-start !important;
+                align-items: center !important;
                 padding: 8px 12px !important;
                 gap: 6px !important;
                 height: auto !important;
@@ -1002,6 +1002,8 @@
 
             header .title {
                 font-size: 15px !important;
+                width: 100% !important;
+                text-align: center !important;
             }
 
             header .controls {
@@ -1009,6 +1011,7 @@
                 flex-wrap: wrap !important;
                 gap: 6px !important;
                 width: 100% !important;
+                justify-content: center !important;
             }
 
             header .company-badge {
@@ -1031,7 +1034,8 @@
             /* Bouton push sur 2ème ligne à part */
             #btn-push {
                 order: 10 !important;
-                width: 100% !important;
+                width: auto !important;
+                min-width: 100% !important;
                 text-align: center !important;
                 margin-top: 2px !important;
             }
