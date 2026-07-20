@@ -259,6 +259,11 @@
             overflow: hidden;
         }
 
+        /* Bandeau mobile d'alerte masqué sur desktop */
+        #bandeau-mobile-alerte {
+            display: none;
+        }
+
         /* PERSISTENT KPI BAR */
         .kpi-bar {
             display: flex;
@@ -1012,11 +1017,22 @@
             }
 
             .tab-btn {
-                flex: 0 0 auto;
-                white-space: nowrap;
-                padding: 10px 12px;
-                font-size: 12px;
-                border-radius: 8px 8px 0 0;
+                flex: 0 0 auto !important;
+                white-space: nowrap !important;
+                padding: 12px 16px !important;
+                font-size: 13px !important;
+                min-height: 44px !important;
+                border-radius: 8px 8px 0 0 !important;
+            }
+
+            #bandeau-mobile-alerte {
+                display: block !important;
+                padding: 10px 16px !important;
+                font-size: 13px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+                cursor: pointer !important;
+                border-radius: 0 !important;
             }
 
             .tab-content {
@@ -1185,6 +1201,23 @@
             .kpi-bar .kpi-item {
                 flex: 1 1 100%;
                 border-right: none;
+                padding: 14px 16px !important;
+                min-height: 70px !important;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+            }
+
+            .kpi-val {
+                font-size: 26px !important;
+                font-weight: 600 !important;
+                line-height: 1 !important;
+            }
+
+            .kpi-meta {
+                font-size: 11px !important;
+                text-align: right !important;
             }
 
             .kpi-bar .kpi-item:nth-last-child(-n + 2) {
@@ -1222,12 +1255,41 @@
                 padding: 24px 14px;
             }
 
+            input[type="text"],
+            input[type="date"],
+            input[type="time"],
+            input[type="email"],
+            input[type="password"],
+            textarea,
+            select {
+                font-size: 16px !important;
+                padding: 12px 10px !important;
+                min-height: 44px !important;
+            }
+
+            button,
+            .login-btn,
+            .refresh-btn {
+                min-height: 44px !important;
+                font-size: 14px !important;
+            }
+
             .table-title {
                 padding: 9px 10px;
             }
 
             .table-container {
                 border-radius: 6px;
+            }
+
+            .voisin-card {
+                padding: 12px !important;
+                border-radius: 8px !important;
+            }
+
+            .voisin-data {
+                flex-wrap: wrap !important;
+                gap: 6px !important;
             }
 
             .forecast-card {
@@ -1922,6 +1984,41 @@
         } else {
             btn.textContent = '▶️ Reprendre';
             if (_autoZoomTimer) { clearTimeout(_autoZoomTimer); _autoZoomTimer = null; }
+        }
+    }
+
+    // Met à jour un bandeau tactile mobile qui renvoie vers l'onglet alertes.
+    function _updateBandeauMobile() {
+        let b = document.getElementById('bandeau-mobile-alerte');
+        if (!b) {
+            b = document.createElement('div');
+            b.id = 'bandeau-mobile-alerte';
+            b.onclick = function() { switchTab(2); };
+            const kpiBar = document.querySelector('.kpi-bar');
+            if (kpiBar && kpiBar.parentNode) {
+                kpiBar.parentNode.insertBefore(b, kpiBar);
+            }
+        }
+        if (window.innerWidth > 768) {
+            b.style.display = 'none';
+            return;
+        }
+        const nb = parseInt(
+            document.getElementById('kpi-alerts').textContent
+        ) || 0;
+        if (nb > 0) {
+            b.style.cssText =
+                'display:block;padding:10px 16px;font-size:13px;' +
+                'font-weight:600;text-align:center;cursor:pointer;' +
+                'background:#c53030;color:#fff;';
+            b.textContent =
+                nb + ' alerte(s) active(s) — Toucher pour voir';
+        } else {
+            b.style.cssText =
+                'display:block;padding:10px 16px;font-size:13px;' +
+                'font-weight:600;text-align:center;' +
+                'background:#38a169;color:#fff;';
+            b.textContent = 'RAS — Aucune alerte active';
         }
     }
 
@@ -2685,6 +2782,7 @@
         // Highlight alert count if > 0
         const alertBox = document.getElementById("kpi-alerts-box");
         if (alertBox) alertBox.classList.toggle('alert-active', alertCount > 0);
+        _updateBandeauMobile();
     }
 
     function updateMapTab(meteo, previsions) {
