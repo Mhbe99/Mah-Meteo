@@ -39,7 +39,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from .clients import get_meteo_actuelle, get_previsions, get_alertes, get_zones
 from .trafic import get_incidents
-from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert, send_welcome_email, send_bulletin_email
+from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert, send_welcome_email, send_bulletin_email, envoyer_push_notification
 
 load_dotenv()
 
@@ -2002,6 +2002,32 @@ async def push_unsubscribe(
         raise HTTPException(
             status_code=500, detail=str(e)
         )
+
+
+@app.post("/api/push/test/{client_id}")
+def push_test(
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Envoie une notification push de test sans email."""
+    if client_id != current_client:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client introuvable")
+
+    company_name = client.company_name or client.username or f"Client {client_id}"
+    count = envoyer_push_notification(
+        db_session=db,
+        client_id=client_id,
+        titre="[Mah Météo] Test push",
+        corps=f"Notification de test pour {company_name}",
+        type_alerte="test",
+        url="/?tab=2"
+    )
+    return {"status": "ok", "sent": count}
 
 
 @app.get("/api/push/vapid-public-key")
