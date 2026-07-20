@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mah Météo — Tableau de bord</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mah Météo">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1384,9 +1390,54 @@
                 grid-template-columns: repeat(3, 1fr) !important;
             }
         }
+
+                #pwa-banner {
+                        display: none;
+                        background: #2c3e50;
+                        color: #fff;
+                        padding: 10px 16px;
+                        font-size: 13px;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        font-family: 'IBM Plex Sans', sans-serif;
+                }
+
+                #pwa-banner button {
+                        background: #3498db;
+                        color: #fff;
+                        border: none;
+                        padding: 6px 14px;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        font-family: 'IBM Plex Sans', sans-serif;
+                        white-space: nowrap;
+                }
+
+                #pwa-close-btn {
+                        background: transparent !important;
+                        color: rgba(255,255,255,0.6) !important;
+                        font-size: 18px !important;
+                        padding: 0 6px !important;
+                }
     </style>
 </head>
 <body>
+
+<!-- BANNIÈRE INSTALLATION PWA -->
+<div id="pwa-banner">
+    <span>Installer Mah Météo sur votre téléphone
+        pour recevoir les alertes même app fermée</span>
+    <div style="display:flex;gap:8px;align-items:center">
+        <button id="pwa-install-btn"
+            onclick="_installPWA()">
+            Installer
+        </button>
+        <button id="pwa-close-btn"
+            onclick="_fermerBannerePWA()">×</button>
+    </div>
+</div>
 
 <!-- LOGIN / REGISTER SCREEN -->
 <div id="login-screen">
@@ -4633,6 +4684,264 @@
             panel.style.display = 'block';
             panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
         }
+
+                /* ══════════════════════════════════════════
+                     PWA — Service Worker + Notifications Push
+                     ══════════════════════════════════════════ */
+
+                var _swRegistration = null;
+                var _pwaInstallEvent = null;
+                var _pushActive = false;
+
+                /* Enregistrement du Service Worker */
+                function _initServiceWorker() {
+                    if (!('serviceWorker' in navigator)) {
+                        console.log('[PWA] Service Worker non supporté');
+                        return;
+                    }
+
+                    navigator.serviceWorker.register('/service-worker.js')
+                        .then(function(reg) {
+                            _swRegistration = reg;
+                            console.log('[PWA] SW enregistré:', reg.scope);
+
+                            /* Écouter les messages du SW */
+                            navigator.serviceWorker.addEventListener(
+                                'message',
+                                function(event) {
+                                    if (event.data &&
+                                            event.data.type === 'NAVIGATE') {
+                                        const url = event.data.url || '/';
+                                        const tabMatch = url.match(/tab=(\d+)/);
+                                        if (tabMatch) {
+                                            switchTab(parseInt(tabMatch[1]));
+                                        }
+                                    }
+                                }
+                            );
+
+                            /* Initialiser les notifications push */
+                            _initPushNotifications(reg);
+                        })
+                        .catch(function(err) {
+                            console.error('[PWA] Erreur SW:', err);
+                        });
+                }
+
+                /* Bannière d'installation */
+                window.addEventListener('beforeinstallprompt',
+                    function(e) {
+                        e.preventDefault();
+                        _pwaInstallEvent = e;
+
+                        /* Afficher la bannière si pas déjà installé */
+                        const banner = document.getElementById(
+                            'pwa-banner'
+                        );
+                        if (banner && !localStorage.getItem(
+                            'pwa_banner_fermee'
+                        )) {
+                            banner.style.display = 'flex';
+                        }
+                    }
+                );
+
+                function _installPWA() {
+                    if (!_pwaInstallEvent) return;
+                    _pwaInstallEvent.prompt();
+                    _pwaInstallEvent.userChoice.then(function(result) {
+                        if (result.outcome === 'accepted') {
+                            console.log('[PWA] App installée');
+                            _fermerBannerePWA();
+                            showNotif('Mah Météo installé sur votre téléphone');
+                        }
+                        _pwaInstallEvent = null;
+                    });
+                }
+
+                function _fermerBannerePWA() {
+                    const b = document.getElementById('pwa-banner');
+                    if (b) b.style.display = 'none';
+                    try {
+                        localStorage.setItem('pwa_banner_fermee', '1');
+                    } catch(e) {}
+                }
+
+                /* Initialisation des notifications push */
+                function _initPushNotifications(reg) {
+                    if (!('Notification' in window)) {
+                        console.log('[PUSH] Notifications non supportées');
+                        return;
+                    }
+                    if (!('PushManager' in window)) {
+                        console.log('[PUSH] PushManager non supporté');
+                        return;
+                    }
+
+                    /* Si permission déjà accordée → s'abonner */
+                    if (Notification.permission === 'granted') {
+                        _sAbonnerAuxPush(reg);
+                    }
+                }
+
+                /* Demander la permission et s'abonner */
+                async function _demanderPermissionPush() {
+                    if (!_swRegistration) {
+                        showNotif('Service Worker non prêt, réessayez');
+                        return;
+                    }
+
+                    try {
+                        const permission = await Notification.requestPermission();
+
+                        if (permission !== 'granted') {
+                            showNotif('Notifications refusées — vous pouvez les activer dans les paramètres');
+                            return;
+                        }
+
+                        await _sAbonnerAuxPush(_swRegistration);
+                        showNotif('Notifications push activées');
+
+                    } catch(e) {
+                        console.error('[PUSH] Erreur permission:', e);
+                        showNotif('Erreur activation notifications');
+                    }
+                }
+
+                /* Souscription effective */
+                async function _sAbonnerAuxPush(reg) {
+                    try {
+                        /* Récupérer la clé VAPID publique */
+                        const resp = await fetch('/api/push/vapid-public-key');
+                        if (!resp.ok) {
+                            console.log('[PUSH] VAPID non configuré');
+                            return;
+                        }
+                        const { public_key } = await resp.json();
+
+                        /* Convertir la clé base64 */
+                        const appServerKey = _urlBase64ToUint8Array(public_key);
+
+                        /* Vérifier si déjà souscrit */
+                        const existingSub = await reg.pushManager.getSubscription();
+                        if (existingSub) {
+                            await _envoyerSouscription(existingSub);
+                            _pushActive = true;
+                            return;
+                        }
+
+                        /* Nouvelle souscription */
+                        const sub = await reg.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: appServerKey
+                        });
+
+                        await _envoyerSouscription(sub);
+                        _pushActive = true;
+                        console.log('[PUSH] Souscription réussie');
+
+                    } catch(e) {
+                        console.error('[PUSH] Erreur souscription:', e);
+                    }
+                }
+
+                /* Envoyer la souscription au backend */
+                async function _envoyerSouscription(sub) {
+                    const token = localStorage.getItem('token') || '';
+                    if (!token) return;
+
+                    const subJSON = sub.toJSON();
+                    await fetch('/api/push/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            endpoint: subJSON.endpoint,
+                            keys: subJSON.keys
+                        }),
+                        signal: AbortSignal.timeout(10000)
+                    });
+                }
+
+                /* Convertir clé VAPID base64 → Uint8Array */
+                function _urlBase64ToUint8Array(base64String) {
+                    const padding = '='.repeat(
+                        (4 - base64String.length % 4) % 4
+                    );
+                    const base64 = (base64String + padding)
+                        .replace(/-/g, '+')
+                        .replace(/_/g, '/');
+                    const raw = window.atob(base64);
+                    const arr = new Uint8Array(raw.length);
+                    for (let i = 0; i < raw.length; i++) {
+                        arr[i] = raw.charCodeAt(i);
+                    }
+                    return arr;
+                }
+
+                /* Ajouter bouton notifications dans l'interface */
+                function _ajouterBoutonNotifications() {
+                    const controls = document.querySelector('.controls');
+                    if (!controls) return;
+                    if (document.getElementById('btn-push')) return;
+                    if (!('Notification' in window)) return;
+                    if (!('PushManager' in window)) return;
+
+                    const btn = document.createElement('button');
+                    btn.id = 'btn-push';
+                    btn.className = 'refresh-btn';
+                    btn.style.cssText =
+                        'font-size:11px;padding:6px 12px;';
+
+                    function _majBouton() {
+                        if (Notification.permission === 'granted'
+                                && _pushActive) {
+                            btn.textContent = '🔔 Push actif';
+                            btn.style.background = '#38a169';
+                            btn.style.color = '#fff';
+                            btn.style.border = 'none';
+                        } else if (Notification.permission === 'denied') {
+                            btn.textContent = '🔕 Push bloqué';
+                            btn.style.opacity = '0.5';
+                            btn.disabled = true;
+                        } else {
+                            btn.textContent = '🔔 Activer alertes';
+                            btn.style.background = '';
+                            btn.style.color = '';
+                        }
+                    }
+
+                    btn.onclick = function() {
+                        if (Notification.permission !== 'granted') {
+                            _demanderPermissionPush();
+                        }
+                    };
+
+                    _majBouton();
+                    controls.insertBefore(btn,
+                        controls.querySelector('.refresh-btn')
+                    );
+
+                    /* Mettre à jour après demande permission */
+                    setTimeout(_majBouton, 3000);
+                }
+
+                /* Initialisation au chargement */
+                document.addEventListener('DOMContentLoaded',
+                    function() {
+                        _initServiceWorker();
+                        setTimeout(_ajouterBoutonNotifications, 1500);
+                    }
+                );
+
+                /* Mettre à jour le bouton après connexion */
+                const _origShowDashboard = showDashboard;
+                showDashboard = function() {
+                    _origShowDashboard.apply(this, arguments);
+                    setTimeout(_ajouterBoutonNotifications, 500);
+                };
 
 
 </script>

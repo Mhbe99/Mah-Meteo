@@ -36,6 +36,107 @@ DISABLE_EMAIL_WEEKENDS = os.getenv("DISABLE_EMAIL_WEEKENDS", "false").strip().lo
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
 
+def envoyer_push_notification(
+    db_session,
+    client_id: int,
+    titre: str,
+    corps: str,
+    type_alerte: str = "alerte",
+    url: str = "/"
+) -> int:
+    """
+    Envoie une notification push à tous les appareils
+    d'un client via l'API Web Push.
+    Retourne le nombre d'envois réussis.
+    """
+    vapid_private = os.getenv("VAPID_PRIVATE_KEY", "")
+    vapid_public = os.getenv("VAPID_PUBLIC_KEY", "")
+    vapid_email = os.getenv(
+        "VAPID_EMAIL",
+        "mailto:support@mah-meteo.fr"
+    )
+
+    if not vapid_private or not vapid_public:
+        print("[PUSH] VAPID non configuré → skip")
+        return 0
+
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        print("[PUSH] pywebpush non installé")
+        print("[PUSH] pip install pywebpush")
+        return 0
+
+    try:
+        from meteo_saas.backend.database import PushSubscription
+        subs = db_session.query(
+            PushSubscription
+        ).filter(
+            PushSubscription.client_id == client_id
+        ).all()
+    except Exception as e:
+        print(f"[PUSH] Erreur lecture subs: {e}")
+        return 0
+
+    if not subs:
+        print(f"[PUSH] Aucun appareil enregistré client {client_id}")
+        return 0
+
+    payload = json.dumps({
+        "title": titre,
+        "body": corps,
+        "type": type_alerte,
+        "url": url,
+        "icon": "/static/icon-192.png"
+    })
+
+    succes = 0
+    a_supprimer = []
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {
+                        "p256dh": sub.keys_p256dh,
+                        "auth": sub.keys_auth
+                    }
+                },
+                data=payload,
+                vapid_private_key=vapid_private,
+                vapid_claims={
+                    "sub": vapid_email
+                }
+            )
+            succes += 1
+            print(f"[PUSH] Envoyé : {titre[:40]}")
+
+        except WebPushException as e:
+            code = getattr(e.response, 'status_code', None)
+            if code in (404, 410):
+                print(f"[PUSH] Souscription expirée → suppression")
+                a_supprimer.append(sub.id)
+            else:
+                print(f"[PUSH] Erreur envoi: {e}")
+
+        except Exception as e:
+            print(f"[PUSH] Exception: {e}")
+
+    if a_supprimer:
+        try:
+            db_session.query(
+                PushSubscription
+            ).filter(
+                PushSubscription.id.in_(a_supprimer)
+            ).delete(synchronize_session=False)
+            db_session.commit()
+        except Exception as e:
+            print(f"[PUSH] Erreur nettoyage: {e}")
+
+    return succes
+
+
 def _paris_now() -> datetime:
     return datetime.now(PARIS_TZ)
 
@@ -444,7 +545,7 @@ def _html_alerte_combinee(alerte: dict, meteo_data: dict | None = None, trafic_d
 
 # ============ ALERTES MÉTÉO ============
 
-def send_meteo_alert(to_email: str, company_name: str, alertes: list):
+def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id: int | None = None):
     """
     Envoie un email d'alerte météo.
     alertes = [{"zone": "Beauvais", "type": "Vent", "valeur": "55 km/h", "message": "..."}]
@@ -499,10 +600,27 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list):
     subject = f"[Mah Météo] {len(alertes)} alerte(s) météo — {company_name}"
     _send_email(_get_all_recipients(to_email), subject, html)
 
+    if client_id is not None:
+        try:
+            from meteo_saas.backend.database import SessionLocal
+            db_push = SessionLocal()
+            risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes)
+            envoyer_push_notification(
+                db_session=db_push,
+                client_id=client_id,
+                titre="[Mah Météo] Alerte météo",
+                corps=risques_detectes,
+                type_alerte="meteo",
+                url="/?tab=2"
+            )
+            db_push.close()
+        except Exception as e:
+            print(f"[PUSH] Erreur après alerte météo: {e}")
+
 
 # ============ ALERTES TRAFIC ============
 
-def send_trafic_alert(to_email: str, company_name: str, incidents: list):
+def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_id: int | None = None):
     """
     Envoie un email d'alerte trafic.
     incidents = [{"route": "A1", "description": "...", "severity": "high", "delay_minutes": 25}]
@@ -564,10 +682,27 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list):
     subject = f"[Mah Météo] {len(critical)} incident(s) trafic — {company_name}"
     _send_email(_get_all_recipients(to_email), subject, html)
 
+    if client_id is not None:
+        try:
+            from meteo_saas.backend.database import SessionLocal
+            db_push = SessionLocal()
+            retard_max = max((i.get("delay_minutes") or 0) for i in critical)
+            envoyer_push_notification(
+                db_session=db_push,
+                client_id=client_id,
+                titre="[Mah Météo] Incident trafic grave",
+                corps=f"Retard +{retard_max} min détecté",
+                type_alerte="trafic",
+                url="/?tab=2"
+            )
+            db_push.close()
+        except Exception as e:
+            print(f"[PUSH] Erreur après alerte trafic: {e}")
+
 
 # ============ ALERTE COMBINÉE MÉTÉO + TRAFIC ============
 
-def send_combined_alert(to_email: str, company_name: str, message: str):
+def send_combined_alert(to_email: str, company_name: str, message: str, client_id: int | None = None):
     """
     Envoie l'alerte combinée météo + trafic par email.
     """
@@ -593,6 +728,22 @@ def send_combined_alert(to_email: str, company_name: str, message: str):
 
     subject = f"[Mah Météo] ALERTE COMBINÉE météo + trafic — {company_name}"
     _envoyer_email(subject, html, _get_all_recipients(to_email))
+
+    if client_id is not None:
+        try:
+            from meteo_saas.backend.database import SessionLocal
+            db_push = SessionLocal()
+            envoyer_push_notification(
+                db_session=db_push,
+                client_id=client_id,
+                titre="[Mah Météo] Alerte combinée",
+                corps=alerte.get("message") or str(message),
+                type_alerte="danger",
+                url="/?tab=2"
+            )
+            db_push.close()
+        except Exception as e:
+            print(f"[PUSH] Erreur après alerte combinée: {e}")
 
 
 def send_pollution_alert(to_email: str, company_name: str, zones_alertes: list, state_file: str = "exports/last_pollution_alert.json") -> bool:

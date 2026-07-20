@@ -222,6 +222,22 @@ class ConnectionLog(Base):
     client = relationship("Client")
 
 
+class PushSubscription(Base):
+    """Souscriptions Web Push enregistrées pour les appareils clients."""
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, nullable=False, index=True)
+    endpoint = Column(Text, nullable=False, unique=True)
+    keys_p256dh = Column(Text, nullable=False)
+    keys_auth = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_push_client", "client_id", "endpoint"),
+    )
+
+
 # ============ FONCTIONS D'INITIALISATION ============
 
 def init_db():
@@ -229,6 +245,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     # Sécurise explicitement la création de la table des bulletins (idempotent).
     BulletinLog.__table__.create(bind=engine, checkfirst=True)
+    PushSubscription.__table__.create(bind=engine, checkfirst=True)
     print("✅ Bases de données initialisées")
     
     # Migration: ajouter les colonnes météo manquantes à la table zones

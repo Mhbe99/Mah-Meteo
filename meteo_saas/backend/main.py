@@ -4,6 +4,7 @@ main.py — Application FastAPI principale
 """
 
 import os
+import json as _json_push
 import hmac
 import ipaddress
 import httpx
@@ -18,7 +19,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
@@ -31,7 +32,7 @@ from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address)
 
-from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog, AlerteLog, TrafficIncident, BulletinLog
+from .database import get_db, init_db, init_clients_from_json, SessionLocal, Client, Zone, MeteoSnapshot, PrevisionCache, ConnectionLog, AlerteLog, TrafficIncident, BulletinLog, PushSubscription
 from .auth import create_token, verify_password, get_current_client, hash_password, verify_token
 from .models import LoginRequest, RegisterRequest, TokenResponse, ZoneMeteo, PrevisionJour, TrafficIncident as TrafficIncidentModel, Alerte
 from pydantic import BaseModel
@@ -102,6 +103,12 @@ class FrontendErrorReport(BaseModel):
     user_agent: Optional[str] = None
 
 
+class PushSubscriptionModel(BaseModel):
+    endpoint: str
+    keys: dict
+    client_id: int = 1
+
+
 # ============ LIFESPAN (Initialisation au démarrage) ============
 
 @asynccontextmanager
@@ -136,6 +143,17 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+static_dir = os.path.join(
+    os.path.dirname(__file__),
+    '..', 'static'
+)
+if os.path.exists(static_dir):
+    app.mount(
+        "/static",
+        StaticFiles(directory=static_dir),
+        name="static"
+    )
 
 # Rate-limiting : 10 tentatives/minute par IP sur /auth/login
 app.state.limiter = limiter
@@ -468,6 +486,7 @@ def send_test_meteo_alert_email(
             "valeur": "Verification envoi email",
             "message": "Email de test pour valider les alertes UV/chaleur en temps reel.",
         }],
+        client_id=client_id,
     )
 
     return {"status": "ok", "message": "Demande d'envoi email de test declenchee"}
@@ -494,6 +513,7 @@ def send_test_combined_alert_email(
             "Test alerte combinee: risque meteo actif et incident trafic detecte. "
             "Verification du canal email combine."
         ),
+        client_id=client_id,
     )
 
     return {"status": "ok", "message": "Demande d'envoi email combine de test declenchee"}
@@ -728,6 +748,7 @@ def add_meteo_snapshot(
                         "valeur": risques_text,
                         "message": f"Risque detecte: {risques_text}",
                     }],
+                    client_id=client_id,
                 )
             except Exception as e:
                 print(f"[EMAIL] Erreur envoi alerte meteo client {client_id}: {e}")
@@ -827,6 +848,7 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
                     to_email=(client.email or ""),
                     company_name=(client.company_name or client.username or f"Client {client_id}"),
                     message=alerte_combinee,
+                    client_id=client_id,
                 )
         except Exception as e:
             print(f"[EMAIL] Erreur envoi alerte combinee client {client_id}: {e}")
@@ -843,6 +865,7 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
                         to_email=(client.email or ""),
                         company_name=(client.company_name or client.username or f"Client {client_id}"),
                         incidents=gros,
+                        client_id=client_id,
                     )
         except Exception as e:
             print(f"[EMAIL] Erreur alerte trafic immédiate client {client_id}: {e}")
@@ -1856,6 +1879,42 @@ def get_all_connections(
 
 # ============ ROUTES FRONTEND ============
 
+@app.get("/manifest.json")
+async def get_manifest():
+    """Sert le manifest PWA."""
+    manifest_path = os.path.join(
+        os.path.dirname(__file__),
+        '..', '..', 'manifest.json'
+    )
+    try:
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            return JSONResponse(
+                content=_json_push.load(f),
+                media_type="application/manifest+json"
+            )
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="manifest.json non trouvé"
+        )
+
+
+@app.get("/service-worker.js")
+async def get_service_worker():
+    """Sert le Service Worker."""
+    sw_path = os.path.join(
+        os.path.dirname(__file__),
+        '..', '..', 'service-worker.js'
+    )
+    return FileResponse(
+        sw_path,
+        media_type="application/javascript",
+        headers={
+            "Service-Worker-Allowed": "/",
+            "Cache-Control": "no-cache"
+        }
+    )
+
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
     """
@@ -1867,6 +1926,97 @@ def get_dashboard():
         return HTMLResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
     except FileNotFoundError:
         return HTMLResponse("<h1>Dashboard introuvable</h1>", status_code=404)
+
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(
+    data: PushSubscriptionModel,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """
+    Enregistre ou met à jour une souscription push.
+    Appelé depuis le frontend après demande permission.
+    """
+    try:
+        endpoint = data.endpoint or ""
+        keys = data.keys or {}
+        client_id = current_client
+
+        if not endpoint or not keys:
+            raise HTTPException(
+                status_code=400,
+                detail="endpoint et keys requis"
+            )
+
+        existing = db.query(PushSubscription).filter(
+            PushSubscription.endpoint == endpoint
+        ).first()
+
+        if existing:
+            existing.client_id = client_id
+            existing.keys_p256dh = keys.get(
+                "p256dh", ""
+            )
+            existing.keys_auth = keys.get("auth", "")
+        else:
+            sub = PushSubscription(
+                client_id=client_id,
+                endpoint=endpoint,
+                keys_p256dh=keys.get("p256dh", ""),
+                keys_auth=keys.get("auth", "")
+            )
+            db.add(sub)
+
+        db.commit()
+        print(f"[PUSH] Souscription enregistrée client {client_id}")
+        return {"status": "ok"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[PUSH] Erreur souscription: {e}")
+        raise HTTPException(
+            status_code=500, detail=str(e)
+        )
+
+
+@app.post("/api/push/unsubscribe")
+async def push_unsubscribe(
+    data: dict,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Supprime une souscription push."""
+    try:
+        endpoint = data.get("endpoint", "")
+        db.query(PushSubscription).filter(
+            PushSubscription.endpoint == endpoint,
+            PushSubscription.client_id == current_client,
+        ).delete()
+        db.commit()
+        return {"status": "ok"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=str(e)
+        )
+
+
+@app.get("/api/push/vapid-public-key")
+async def get_vapid_public_key():
+    """
+    Retourne la clé publique VAPID.
+    Utilisée par le frontend pour s'abonner.
+    """
+    key = os.getenv("VAPID_PUBLIC_KEY", "")
+    if not key:
+        raise HTTPException(
+            status_code=503,
+            detail="VAPID non configuré"
+        )
+    return {"public_key": key}
 
 
 @app.head("/")
