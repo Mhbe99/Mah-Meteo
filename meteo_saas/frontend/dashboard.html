@@ -992,6 +992,50 @@
                 max-width: 100%;
             }
 
+            header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                padding: 8px 12px !important;
+                gap: 6px !important;
+                height: auto !important;
+            }
+
+            header .title {
+                font-size: 15px !important;
+            }
+
+            header .controls {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 6px !important;
+                width: 100% !important;
+            }
+
+            header .company-badge {
+                font-size: 11px !important;
+                padding: 4px 8px !important;
+                max-width: 140px !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+            }
+
+            header .refresh-btn,
+            header .logout-btn {
+                font-size: 11px !important;
+                padding: 5px 10px !important;
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+            }
+
+            /* Bouton push sur 2ème ligne à part */
+            #btn-push {
+                order: 10 !important;
+                width: 100% !important;
+                text-align: center !important;
+                margin-top: 2px !important;
+            }
+
             .kpi-bar {
                 flex-wrap: wrap;
             }
