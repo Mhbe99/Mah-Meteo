@@ -402,6 +402,15 @@
             margin-bottom: 16px;
         }
 
+        .table-container::after {
+            content: '→ défiler';
+            display: none;
+            text-align: right;
+            font-size: 10px;
+            color: #a0aec0;
+            padding: 3px 8px;
+        }
+
         .table-title {
             background: #f7fafc;
             padding: 12px 16px;
@@ -1204,34 +1213,146 @@
         }
 
         @media (max-width: 480px) {
-            .kpi-bar .kpi-item {
-                flex: 1 1 100%;
-                border-right: none;
-                padding: 14px 16px !important;
-                min-height: 70px !important;
+            header {
+                flex-wrap: wrap !important;
+                padding: 8px 10px !important;
+                gap: 6px !important;
+                min-height: auto !important;
+                height: auto !important;
+            }
+
+            header .title {
+                font-size: 14px !important;
+                flex-shrink: 0 !important;
+            }
+
+            header .controls {
                 display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                justify-content: space-between !important;
+                flex-wrap: wrap !important;
+                gap: 4px !important;
+                width: 100% !important;
+            }
+
+            header .company-badge {
+                font-size: 11px !important;
+                padding: 3px 8px !important;
+                max-width: 120px !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+            }
+
+            header .refresh-btn,
+            header .logout-btn {
+                font-size: 11px !important;
+                padding: 5px 10px !important;
+                flex: 1 !important;
+                min-width: 0 !important;
+                white-space: nowrap !important;
+            }
+
+            .kpi-bar {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0 !important;
+                flex-wrap: unset !important;
+            }
+
+            .kpi-bar .kpi-item {
+                flex: unset !important;
+                padding: 12px 10px !important;
+                border-right: 1px solid #edf2f7 !important;
+                border-bottom: 1px solid #edf2f7 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                min-height: auto !important;
+            }
+
+            .kpi-bar .kpi-item:nth-child(2n) {
+                border-right: none !important;
+            }
+
+            .kpi-bar .kpi-item:nth-child(n+3) {
+                border-bottom: none !important;
             }
 
             .kpi-val {
-                font-size: 26px !important;
+                font-size: 22px !important;
                 font-weight: 600 !important;
-                line-height: 1 !important;
+                line-height: 1.1 !important;
             }
 
             .kpi-meta {
+                font-size: 10px !important;
+                margin-top: 2px !important;
+                text-align: left !important;
+            }
+
+            .table-container {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                border-radius: 8px !important;
+            }
+
+            #sites-table,
+            table {
+                min-width: 580px !important;
                 font-size: 11px !important;
-                text-align: right !important;
             }
 
-            .kpi-bar .kpi-item:nth-last-child(-n + 2) {
-                border-bottom: 1px solid #edf2f7;
+            #sites-table th,
+            #sites-table td,
+            table th,
+            table td {
+                padding: 8px 8px !important;
+                white-space: nowrap !important;
             }
 
-            .kpi-bar .kpi-item:last-child {
-                border-bottom: none;
+            .tabs {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                scrollbar-width: none !important;
+                display: flex !important;
+                padding: 0 10px !important;
+                gap: 4px !important;
+                background: #fff !important;
+                border-bottom: 2px solid #edf2f7 !important;
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 50 !important;
+            }
+
+            .tabs::-webkit-scrollbar {
+                display: none !important;
+            }
+
+            .tab-btn {
+                flex: 0 0 auto !important;
+                white-space: nowrap !important;
+                padding: 10px 14px !important;
+                font-size: 13px !important;
+                min-height: 44px !important;
+                border-radius: 0 !important;
+                border-bottom: 2px solid transparent !important;
+                background: transparent !important;
+                color: #718096 !important;
+            }
+
+            .tab-btn.active {
+                color: #2c3e50 !important;
+                border-bottom-color: #3498db !important;
+                font-weight: 600 !important;
+            }
+
+            input,
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+
+            .table-container::after {
+                display: block !important;
             }
 
             .voisins-grid {
@@ -1377,6 +1498,24 @@
 
         @media (max-width: 768px) {
             .account-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (min-width: 481px) {
+            .table-container::after {
+                display: none !important;
+            }
+        }
+
+        @supports (padding: env(safe-area-inset-top)) {
+            header {
+                padding-top: max(8px, env(safe-area-inset-top)) !important;
+                padding-left: max(10px, env(safe-area-inset-left)) !important;
+                padding-right: max(10px, env(safe-area-inset-right)) !important;
+            }
+
+            body {
+                padding-bottom: env(safe-area-inset-bottom) !important;
+            }
         }
 
         /* FIX C11: Responsive grille prévisions */
