@@ -13,6 +13,7 @@ import secrets
 import string
 import re
 import pytz
+from pathlib import Path
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -135,6 +136,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Rate-limiting : 10 tentatives/minute par IP sur /auth/login
 app.state.limiter = limiter
