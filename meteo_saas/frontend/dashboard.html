@@ -1615,8 +1615,8 @@
 
 <!-- BANNIÈRE INSTALLATION PWA -->
 <div id="pwa-banner">
-    <span>Installer Mah Météo sur votre téléphone
-        pour recevoir les alertes même app fermée</span>
+    <span>Installer Mah Météo
+        pour recevoir les alertes même application fermée</span>
     <div style="display:flex;gap:8px;align-items:center">
         <button id="pwa-install-btn"
             onclick="_installPWA()">
@@ -4941,7 +4941,7 @@
                         if (result.outcome === 'accepted') {
                             console.log('[PWA] App installée');
                             _fermerBannerePWA();
-                            showNotif('Mah Météo installé sur votre téléphone');
+                            showNotif('Mah Météo installé avec succès');
                         }
                         _pwaInstallEvent = null;
                     });
