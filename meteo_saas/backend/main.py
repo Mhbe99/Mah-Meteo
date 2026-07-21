@@ -1915,6 +1915,21 @@ async def get_service_worker():
         }
     )
 
+
+@app.get("/apple-touch-icon-120x120.png")
+async def get_apple_touch_icon_120():
+    """Sert l'icône iPhone demandée automatiquement par Safari."""
+    icon_path = os.path.join(
+        os.path.dirname(__file__),
+        '..', 'static', 'icon-192.png'
+    )
+    if not os.path.exists(icon_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Icône apple-touch introuvable"
+        )
+    return FileResponse(icon_path, media_type="image/png")
+
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
     """
