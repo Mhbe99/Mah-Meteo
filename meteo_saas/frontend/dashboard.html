@@ -5013,7 +5013,12 @@
                         /* Vérifier si déjà souscrit */
                         const existingSub = await reg.pushManager.getSubscription();
                         if (existingSub) {
-                            await _envoyerSouscription(existingSub);
+                            const ok = await _envoyerSouscription(existingSub);
+                            if (!ok) {
+                                _pushActive = false;
+                                showNotif('Push non activé : souscription serveur refusée');
+                                return;
+                            }
                             _pushActive = true;
                             return;
                         }
@@ -5024,7 +5029,12 @@
                             applicationServerKey: appServerKey
                         });
 
-                        await _envoyerSouscription(sub);
+                        const ok = await _envoyerSouscription(sub);
+                        if (!ok) {
+                            _pushActive = false;
+                            showNotif('Push non activé : souscription serveur refusée');
+                            return;
+                        }
                         _pushActive = true;
                         console.log('[PUSH] Souscription réussie');
 
@@ -5036,10 +5046,10 @@
                 /* Envoyer la souscription au backend */
                 async function _envoyerSouscription(sub) {
                     const token = localStorage.getItem('token') || '';
-                    if (!token) return;
+                    if (!token) return false;
 
                     const subJSON = sub.toJSON();
-                    await fetch('/api/push/subscribe', {
+                    const resp = await fetch('/api/push/subscribe', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -5051,6 +5061,17 @@
                         }),
                         signal: AbortSignal.timeout(10000)
                     });
+
+                    if (!resp.ok) {
+                        let detail = 'erreur serveur';
+                        try {
+                            const data = await resp.json();
+                            detail = data.detail || detail;
+                        } catch(e) {}
+                        throw new Error('Souscription push refusée: ' + detail);
+                    }
+
+                    return true;
                 }
 
                 /* Convertir clé VAPID base64 → Uint8Array */
