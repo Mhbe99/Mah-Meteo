@@ -4976,7 +4976,7 @@
                 async function _demanderPermissionPush() {
                     if (!_swRegistration) {
                         showNotif('Service Worker non prêt, réessayez');
-                        return;
+                        return false;
                     }
 
                     try {
@@ -4984,15 +4984,21 @@
 
                         if (permission !== 'granted') {
                             showNotif('Notifications refusées — vous pouvez les activer dans les paramètres');
-                            return;
+                            return false;
                         }
 
-                        await _sAbonnerAuxPush(_swRegistration);
+                        const ok = await _sAbonnerAuxPush(_swRegistration);
+                        if (!ok) {
+                            showNotif('Activation push incomplète — vérifiez la souscription serveur');
+                            return false;
+                        }
                         showNotif('Notifications push activées');
+                        return true;
 
                     } catch(e) {
                         console.error('[PUSH] Erreur permission:', e);
                         showNotif('Erreur activation notifications');
+                        return false;
                     }
                 }
 
@@ -5003,7 +5009,7 @@
                         const resp = await fetch('/api/push/vapid-public-key');
                         if (!resp.ok) {
                             console.log('[PUSH] VAPID non configuré');
-                            return;
+                            return false;
                         }
                         const { public_key } = await resp.json();
 
@@ -5017,10 +5023,10 @@
                             if (!ok) {
                                 _pushActive = false;
                                 showNotif('Push non activé : souscription serveur refusée');
-                                return;
+                                return false;
                             }
                             _pushActive = true;
-                            return;
+                            return true;
                         }
 
                         /* Nouvelle souscription */
@@ -5033,13 +5039,16 @@
                         if (!ok) {
                             _pushActive = false;
                             showNotif('Push non activé : souscription serveur refusée');
-                            return;
+                            return false;
                         }
                         _pushActive = true;
                         console.log('[PUSH] Souscription réussie');
+                        return true;
 
                     } catch(e) {
+                        _pushActive = false;
                         console.error('[PUSH] Erreur souscription:', e);
+                        return false;
                     }
                 }
 
@@ -5122,10 +5131,16 @@
                         }
                     }
 
-                    btn.onclick = function() {
-                        if (Notification.permission !== 'granted') {
-                            _demanderPermissionPush();
+                    btn.onclick = async function() {
+                        if (Notification.permission === 'granted') {
+                            if (_swRegistration) {
+                                await _sAbonnerAuxPush(_swRegistration);
+                            }
+                        } else {
+                            await _demanderPermissionPush();
                         }
+                        _majBouton();
+                        setTimeout(_majBouton, 600);
                     };
 
                     _majBouton();
