@@ -4880,6 +4880,7 @@
                 var _swRegistration = null;
                 var _pwaInstallEvent = null;
                 var _pushActive = false;
+                var _pushLastError = '';
 
                 /* Enregistrement du Service Worker */
                 function _initServiceWorker() {
@@ -4968,7 +4969,7 @@
 
                     /* Si permission déjà accordée → s'abonner */
                     if (Notification.permission === 'granted') {
-                        _sAbonnerAuxPush(reg);
+                        _sAbonnerAuxPush(reg, true);
                     }
                 }
 
@@ -4987,9 +4988,9 @@
                             return false;
                         }
 
-                        const ok = await _sAbonnerAuxPush(_swRegistration);
+                        const ok = await _sAbonnerAuxPush(_swRegistration, false);
                         if (!ok) {
-                            showNotif('Activation push incomplète — vérifiez la souscription serveur');
+                            showNotif(_pushLastError || 'Activation push incomplète — vérifiez la souscription serveur');
                             return false;
                         }
                         showNotif('Notifications push activées');
@@ -5003,12 +5004,15 @@
                 }
 
                 /* Souscription effective */
-                async function _sAbonnerAuxPush(reg) {
+                async function _sAbonnerAuxPush(reg, silent) {
+                    if (typeof silent === 'undefined') silent = false;
                     try {
+                        _pushLastError = '';
                         /* Récupérer la clé VAPID publique */
                         const resp = await fetch('/api/push/vapid-public-key');
                         if (!resp.ok) {
                             console.log('[PUSH] VAPID non configuré');
+                            _pushLastError = 'VAPID non configuré sur le serveur';
                             return false;
                         }
                         const { public_key } = await resp.json();
@@ -5022,7 +5026,9 @@
                             const ok = await _envoyerSouscription(existingSub);
                             if (!ok) {
                                 _pushActive = false;
-                                showNotif('Push non activé : souscription serveur refusée');
+                                if (!silent && _pushLastError) {
+                                    showNotif(_pushLastError);
+                                }
                                 return false;
                             }
                             _pushActive = true;
@@ -5038,7 +5044,9 @@
                         const ok = await _envoyerSouscription(sub);
                         if (!ok) {
                             _pushActive = false;
-                            showNotif('Push non activé : souscription serveur refusée');
+                            if (!silent && _pushLastError) {
+                                showNotif(_pushLastError);
+                            }
                             return false;
                         }
                         _pushActive = true;
@@ -5047,7 +5055,11 @@
 
                     } catch(e) {
                         _pushActive = false;
+                        _pushLastError = e && e.message ? e.message : 'Erreur souscription push';
                         console.error('[PUSH] Erreur souscription:', e);
+                        if (!silent && _pushLastError) {
+                            showNotif(_pushLastError);
+                        }
                         return false;
                     }
                 }
@@ -5055,7 +5067,10 @@
                 /* Envoyer la souscription au backend */
                 async function _envoyerSouscription(sub) {
                     const token = localStorage.getItem('token') || '';
-                    if (!token) return false;
+                    if (!token) {
+                        _pushLastError = 'Session expirée — reconnectez-vous';
+                        return false;
+                    }
 
                     const subJSON = sub.toJSON();
                     const resp = await fetch('/api/push/subscribe', {
@@ -5077,7 +5092,8 @@
                             const data = await resp.json();
                             detail = data.detail || detail;
                         } catch(e) {}
-                        throw new Error('Souscription push refusée: ' + detail);
+                        _pushLastError = 'Souscription push refusée: ' + detail;
+                        throw new Error(_pushLastError);
                     }
 
                     return true;
@@ -5134,7 +5150,10 @@
                     btn.onclick = async function() {
                         if (Notification.permission === 'granted') {
                             if (_swRegistration) {
-                                await _sAbonnerAuxPush(_swRegistration);
+                                const ok = await _sAbonnerAuxPush(_swRegistration, false);
+                                if (ok) {
+                                    showNotif('Notifications push activées');
+                                }
                             }
                         } else {
                             await _demanderPermissionPush();
