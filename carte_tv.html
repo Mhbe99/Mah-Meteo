@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>🌍 Carte Météo - Vue Affichage</title>
+  <meta http-equiv="refresh" content="3600"> <!-- Recharge auto toutes les heures -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #f0f0f0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .leaflet-popup-content-wrapper {
+      font-size: 16px;
+    }
+    .custom-camion-icon {
+      font-size: 28px;
+      text-align: center;
+    }
+    .custom-point-icon {
+      font-size: 22px;
+      text-align: center;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  
+<div class="section-title">🗺️ Carte Interactive</div>
+<div id="map" style="height: 500px; margin-top: 20px;"></div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const camionIcon = L.divIcon({
+  className: 'custom-camion-icon',
+  html: '🚚',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32]
+});
+const pointIcon = L.divIcon({
+  className: 'custom-point-icon',
+  html: '📍',
+  iconSize: [20, 20],
+  iconAnchor: [10, 20],
+  popupAnchor: [0, -20]
+});
+const map = L.map('map').setView([49.4, 2.75], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+L.marker([49.4194, 2.8328], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clairoix 🏣</b><br>🌡️ Actuel : 19.5°C<br>💨 Vent : 6.1 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:21<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 15.8°C / 🔺 Tmax : 31.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.378829, 2.750393], { icon: camionIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Le Meux 🏣</b><br>🌡️ Actuel : 17.7°C<br>💨 Vent : 10.1 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:23<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 14.0°C / 🔺 Tmax : 29.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2561, 2.4834], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Creil</b><br>🌡️ Actuel : 19.5°C<br>💨 Vent : 3.3 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:26<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 15.0°C / 🔺 Tmax : 29.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4304, 2.0876], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Beauvais</b><br>🌡️ Actuel : 18.3°C<br>💨 Vent : 2.7 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:01:28<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.6°C / 🔺 Tmax : 29.6°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.5786, 3.0017], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Noyon</b><br>🌡️ Actuel : 17.8°C<br>💨 Vent : 5.4 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:01:31<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 14.7°C / 🔺 Tmax : 29.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2661, 2.4706], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Nogent-sur-Oise</b><br>🌡️ Actuel : 19.8°C<br>💨 Vent : 3.3 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:33<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 15.3°C / 🔺 Tmax : 30.1°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3334, 2.4573], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Liancourt</b><br>🌡️ Actuel : 17.2°C<br>💨 Vent : 5.2 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:36<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.3°C / 🔺 Tmax : 29.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.3763, 2.4151], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Clermont</b><br>🌡️ Actuel : 17.9°C<br>💨 Vent : 5.0 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:01:38<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 14.9°C / 🔺 Tmax : 29.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.599998, 2.08333], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Crèvecoeur-le-Grand</b><br>🌡️ Actuel : 16.3°C<br>💨 Vent : 4.8 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:41<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.6°C / 🔺 Tmax : 28.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.1931, 2.4714], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chantilly</b><br>🌡️ Actuel : 16.9°C<br>💨 Vent : 5.8 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:43<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.2°C / 🔺 Tmax : 30.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2079, 2.5849], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Senlis</b><br>🌡️ Actuel : 17.3°C<br>💨 Vent : 6.2 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:46<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 11.9°C / 🔺 Tmax : 29.9°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.133331, 2.8], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Nanteuil-le-Haudouin</b><br>🌡️ Actuel : 16.3°C<br>💨 Vent : 4.3 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:01:49<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.4°C / 🔺 Tmax : 29.5°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.5, 2.43333], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>St Just en Chaussée</b><br>🌡️ Actuel : 18.0°C<br>💨 Vent : 7.2 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:51<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 15.2°C / 🔺 Tmax : 29.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.65, 1.73], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Formerie</b><br>🌡️ Actuel : 14.9°C<br>💨 Vent : 3.8 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:54<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.2°C / 🔺 Tmax : 27.0°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.633331, 2.3], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Breteuil</b><br>🌡️ Actuel : 17.3°C<br>💨 Vent : 7.9 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:01:56<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 14.1°C / 🔺 Tmax : 28.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2335, 2.1293], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Méru</b><br>🌡️ Actuel : 18.8°C<br>💨 Vent : 9.8 km/h (Nord)<br>☀️<br>🕒 Maj : 23:01:59<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.0°C / 🔺 Tmax : 29.1°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.433331, 2.65], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Estrées-Saint-Denis</b><br>🌡️ Actuel : 17.5°C<br>💨 Vent : 8.3 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:02:01<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 14.6°C / 🔺 Tmax : 30.1°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.650002, 3.05], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Guiscard</b><br>🌡️ Actuel : 17.0°C<br>💨 Vent : 1.8 km/h (Sud-Ouest)<br>☀️<br>🕒 Maj : 23:02:04<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.7°C / 🔺 Tmax : 29.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.166672, 2.25], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chambly</b><br>🌡️ Actuel : 18.6°C<br>💨 Vent : 2.9 km/h (Nord)<br>☀️<br>🕒 Maj : 23:02:06<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 14.4°C / 🔺 Tmax : 29.7°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2761, 1.8759], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Chaumont-en-Vexin</b><br>🌡️ Actuel : 17.2°C<br>💨 Vent : 3.3 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:02:09<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 11.9°C / 🔺 Tmax : 29.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.85<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.23333, 2.9], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Crépy-en-Valois</b><br>🌡️ Actuel : 15.5°C<br>💨 Vent : 2.2 km/h (Nord)<br>☀️<br>🕒 Maj : 23:02:11<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.3°C / 🔺 Tmax : 29.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.400002, 2.96667], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Trosly-Breuil</b><br>🌡️ Actuel : 16.1°C<br>💨 Vent : 3.6 km/h (Ouest)<br>☀️<br>🕒 Maj : 23:02:14<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.9°C / 🔺 Tmax : 29.2°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.2641, 2.4436], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Montataire</b><br>🌡️ Actuel : 17.0°C<br>💨 Vent : 5.9 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:02:16<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.8°C / 🔺 Tmax : 29.9°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.4176, 2.8261], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Compiègne</b><br>🌡️ Actuel : 20.3°C<br>💨 Vent : 7.6 km/h (Nord)<br>☀️<br>🕒 Maj : 23:02:19<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 16.5°C / 🔺 Tmax : 31.1°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.75<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.216671, 2.45], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Saint-Maximin</b><br>🌡️ Actuel : 17.3°C<br>💨 Vent : 6.1 km/h (Nord)<br>☀️<br>🕒 Maj : 23:02:22<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.6°C / 🔺 Tmax : 30.0°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.316669, 2.31667], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Mouy</b><br>🌡️ Actuel : 15.7°C<br>💨 Vent : 4.9 km/h (Nord-Ouest)<br>☀️<br>🕒 Maj : 23:02:24<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 12.3°C / 🔺 Tmax : 29.8°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+L.marker([49.549999, 2.75], { icon: pointIcon }).addTo(map).bindPopup("<div style='background:#f2f2f2;padding:8px;border-radius:6px'><b>Ressons-sur-Matz</b><br>🌡️ Actuel : 17.4°C<br>💨 Vent : 6.8 km/h (Nord)<br>☀️<br>🕒 Maj : 23:02:27<br><br>📆 Prévisions du jour :<br>🔻 Tmin : 13.9°C / 🔺 Tmax : 29.3°C<br>☔ Pluie : 0.0 mm<br>🌞 UV max : 6.8<br>⚠️ Risques : ✅ RAS</div>");
+const points = [{"name": "Clairoix 🏣", "lat": 49.4194, "lon": 2.8328}, {"name": "Le Meux 🏣", "lat": 49.378829, "lon": 2.750393}, {"name": "Creil", "lat": 49.2561, "lon": 2.4834}, {"name": "Beauvais", "lat": 49.4304, "lon": 2.0876}, {"name": "Noyon", "lat": 49.5786, "lon": 3.0017}, {"name": "Nogent-sur-Oise", "lat": 49.2661, "lon": 2.4706}, {"name": "Liancourt", "lat": 49.3334, "lon": 2.4573}, {"name": "Clermont", "lat": 49.3763, "lon": 2.4151}, {"name": "Crèvecoeur-le-Grand", "lat": 49.599998, "lon": 2.08333}, {"name": "Chantilly", "lat": 49.1931, "lon": 2.4714}, {"name": "Senlis", "lat": 49.2079, "lon": 2.5849}, {"name": "Nanteuil-le-Haudouin", "lat": 49.133331, "lon": 2.8}, {"name": "St Just en Chaussée", "lat": 49.5, "lon": 2.43333}, {"name": "Formerie", "lat": 49.65, "lon": 1.73}, {"name": "Breteuil", "lat": 49.633331, "lon": 2.3}, {"name": "Méru", "lat": 49.2335, "lon": 2.1293}, {"name": "Estrées-Saint-Denis", "lat": 49.433331, "lon": 2.65}, {"name": "Guiscard", "lat": 49.650002, "lon": 3.05}, {"name": "Chambly", "lat": 49.166672, "lon": 2.25}, {"name": "Chaumont-en-Vexin", "lat": 49.2761, "lon": 1.8759}, {"name": "Crépy-en-Valois", "lat": 49.23333, "lon": 2.9}, {"name": "Trosly-Breuil", "lat": 49.400002, "lon": 2.96667}, {"name": "Montataire", "lat": 49.2641, "lon": 2.4436}, {"name": "Compiègne", "lat": 49.4176, "lon": 2.8261}, {"name": "Saint-Maximin", "lat": 49.216671, "lon": 2.45}, {"name": "Mouy", "lat": 49.316669, "lon": 2.31667}, {"name": "Ressons-sur-Matz", "lat": 49.549999, "lon": 2.75}];
+
+let index = 0;
+function loopZoom() {
+  const p = points[index];
+  map.setView([p.lat, p.lon], 12, { animate: true });
+  map.eachLayer(function (layer) {
+    if (layer.getPopup && layer.getPopup()) {
+      const popup = layer.getPopup();
+      const content = popup.getContent();
+      if (content && content.includes(p.name)) {
+        layer.openPopup();
+      } else {
+        layer.closePopup();
+      }
+    }
+  });
+  index = (index + 1) % points.length;
+  setTimeout(loopZoom, 12000); // 12s par ville
+}
+L.marker([49.2893752676, 2.1978006843], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D46 — Rue du Canton de Beaupréau / Rue de l'Éventail → Route Nationale 1 (D1001) / Rue de la Chapelle</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2886296172, 2.2010273817], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D46 — Route Nationale 1 (D1001) / Rue de la Chapelle → Rue du Canton de Beaupréau / Rue de l'Éventail</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.1689266536, 2.2495793882], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue du 11 Novembre 1918 (D924) / Rue Anatole France → Route de Neuilly-en-Thelle (D49) / Place Descartes</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0342918103, 2.3464205447], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D370 → D301</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4207699749, 2.3621517006], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D55 — Rue du Buart → Rue Saint-Martin (D151) / Rue de Crèvecœur (D151)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4198835126, 2.3615361337], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D55 — Rue Saint-Martin (D151) / Rue de Crèvecœur (D151) → Rue du Buart</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4212353367, 2.3623850528], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D55 — Rue Saint-Martin (D151) / Rue de Crèvecœur (D151) → Rue du Buart</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.1281946481, 2.3702452663], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D909 — Asnières-sur-Oise - D922 (D909Z) → Belloy-en-France - D909 (D909Z)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0032828094, 2.3860555474], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D10 → Rue Faidherbe / Rue de la République</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.098930399, 2.4155370478], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D922 — Luzarches → Route Nationale 16 Déviation (D316)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.252238748, 2.4275452975], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D123 → Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2496155494, 2.4296454672], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Hubert Grison (D92e) / Rue Jean Jaurès (D92e) → D123</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.1493612878, 2.4390707497], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Allée de la Theve → Rue de l'Église</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2570479573, 2.4437807087], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Allée des Marronniers → Le Clos</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2590354912, 2.4462671165], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de Nogent → Les Laris de Vitel</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.9868944895, 2.4484799389], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de la Fontaine Saint-Pierre → Rue Bernard Février</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2557135534, 2.4503212754], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D92 → D201</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2562124273, 2.4511849467], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D92 → D201</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2556169948, 2.4529820267], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D201 → La Vallée de Vitel Nord (D92)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2556169948, 2.4529820267], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D201 — La Vallée de Vitel Sud → D92</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2530702419, 2.4541769508], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de Finsterwalde (D123) → D201</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2540049584, 2.4551613215], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D201 → Rue de Finsterwalde (D123)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2456458806, 2.464778382], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D201 → D162</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2454903156, 2.4695594195], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D201 — Le Plessis-Pommeraie - D1330 (Rocade Sud de Creil/D201) → Montataire Sud - D200 (Rocade Sud de Creil/D201)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2463486255, 2.4704566185], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Boulevard Salvador Allende (D162) → D201</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2554788583, 2.4532073323], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D201 — Montataire Sud - D200 (Rocade Sud de Creil/D201) → Pierre Blanche - D1016 (Rocade Sud de Creil/D201)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2579170072, 2.4809976999], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Place du Faubourg (D916) → Avenue Puvis de Chavannes / Avenue du Moulin-à-Vent</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2564444383, 2.4871909205], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Avenue Puvis de Chavannes / Avenue du Moulin-à-Vent → Place du Faubourg (D916)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0762992636, 2.5041170005], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Eugène Pottier → Rue des Prés / Hameau du Gué</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0795098398, 2.503455836], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue des Prés / Hameau du Gué → Rue Eugène Pottier</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.999606819, 2.5237373594], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Route du Noyer du Chat → Aérogare 1</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.280249064, 2.5248424296], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Allée du Vieil Étang / Rue de Bufosse → Rue du Muguet / Rue du Fonds du Charron</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2820863925, 2.5247203891], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue du Muguet / Rue du Fonds du Charron → Allée du Vieil Étang / Rue de Bufosse</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2290577488, 2.5526542548], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Louis Blanchet / Rue Henri Dupriez → Chemin du Moulin</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2949864451, 2.6003439311], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Avenue Jean Jaurès (D1017) / Rue de la Vieille Montagne → Rue Jean-Baptiste Clément / Rue Pablo Picasso</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.1429803272, 2.5941386406], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Mortefontaine → Mortefontaine</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.3176578029, 2.6037087624], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D1017 → Rue des Joncs</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.3169269506, 2.6037463133], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue des Joncs → D1017</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.9800776757, 2.6237944846], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D139 — Gressy - D212 (D139) → Mitry-Mory - D9 (D139)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.9806342313, 2.623838741], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue des Frères Lumière (D84) → Avenue du 8 Mai 1945 (D139)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.9804210058, 2.6233961765], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Avenue du 8 Mai 1945 (D139) → Rue des Frères Lumière (D84)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6492324778, 2.6250350062], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D135 — Rue de Piennes / Chemin de Lignières → Rue de la Gare</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6497729488, 2.6234364097], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D135 — Rue de la Gare → Rue de Piennes / Chemin de Lignières</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6489146721, 2.6255754713], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D135 — Le Village / Chemin de Lignières → D930</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6473522603, 2.6276354079], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D135 — D930 → Le Village / Chemin de Lignières</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.9855775495, 2.6505146508], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Juilly (D9) → Rue Isaac Newton (D139e)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0075073063, 2.6697474305], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D26 — Rue des 3 Villes (D9) → Grande Rue</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0105355097, 2.6678175811], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D26 — Grande Rue → Rue des 3 Villes (D9)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0532630772, 2.6792867069], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Louis Braille (D404) / Chemin Rural → Rue du Général de Gaulle (D401) / Rue Notre-Dame</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.5581647933, 2.6821861748], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D935 — Du Moulin → Rue du Matz / Rue de l'Eglise</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.0625502308, 2.7170280699], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D41a — Place de la Mairie → Rue des Prés Boucher / Rue Clément Ader</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4958986811, 2.7672671859], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D41 — Rue de Leury (D568) / Route de Compiègne → Route de Ressons / Rue René Legrand</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.485102777, 2.7744192962], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D41 — Rue René Legrand → Route de Coudun / Rue Principale (D73)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4766806196, 2.788711447], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D41 — Route de Coudun / Rue Principale (D73) → Rue de Leury (D568) / Route de Compiègne</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4156389258, 2.8196332936], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue du Port à Bateaux → Rue d'Austerlitz / Rue des Gourneaux</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4232644478, 2.8323831742], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de Soissons (N31) / Rue du Lieutenant René Ducloux → Rue de la Bannière du Roi</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4254450925, 2.8336156492], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Charmolue → Avenue de l'Armistice (N31) / Rue de Soissons (N31)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4397868348, 2.8433721845], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de Bienville / Rue du Général de Gaulle → D142</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.5872346004, 2.8408254271], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D938 — Place du Souvenir (D142) → Rue du Plémont (D64) / Rue de la Maladrerie</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.5874491846, 2.8437302594], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D938 — Rue du Plémont (D64) / Rue de la Maladrerie → Place du Souvenir (D142)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4812671981, 2.87453543], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue du Général de Gaulle → D15 / Place de la République</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.4790691576, 2.8768662696], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D15 / Place de la République → Thourotte</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.1753452053, 2.8800111597], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>N2 → Chemin du Gué</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2324534544, 2.8863612895], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D1324 — Rue Saint-Lazare / Place Michel Dupuy (D332) → Avenue de Senlis / Avenue de Levallois-Perret (D136)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2322066621, 2.8861037974], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D1324 — Senlis est [N324] - A1(Lille) - N330 (D1324) → Vaumoise est [N324] - N2 (D1324)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.23364301, 2.8873630946], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D1324 — Crépy-en-Valois [N324] - D136 - D332 (D1324) → Vaumoise est [N324] - N2 (D1324)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2317748136, 2.8938138073], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D25 — Boulevard Victor Hugo (D520) / Rue des Tournelles → Rue Hippolyte Clair</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2312920584, 2.8945768957], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D25 — Avenue Pasteur → Boulevard Victor Hugo (D520) / Rue des Tournelles</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.2319129618, 2.8930010979], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D520 — Crépy-en-Valois → Rue Tassart</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.230457844, 2.8962733929], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D25 — Rue Henri Laroche → Avenue Pasteur</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.7584332807, 2.9081663077], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D337 — Place du Général Leclerc → Route de Chaulnes / Rue des Chapeliers</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.758991165, 2.9070250278], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D35 — Rue Sainte-Marie Namuroy (D337) / Rue Saint-Nicolas (D337) → Avenue Foch / Rue des Chapeliers</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.7602585236, 2.9085994845], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D35 — Avenue Foch / Rue des Chapeliers → Rue Sainte-Marie Namuroy (D337) / Rue Saint-Nicolas (D337)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.7604731039, 2.9050321465], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D337 — Route de Chaulnes / Rue des Chapeliers → Place du Général Leclerc (D2930) / Rue de la Monnaie (D2930)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.5021750155, 2.9325449054], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D40 — Chemin de la Taille d'Humières → Rue Aristide Briand / Rue de Pimprez (D608)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.5042349606, 2.9283727293], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D40 — Rue Aristide Briand / Rue de Pimprez (D608) → Chemin de la Taille d'Humières</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.741200087, 3.042693842], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D930 — D17 (D930) → Ham centre - D932 (D930)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.7420033816, 3.0505272334], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D930 — Ham centre - D932 (D930) → D17 (D930)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.7372626137, 3.1808892971], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D32 — Rue de Saint-Simon (D431) → Rue des Deux Lieutenant Lecomte-Larmuzeaux / Rue de Tugny (D34)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.7434719192, 3.1721815055], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D32 — Rue des Deux Lieutenant Lecomte-Larmuzeaux / Rue de Tugny (D34) → Rue de Saint-Simon (D431)</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6271257118, 3.2501774615], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de la Liberté (D429) / D429e → Rue de la Convention</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6279746541, 3.2499454504], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Jean Jaurès (D338) / Rue Victor Hugo (D338) → Rue de la Liberté (D429) / D429e</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.3685245906, 3.3356889671], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue de Belleu → Rue de Fère</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6547377407, 3.3775569087], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Paul Doumer (D13) / Rue Pierre Timbaud → Rue Alfred Maguin</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([49.6538217595, 3.3786740488], { icon: L.divIcon({{
+    className: '',
+    html: '[CLOSED]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Alfred Maguin → Rue Paul Doumer (D13) / Rue Pierre Timbaud</b><br>Route fermée<br>Retard : +0 min</div>");
+L.marker([48.9804786582, 2.5388462428], { icon: L.divIcon({{
+    className: '',
+    html: '[TRAFFIC]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Tremblay-en-France → Avenue du Valquiou</b><br>Trafic avec des à-coups<br>Retard : +2 min</div>");
+L.marker([49.2159913643, 2.3652000312], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D44 — Rue de Blaincourt (D17) / Rue de la Tour du Moulin → Rue de Beauvais / Rue de la Mairie</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.0032828094, 2.3860555474], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Faidherbe / Rue de la République → D10</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.0012952788, 2.4075400416], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D370 — Arnouville - D208 (D370) → Villiers-le-Bel - D10 (D370)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.0921631747, 2.4157569889], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D316 — D922 (D316) → Mareil-en-France - D104 (D316)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.0205911245, 2.4543995742], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D47 — Fontenay-en-Parisis - D104 - D10 (D47) → Goussainville - D47A (D47)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.2890828913, 2.4897470657], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Jules Uhry → Rue Charles Notaire</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.2123569989, 2.6224936132], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D1324 → Autoroute du Nord (A1)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.0771079118, 2.6756737713], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D13 — Othis - D26E (D13) → Dammartin-en-Goële - Avenue de l'Europe (D13)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.3520786201, 2.7502418642], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D200 — D85 (D200) → Chevrières - A1 (D200)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.3326325863, 2.7220773284], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D200 — Chevrières - A1 (D200) → D85 (D200)</b><br>Travaux<br>Retard : +1 min</div>");
+L.marker([49.4228567349, 2.8341950064], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>N31 — Le Buissonnet - D130 (N31) → Compiègne centre - Rue Solférino (N31)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.4232470009, 2.8315396194], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>N31 — Compiègne centre - Rue Solférino (N31) → Le Buissonnet - D130 (N31)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.2335638678, 2.8873456602], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D1324 — Crépy-en-Valois [N324] - D136 - D332 (D1324) → Vaumoise est [N324] - N2 (D1324)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.5802635495, 2.9974583869], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>Rue Pasteur → Boulevard Mony (D934) / Rue de l'Hôtel-Dieu</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.741200087, 3.042693842], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D930 — Ham centre - D932 (D930) → D17 (D930)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.7412617835, 3.0411596184], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>D930 — D17 (D930) → Ham centre - D932 (D930)</b><br>Travaux<br>Retard : +0 min</div>");
+L.marker([49.3918048329, 3.2092536574], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>E46 — D17 (N31) → Soissons ouest - D6 (N31)</b><br>Travaux<br>Retard : +1 min</div>");
+L.marker([49.3875078946, 3.2374785429], { icon: L.divIcon({{
+    className: '',
+    html: '[WORK]',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+}}) }).addTo(map).bindPopup("<div style='font-family:sans-serif;padding:8px;'><b>E46 — Soissons ouest - D6 (N31) → D17 (N31)</b><br>Travaux<br>Retard : +1 min</div>");
+loopZoom();
+</script>
+</script>
+</body>
+</html>
