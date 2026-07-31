@@ -39,7 +39,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from .clients import get_meteo_actuelle, get_previsions, get_alertes, get_zones
 from .trafic import get_incidents
-from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert, send_welcome_email, send_bulletin_email
+from .email_alerts import send_meteo_alert, send_trafic_alert, send_combined_alert, send_welcome_email, send_bulletin_email, envoyer_push_notification
 
 load_dotenv()
 
@@ -2032,6 +2032,30 @@ async def get_vapid_public_key():
             detail="VAPID non configuré"
         )
     return {"public_key": key}
+
+
+@app.post("/api/push/test/{client_id}")
+async def test_push_notification(
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Envoie une notification push de test pour valider la configuration VAPID."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    nb = envoyer_push_notification(
+        db_session=db,
+        client_id=client_id,
+        titre="Test — Mah Météo",
+        corps="Les notifications push fonctionnent !",
+        type_alerte="test",
+        url="/"
+    )
+    return {
+        "status": "ok",
+        "notifications_envoyees": nb
+    }
 
 
 @app.head("/")

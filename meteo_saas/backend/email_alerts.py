@@ -67,6 +67,17 @@ def envoyer_push_notification(
         print("[PUSH] pip install pywebpush")
         return 0
 
+    # Désérialise la clé privée VAPID (format DER base64url) en objet Vapid01.
+    # webpush() n'accepte qu'une string ou une instance Vapid/Vapid01 — jamais
+    # un objet clé cryptography brut, d'où le passage explicite par Vapid01.
+    try:
+        from py_vapid import Vapid01
+        vapid_key_obj = Vapid01.from_string(vapid_private)
+        print("[PUSH] Clé VAPID désérialisée OK")
+    except Exception as e:
+        print(f"[PUSH] Erreur désérialisation VAPID: {e}")
+        return 0
+
     try:
         from meteo_saas.backend.database import PushSubscription
         subs = db_session.query(
@@ -104,7 +115,7 @@ def envoyer_push_notification(
                     }
                 },
                 data=payload,
-                vapid_private_key=vapid_private,
+                vapid_private_key=vapid_key_obj,
                 vapid_claims={
                     "sub": vapid_email
                 }
@@ -144,12 +155,25 @@ def _paris_now() -> datetime:
 _COOLDOWN_SECONDS = 3600
 _last_sent = {}  # clé = "zone:type" → datetime du dernier envoi
 
+# Cooldown dédié push (plus court) pour ne pas bloquer les notifications mobiles.
+_PUSH_COOLDOWN_SECONDS = int(os.getenv("PUSH_COOLDOWN_SECONDS", "300"))
+_last_push_sent = {}
+
 def _check_cooldown(key: str) -> bool:
     """Retourne True si on peut envoyer, False si cooldown actif."""
     last = _last_sent.get(key)
     if last and (datetime.now() - last).total_seconds() < _COOLDOWN_SECONDS:
         return False
     _last_sent[key] = datetime.now()
+    return True
+
+
+def _check_push_cooldown(key: str) -> bool:
+    """Retourne True si on peut envoyer un push, False si cooldown push actif."""
+    last = _last_push_sent.get(key)
+    if last and (datetime.now() - last).total_seconds() < _PUSH_COOLDOWN_SECONDS:
+        return False
+    _last_push_sent[key] = datetime.now()
     return True
 
 
@@ -553,58 +577,66 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id:
     if not alertes:
         return
 
-    # Filtrer par cooldown (1 email/heure/zone)
-    alertes_filtered = []
+    # Filtrer par cooldown email (1 email/heure/zone)
+    alertes_email = []
     for a in alertes:
         key = f"{a.get('zone','?')}:meteo:{a.get('type','')}"
         if _check_cooldown(key):
-            alertes_filtered.append(a)
-    if not alertes_filtered:
+            alertes_email.append(a)
+    if not alertes_email:
         print(f"[EMAIL] Cooldown actif — aucune alerte météo envoyée")
-        return
-    alertes = alertes_filtered
+    else:
+        rows = ""
+        for a in alertes_email:
+            color = "#e53e3e" if "fort" in a.get("type", "").lower() else "#d69e2e"
+            rows += f"""
+            <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['zone']}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['type']}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{color};">{a['valeur']}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['message']}</td>
+            </tr>
+            """
 
-    rows = ""
-    for a in alertes:
-        color = "#e53e3e" if "fort" in a.get("type", "").lower() else "#d69e2e"
-        rows += f"""
-        <tr>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['zone']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['type']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{color};">{a['valeur']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['message']}</td>
-        </tr>
+        content = f"""
+        <p style="color:#718096;font-size:13px;margin:0 0 16px 0;">{len(alertes_email)} alerte(s) détectée(s) sur vos zones.</p>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;">
+          <thead>
+            <tr style="background:#f7fafc;">
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Zone</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Type</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Valeur</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Message</th>
+            </tr>
+          </thead>
+          <tbody>{rows}</tbody>
+        </table>
         """
+        html = _build_email_shell(
+            title="Alerte météo",
+            subtitle=f"{company_name} — surveillance active",
+            content_html=content,
+            accent="#2c3e50",
+        )
 
-    content = f"""
-    <p style="color:#718096;font-size:13px;margin:0 0 16px 0;">{len(alertes)} alerte(s) détectée(s) sur vos zones.</p>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;">
-      <thead>
-        <tr style="background:#f7fafc;">
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Zone</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Type</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Valeur</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Message</th>
-        </tr>
-      </thead>
-      <tbody>{rows}</tbody>
-    </table>
-    """
-    html = _build_email_shell(
-        title="Alerte météo",
-        subtitle=f"{company_name} — surveillance active",
-        content_html=content,
-        accent="#2c3e50",
-    )
-
-    subject = f"[Mah Météo] {len(alertes)} alerte(s) météo — {company_name}"
-    _send_email(_get_all_recipients(to_email), subject, html)
+        subject = f"[Mah Météo] {len(alertes_email)} alerte(s) météo — {company_name}"
+        _send_email(_get_all_recipients(to_email), subject, html)
 
     if client_id is not None:
         try:
+            # Cooldown push séparé pour éviter qu'un blocage email coupe les notifications.
+            alertes_push = []
+            for a in alertes:
+                pkey = f"{a.get('zone','?')}:meteo:{a.get('type','')}"
+                if _check_push_cooldown(pkey):
+                    alertes_push.append(a)
+            if not alertes_push:
+                print(f"[PUSH] Cooldown actif — aucune alerte météo push envoyée")
+                return
+
             from meteo_saas.backend.database import SessionLocal
             db_push = SessionLocal()
-            risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes)
+            risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes_push)
             envoyer_push_notification(
                 db_session=db_push,
                 client_id=client_id,
@@ -633,60 +665,67 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_
     if not critical:
         return
 
-    # Filtrer par cooldown (1 email/heure/route)
-    critical_filtered = []
+    # Filtrer par cooldown email (1 email/heure/route)
+    critical_email = []
     for inc in critical:
         key = f"{inc.get('route','?')}:trafic:{inc.get('severity','')}"
         if _check_cooldown(key):
-            critical_filtered.append(inc)
-    if not critical_filtered:
+            critical_email.append(inc)
+    if not critical_email:
         print(f"[EMAIL] Cooldown actif — aucune alerte trafic envoyée")
-        return
-    critical = critical_filtered
+    else:
+        rows = ""
+        for inc in critical_email:
+            sev = inc.get("severity", "low")
+            color = "#e53e3e" if sev == "high" else "#d69e2e" if sev == "med" else "#718096"
+            delay = f"+{inc['delay_minutes']} min" if inc.get("delay_minutes") else "—"
+            rows += f"""
+            <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{inc['route']}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{inc['description']}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{color};">{sev.upper()}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{delay}</td>
+            </tr>
+            """
 
-    rows = ""
-    for inc in critical:
-        sev = inc.get("severity", "low")
-        color = "#e53e3e" if sev == "high" else "#d69e2e" if sev == "med" else "#718096"
-        delay = f"+{inc['delay_minutes']} min" if inc.get("delay_minutes") else "—"
-        rows += f"""
-        <tr>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{inc['route']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{inc['description']}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{color};">{sev.upper()}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{delay}</td>
-        </tr>
+        content = f"""
+        <p style="color:#718096;font-size:13px;margin:0 0 16px 0;">{len(critical_email)} incident(s) critique(s) détecté(s).</p>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;">
+          <thead>
+            <tr style="background:#f7fafc;">
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Route</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Description</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Sévérité</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Retard</th>
+            </tr>
+          </thead>
+          <tbody>{rows}</tbody>
+        </table>
         """
+        html = _build_email_shell(
+            title="Alerte trafic",
+            subtitle=f"{company_name} — incidents critiques",
+            content_html=content,
+            accent="#2c3e50",
+        )
 
-    content = f"""
-    <p style="color:#718096;font-size:13px;margin:0 0 16px 0;">{len(critical)} incident(s) critique(s) détecté(s).</p>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;">
-      <thead>
-        <tr style="background:#f7fafc;">
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Route</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Description</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Sévérité</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Retard</th>
-        </tr>
-      </thead>
-      <tbody>{rows}</tbody>
-    </table>
-    """
-    html = _build_email_shell(
-        title="Alerte trafic",
-        subtitle=f"{company_name} — incidents critiques",
-        content_html=content,
-        accent="#2c3e50",
-    )
-
-    subject = f"[Mah Météo] {len(critical)} incident(s) trafic — {company_name}"
-    _send_email(_get_all_recipients(to_email), subject, html)
+        subject = f"[Mah Météo] {len(critical_email)} incident(s) trafic — {company_name}"
+        _send_email(_get_all_recipients(to_email), subject, html)
 
     if client_id is not None:
         try:
+            critical_push = []
+            for inc in critical:
+                pkey = f"{inc.get('route','?')}:trafic:{inc.get('severity','')}"
+                if _check_push_cooldown(pkey):
+                    critical_push.append(inc)
+            if not critical_push:
+                print(f"[PUSH] Cooldown actif — aucune alerte trafic push envoyée")
+                return
+
             from meteo_saas.backend.database import SessionLocal
             db_push = SessionLocal()
-            retard_max = max((i.get("delay_minutes") or 0) for i in critical)
+            retard_max = max((i.get("delay_minutes") or 0) for i in critical_push)
             envoyer_push_notification(
                 db_session=db_push,
                 client_id=client_id,
@@ -709,9 +748,9 @@ def send_combined_alert(to_email: str, company_name: str, message: str, client_i
     if not message:
         return
 
-    if not _check_cooldown(f"{company_name}:combined"):
+    email_allowed = _check_cooldown(f"{company_name}:combined")
+    if not email_allowed:
         print(f"[EMAIL] Cooldown actif — alerte combinée non envoyée")
-        return
 
     # On accepte encore une chaîne legacy, mais on normalise vers un dict pour le nouveau template.
     if isinstance(message, dict):
@@ -726,11 +765,16 @@ def send_combined_alert(to_email: str, company_name: str, message: str, client_i
 
     html = _html_alerte_combinee(alerte)
 
-    subject = f"[Mah Météo] ALERTE COMBINÉE météo + trafic — {company_name}"
-    _envoyer_email(subject, html, _get_all_recipients(to_email))
+    if email_allowed:
+        subject = f"[Mah Météo] ALERTE COMBINÉE météo + trafic — {company_name}"
+        _envoyer_email(subject, html, _get_all_recipients(to_email))
 
     if client_id is not None:
         try:
+            if not _check_push_cooldown(f"{company_name}:combined"):
+                print(f"[PUSH] Cooldown actif — alerte combinée push non envoyée")
+                return
+
             from meteo_saas.backend.database import SessionLocal
             db_push = SessionLocal()
             envoyer_push_notification(
