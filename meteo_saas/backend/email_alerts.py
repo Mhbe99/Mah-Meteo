@@ -80,6 +80,26 @@ def envoyer_push_notification(
         print(f"[PUSH] Erreur désérialisation VAPID: {e}")
         return 0
 
+    # Diagnostic : la clé publique servie au navigateur (VAPID_PUBLIC_KEY) doit être
+    # EXACTEMENT celle dérivée de VAPID_PRIVATE_KEY, sinon le push service rejette
+    # l'envoi avec "VapidPkHashMismatch" (souscriptions faites avec une clé publique
+    # différente de celle utilisée pour signer).
+    try:
+        from cryptography.hazmat.primitives import serialization
+        derived_pub_bytes = vapid_key_obj.public_key.public_bytes(
+            serialization.Encoding.X962,
+            serialization.PublicFormat.UncompressedPoint,
+        )
+        derived_pub_b64u = base64.urlsafe_b64encode(derived_pub_bytes).decode().rstrip("=")
+        if derived_pub_b64u != vapid_public.rstrip("="):
+            print(
+                "[PUSH] ⚠️ VAPID_PUBLIC_KEY ne correspond PAS à VAPID_PRIVATE_KEY "
+                f"(env={vapid_public[:20]}... / dérivée={derived_pub_b64u[:20]}...) "
+                "→ VapidPkHashMismatch garanti, régénérer une paire cohérente."
+            )
+    except Exception as e:
+        print(f"[PUSH] Diagnostic clé publique impossible: {e}")
+
     try:
         from meteo_saas.backend.database import PushSubscription
         subs = db_session.query(
