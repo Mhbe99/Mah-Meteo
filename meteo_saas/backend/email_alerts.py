@@ -51,10 +51,12 @@ def envoyer_push_notification(
     """
     vapid_private = os.getenv("VAPID_PRIVATE_KEY", "")
     vapid_public = os.getenv("VAPID_PUBLIC_KEY", "")
-    vapid_email = os.getenv(
-        "VAPID_EMAIL",
-        "mailto:support@mah-meteo.fr"
-    )
+
+    # os.getenv(clé, défaut) ne retombe sur le défaut que si la variable est absente,
+    # pas si elle existe mais est vide (cas Render) → on force le fallback ici.
+    vapid_email = (os.getenv("VAPID_EMAIL") or "").strip() or "mailto:support@mah-meteo.fr"
+    if not vapid_email.startswith("mailto:") and not vapid_email.startswith("https://"):
+        vapid_email = f"mailto:{vapid_email}"
 
     if not vapid_private or not vapid_public:
         print("[PUSH] VAPID non configuré → skip")
