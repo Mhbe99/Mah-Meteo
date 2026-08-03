@@ -529,13 +529,29 @@ def _build_email_shell(title: str, subtitle: str, content_html: str, accent: str
 </body></html>"""
 
 
+def _envoyer_email_secours(subject: str, intro: str, lignes: list, to_email: str) -> None:
+    """
+    Email de secours minimal, déclenché UNIQUEMENT quand le push a totalement
+    échoué (0 envoi) — garantit qu'une alerte n'est jamais silencieuse même si
+    VAPID/les abonnements push sont cassés.
+    """
+    items_html = "".join(f"<li>{ligne}</li>" for ligne in lignes)
+    content = f"<p>{intro}</p><ul>{items_html}</ul>"
+    html = _build_email_shell(
+        title="Alerte (secours email — push indisponible)",
+        subtitle="Notification push impossible, envoi de secours",
+        content_html=content,
+        accent="#c53030",
+    )
+    _envoyer_email(subject, html, _get_all_recipients(to_email))
+
+
 # ============ ALERTES MÉTÉO ============
 
 def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id: int | None = None):
     """
-    Envoie une alerte météo par notification push (canal email désactivé pour cette alerte).
+    Envoie une alerte météo par notification push (email uniquement en secours si le push échoue).
     alertes = [{"zone": "Beauvais", "type": "Vent", "valeur": "55 km/h", "message": "..."}]
-    to_email/company_name conservés pour compatibilité de signature avec les appelants existants.
     """
     if not alertes or client_id is None:
         return
@@ -554,7 +570,7 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id:
         from meteo_saas.backend.database import SessionLocal
         db_push = SessionLocal()
         risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes_push)
-        envoyer_push_notification(
+        nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
             titre="[Mah Météo] Alerte météo",
@@ -563,6 +579,18 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id:
             url="/?tab=2"
         )
         db_push.close()
+
+        # Filet de secours : si le push échoue totalement (0 envoi), on retombe sur l'email
+        # pour ne jamais rester complètement silencieux sur une vraie alerte.
+        if nb_push == 0:
+            print("[EMAIL] Fallback : push indisponible → envoi email de secours")
+            lignes = [f"{a['zone']} — {a['type']} : {a['valeur']} ({a['message']})" for a in alertes_push]
+            _envoyer_email_secours(
+                subject=f"[Mah Météo] {len(alertes_push)} alerte(s) météo — {company_name} (secours)",
+                intro=f"{len(alertes_push)} alerte(s) météo détectée(s) sur vos zones — push indisponible, notification de secours.",
+                lignes=lignes,
+                to_email=to_email,
+            )
     except Exception as e:
         print(f"[PUSH] Erreur après alerte météo: {e}")
 
@@ -571,9 +599,8 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id:
 
 def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_id: int | None = None):
     """
-    Envoie une alerte trafic par notification push (canal email désactivé pour cette alerte).
+    Envoie une alerte trafic par notification push (email uniquement en secours si le push échoue).
     incidents = [{"route": "A1", "description": "...", "severity": "high", "delay_minutes": 25}]
-    to_email/company_name conservés pour compatibilité de signature avec les appelants existants.
     """
     if not incidents or client_id is None:
         return
@@ -596,7 +623,7 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_
         from meteo_saas.backend.database import SessionLocal
         db_push = SessionLocal()
         retard_max = max((i.get("delay_minutes") or 0) for i in critical_push)
-        envoyer_push_notification(
+        nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
             titre="[Mah Météo] Incident trafic grave",
@@ -605,6 +632,20 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_
             url="/?tab=2"
         )
         db_push.close()
+
+        # Filet de secours : si le push échoue totalement (0 envoi), on retombe sur l'email.
+        if nb_push == 0:
+            print("[EMAIL] Fallback : push indisponible → envoi email de secours")
+            lignes = [
+                f"{inc['route']} — {inc['description']} ({inc.get('severity','?')}, +{inc.get('delay_minutes') or 0} min)"
+                for inc in critical_push
+            ]
+            _envoyer_email_secours(
+                subject=f"[Mah Météo] {len(critical_push)} incident(s) trafic — {company_name} (secours)",
+                intro=f"{len(critical_push)} incident(s) trafic critique(s) détecté(s) — push indisponible, notification de secours.",
+                lignes=lignes,
+                to_email=to_email,
+            )
     except Exception as e:
         print(f"[PUSH] Erreur après alerte trafic: {e}")
 
@@ -613,8 +654,7 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_
 
 def send_combined_alert(to_email: str, company_name: str, message: str, client_id: int | None = None):
     """
-    Envoie l'alerte combinée météo + trafic par notification push (canal email désactivé pour cette alerte).
-    to_email conservé pour compatibilité de signature avec les appelants existants.
+    Envoie l'alerte combinée météo + trafic par notification push (email uniquement en secours si le push échoue).
     """
     if not message or client_id is None:
         return
@@ -637,7 +677,7 @@ def send_combined_alert(to_email: str, company_name: str, message: str, client_i
 
         from meteo_saas.backend.database import SessionLocal
         db_push = SessionLocal()
-        envoyer_push_notification(
+        nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
             titre="[Mah Météo] Alerte combinée",
@@ -646,6 +686,16 @@ def send_combined_alert(to_email: str, company_name: str, message: str, client_i
             url="/?tab=2"
         )
         db_push.close()
+
+        # Filet de secours : si le push échoue totalement (0 envoi), on retombe sur l'email.
+        if nb_push == 0:
+            print("[EMAIL] Fallback : push indisponible → envoi email de secours")
+            _envoyer_email_secours(
+                subject=f"[Mah Météo] ALERTE COMBINÉE météo + trafic — {company_name} (secours)",
+                intro="Alerte combinée météo + trafic détectée — push indisponible, notification de secours.",
+                lignes=[alerte.get("message") or str(message)],
+                to_email=to_email,
+            )
     except Exception as e:
         print(f"[PUSH] Erreur après alerte combinée: {e}")
 
