@@ -180,21 +180,9 @@ def envoyer_push_notification(
 def _paris_now() -> datetime:
     return datetime.now(PARIS_TZ)
 
-# Cooldown anti-spam : 1 email par clé (zone+type) par heure
-_COOLDOWN_SECONDS = 3600
-_last_sent = {}  # clé = "zone:type" → datetime du dernier envoi
-
-# Cooldown dédié push (plus court) pour ne pas bloquer les notifications mobiles.
+# Cooldown push (5 min par défaut) pour ne pas spammer les notifications mobiles.
 _PUSH_COOLDOWN_SECONDS = int(os.getenv("PUSH_COOLDOWN_SECONDS", "300"))
 _last_push_sent = {}
-
-def _check_cooldown(key: str) -> bool:
-    """Retourne True si on peut envoyer, False si cooldown actif."""
-    last = _last_sent.get(key)
-    if last and (datetime.now() - last).total_seconds() < _COOLDOWN_SECONDS:
-        return False
-    _last_sent[key] = datetime.now()
-    return True
 
 
 def _check_push_cooldown(key: str) -> bool:
@@ -541,247 +529,97 @@ def _build_email_shell(title: str, subtitle: str, content_html: str, accent: str
 </body></html>"""
 
 
-def _html_alerte_combinee(alerte: dict, meteo_data: dict | None = None, trafic_data: dict | None = None) -> str:
-        """Template simple pour l'alerte combinée afin d'éviter les emails trop denses."""
-        meteo_data = meteo_data or {}
-        trafic_data = trafic_data or {}
-        zone = alerte.get("route") or trafic_data.get("route") or "Zone inconnue"
-        retard = int(alerte.get("delay_minutes") or trafic_data.get("delay_minutes") or 0)
-        risques_meteo = alerte.get("risques_meteo") or meteo_data.get("risques_meteo") or alerte.get("message") or ""
-
-        if retard >= 30 or "verglas" in risques_meteo.lower():
-                couleur = "#c53030"
-                niveau = "ÉLEVÉ"
-                emoji_niveau = "🔴"
-        elif retard >= 10 or risques_meteo:
-                couleur = "#dd6b20"
-                niveau = "MODÉRÉ"
-                emoji_niveau = "🟠"
-        else:
-                couleur = "#38a169"
-                niveau = "FAIBLE"
-                emoji_niveau = "🟢"
-
-        return f"""
-<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:0">
-    <div style="background:{couleur};padding:16px 20px;border-radius:8px 8px 0 0">
-        <p style="margin:0;color:white;font-size:18px;font-weight:bold">{emoji_niveau} Alerte combinée — {niveau}</p>
-        <p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:13px">Météo + Trafic simultanés</p>
-    </div>
-
-    <div style="background:#f8f9fa;border:1px solid #e2e8f0;border-top:none;padding:16px 20px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:white;border-radius:6px;border-left:4px solid {couleur}">
-            <span style="font-size:20px">🚗</span>
-            <div>
-                <p style="margin:0;font-weight:bold;font-size:13px;color:#2d3748">{zone}</p>
-                <p style="margin:2px 0 0;font-size:12px;color:#718096">Retard estimé : <strong>+{retard} min</strong></p>
-            </div>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:white;border-radius:6px;border-left:4px solid #3498db">
-            <span style="font-size:20px">🌤️</span>
-            <div>
-                <p style="margin:0;font-weight:bold;font-size:13px;color:#2d3748">Conditions météo actives</p>
-                <p style="margin:2px 0 0;font-size:12px;color:#718096">{risques_meteo if risques_meteo else 'Conditions dégradées'}</p>
-            </div>
-        </div>
-    </div>
-
-    <div style="background:{couleur};opacity:0.08;border:1px solid #e2e8f0;border-top:none;padding:10px 20px;border-radius:0 0 8px 8px">
-        <p style="margin:0;font-size:12px;color:#4a5568;text-align:center">{"⚠️ Prévoir un itinéraire alternatif" if retard >= 30 else "ℹ️ Adapter l'heure de départ si possible"}</p>
-    </div>
-
-    <p style="text-align:center;font-size:11px;color:#a0aec0;margin-top:12px">Mah Météo · <a href="{os.getenv('RENDER_URL', '#')}" style="color:#3498db">Voir le dashboard</a></p>
-</div>
-"""
-
-
 # ============ ALERTES MÉTÉO ============
 
 def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id: int | None = None):
     """
-    Envoie un email d'alerte météo.
+    Envoie une alerte météo par notification push (canal email désactivé pour cette alerte).
     alertes = [{"zone": "Beauvais", "type": "Vent", "valeur": "55 km/h", "message": "..."}]
+    to_email/company_name conservés pour compatibilité de signature avec les appelants existants.
     """
-    if not alertes:
+    if not alertes or client_id is None:
         return
 
-    # Filtrer par cooldown email (1 email/heure/zone)
-    alertes_email = []
-    for a in alertes:
-        key = f"{a.get('zone','?')}:meteo:{a.get('type','')}"
-        if _check_cooldown(key):
-            alertes_email.append(a)
-    if not alertes_email:
-        print(f"[EMAIL] Cooldown actif — aucune alerte météo envoyée")
-    else:
-        rows = ""
-        for a in alertes_email:
-            color = "#e53e3e" if "fort" in a.get("type", "").lower() else "#d69e2e"
-            rows += f"""
-            <tr>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['zone']}</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['type']}</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{color};">{a['valeur']}</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{a['message']}</td>
-            </tr>
-            """
+    try:
+        # Cooldown push (5 min par défaut) pour éviter le spam de notifications.
+        alertes_push = []
+        for a in alertes:
+            pkey = f"{a.get('zone','?')}:meteo:{a.get('type','')}"
+            if _check_push_cooldown(pkey):
+                alertes_push.append(a)
+        if not alertes_push:
+            print(f"[PUSH] Cooldown actif — aucune alerte météo push envoyée")
+            return
 
-        content = f"""
-        <p style="color:#718096;font-size:13px;margin:0 0 16px 0;">{len(alertes_email)} alerte(s) détectée(s) sur vos zones.</p>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;">
-          <thead>
-            <tr style="background:#f7fafc;">
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Zone</th>
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Type</th>
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Valeur</th>
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Message</th>
-            </tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>
-        """
-        html = _build_email_shell(
-            title="Alerte météo",
-            subtitle=f"{company_name} — surveillance active",
-            content_html=content,
-            accent="#2c3e50",
+        from meteo_saas.backend.database import SessionLocal
+        db_push = SessionLocal()
+        risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes_push)
+        envoyer_push_notification(
+            db_session=db_push,
+            client_id=client_id,
+            titre="[Mah Météo] Alerte météo",
+            corps=risques_detectes,
+            type_alerte="meteo",
+            url="/?tab=2"
         )
-
-        subject = f"[Mah Météo] {len(alertes_email)} alerte(s) météo — {company_name}"
-        _send_email(_get_all_recipients(to_email), subject, html)
-
-    if client_id is not None:
-        try:
-            # Cooldown push séparé pour éviter qu'un blocage email coupe les notifications.
-            alertes_push = []
-            for a in alertes:
-                pkey = f"{a.get('zone','?')}:meteo:{a.get('type','')}"
-                if _check_push_cooldown(pkey):
-                    alertes_push.append(a)
-            if not alertes_push:
-                print(f"[PUSH] Cooldown actif — aucune alerte météo push envoyée")
-                return
-
-            from meteo_saas.backend.database import SessionLocal
-            db_push = SessionLocal()
-            risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes_push)
-            envoyer_push_notification(
-                db_session=db_push,
-                client_id=client_id,
-                titre="[Mah Météo] Alerte météo",
-                corps=risques_detectes,
-                type_alerte="meteo",
-                url="/?tab=2"
-            )
-            db_push.close()
-        except Exception as e:
-            print(f"[PUSH] Erreur après alerte météo: {e}")
+        db_push.close()
+    except Exception as e:
+        print(f"[PUSH] Erreur après alerte météo: {e}")
 
 
 # ============ ALERTES TRAFIC ============
 
 def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_id: int | None = None):
     """
-    Envoie un email d'alerte trafic.
+    Envoie une alerte trafic par notification push (canal email désactivé pour cette alerte).
     incidents = [{"route": "A1", "description": "...", "severity": "high", "delay_minutes": 25}]
+    to_email/company_name conservés pour compatibilité de signature avec les appelants existants.
     """
-    if not incidents:
+    if not incidents or client_id is None:
         return
 
-    # Filtrer : envoyer uniquement les incidents sévères (high ou delay > 15 min)
+    # Filtrer : uniquement les incidents sévères (high ou delay > 15 min)
     critical = [i for i in incidents if i.get("severity") == "high" or (i.get("delay_minutes") or 0) > 15]
     if not critical:
         return
 
-    # Filtrer par cooldown email (1 email/heure/route)
-    critical_email = []
-    for inc in critical:
-        key = f"{inc.get('route','?')}:trafic:{inc.get('severity','')}"
-        if _check_cooldown(key):
-            critical_email.append(inc)
-    if not critical_email:
-        print(f"[EMAIL] Cooldown actif — aucune alerte trafic envoyée")
-    else:
-        rows = ""
-        for inc in critical_email:
-            sev = inc.get("severity", "low")
-            color = "#e53e3e" if sev == "high" else "#d69e2e" if sev == "med" else "#718096"
-            delay = f"+{inc['delay_minutes']} min" if inc.get("delay_minutes") else "—"
-            rows += f"""
-            <tr>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{inc['route']}</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{inc['description']}</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;color:{color};">{sev.upper()}</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">{delay}</td>
-            </tr>
-            """
+    try:
+        critical_push = []
+        for inc in critical:
+            pkey = f"{inc.get('route','?')}:trafic:{inc.get('severity','')}"
+            if _check_push_cooldown(pkey):
+                critical_push.append(inc)
+        if not critical_push:
+            print(f"[PUSH] Cooldown actif — aucune alerte trafic push envoyée")
+            return
 
-        content = f"""
-        <p style="color:#718096;font-size:13px;margin:0 0 16px 0;">{len(critical_email)} incident(s) critique(s) détecté(s).</p>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;">
-          <thead>
-            <tr style="background:#f7fafc;">
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Route</th>
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Description</th>
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Sévérité</th>
-              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#4a5568;">Retard</th>
-            </tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>
-        """
-        html = _build_email_shell(
-            title="Alerte trafic",
-            subtitle=f"{company_name} — incidents critiques",
-            content_html=content,
-            accent="#2c3e50",
+        from meteo_saas.backend.database import SessionLocal
+        db_push = SessionLocal()
+        retard_max = max((i.get("delay_minutes") or 0) for i in critical_push)
+        envoyer_push_notification(
+            db_session=db_push,
+            client_id=client_id,
+            titre="[Mah Météo] Incident trafic grave",
+            corps=f"Retard +{retard_max} min détecté",
+            type_alerte="trafic",
+            url="/?tab=2"
         )
-
-        subject = f"[Mah Météo] {len(critical_email)} incident(s) trafic — {company_name}"
-        _send_email(_get_all_recipients(to_email), subject, html)
-
-    if client_id is not None:
-        try:
-            critical_push = []
-            for inc in critical:
-                pkey = f"{inc.get('route','?')}:trafic:{inc.get('severity','')}"
-                if _check_push_cooldown(pkey):
-                    critical_push.append(inc)
-            if not critical_push:
-                print(f"[PUSH] Cooldown actif — aucune alerte trafic push envoyée")
-                return
-
-            from meteo_saas.backend.database import SessionLocal
-            db_push = SessionLocal()
-            retard_max = max((i.get("delay_minutes") or 0) for i in critical_push)
-            envoyer_push_notification(
-                db_session=db_push,
-                client_id=client_id,
-                titre="[Mah Météo] Incident trafic grave",
-                corps=f"Retard +{retard_max} min détecté",
-                type_alerte="trafic",
-                url="/?tab=2"
-            )
-            db_push.close()
-        except Exception as e:
-            print(f"[PUSH] Erreur après alerte trafic: {e}")
+        db_push.close()
+    except Exception as e:
+        print(f"[PUSH] Erreur après alerte trafic: {e}")
 
 
 # ============ ALERTE COMBINÉE MÉTÉO + TRAFIC ============
 
 def send_combined_alert(to_email: str, company_name: str, message: str, client_id: int | None = None):
     """
-    Envoie l'alerte combinée météo + trafic par email.
+    Envoie l'alerte combinée météo + trafic par notification push (canal email désactivé pour cette alerte).
+    to_email conservé pour compatibilité de signature avec les appelants existants.
     """
-    if not message:
+    if not message or client_id is None:
         return
 
-    email_allowed = _check_cooldown(f"{company_name}:combined")
-    if not email_allowed:
-        print(f"[EMAIL] Cooldown actif — alerte combinée non envoyée")
-
-    # On accepte encore une chaîne legacy, mais on normalise vers un dict pour le nouveau template.
+    # On accepte encore une chaîne legacy, mais on normalise vers un dict pour rester cohérent avec l'ancien template.
     if isinstance(message, dict):
         alerte = dict(message)
     else:
@@ -792,31 +630,24 @@ def send_combined_alert(to_email: str, company_name: str, message: str, client_i
             "message": str(message),
         }
 
-    html = _html_alerte_combinee(alerte)
+    try:
+        if not _check_push_cooldown(f"{company_name}:combined"):
+            print(f"[PUSH] Cooldown actif — alerte combinée push non envoyée")
+            return
 
-    if email_allowed:
-        subject = f"[Mah Météo] ALERTE COMBINÉE météo + trafic — {company_name}"
-        _envoyer_email(subject, html, _get_all_recipients(to_email))
-
-    if client_id is not None:
-        try:
-            if not _check_push_cooldown(f"{company_name}:combined"):
-                print(f"[PUSH] Cooldown actif — alerte combinée push non envoyée")
-                return
-
-            from meteo_saas.backend.database import SessionLocal
-            db_push = SessionLocal()
-            envoyer_push_notification(
-                db_session=db_push,
-                client_id=client_id,
-                titre="[Mah Météo] Alerte combinée",
-                corps=alerte.get("message") or str(message),
-                type_alerte="danger",
-                url="/?tab=2"
-            )
-            db_push.close()
-        except Exception as e:
-            print(f"[PUSH] Erreur après alerte combinée: {e}")
+        from meteo_saas.backend.database import SessionLocal
+        db_push = SessionLocal()
+        envoyer_push_notification(
+            db_session=db_push,
+            client_id=client_id,
+            titre="[Mah Météo] Alerte combinée",
+            corps=alerte.get("message") or str(message),
+            type_alerte="danger",
+            url="/?tab=2"
+        )
+        db_push.close()
+    except Exception as e:
+        print(f"[PUSH] Erreur après alerte combinée: {e}")
 
 
 def send_pollution_alert(to_email: str, company_name: str, zones_alertes: list, state_file: str = "exports/last_pollution_alert.json") -> bool:
