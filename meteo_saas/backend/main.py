@@ -2034,6 +2034,48 @@ async def get_vapid_public_key():
     return {"public_key": key}
 
 
+@app.get("/api/push/subscriptions/{client_id}")
+async def list_push_subscriptions(
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Diagnostic : liste les abonnements push en base pour le client (sans exposer les clés)."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    from urllib.parse import urlparse
+    subs = db.query(PushSubscription).filter(PushSubscription.client_id == client_id).all()
+    return {
+        "total": len(subs),
+        "subscriptions": [
+            {
+                "id": s.id,
+                "endpoint_host": urlparse(s.endpoint).netloc,
+                "created_at": s.created_at,
+            }
+            for s in subs
+        ],
+    }
+
+
+@app.delete("/api/push/subscriptions/{client_id}")
+async def clear_push_subscriptions(
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Supprime tous les abonnements push du client pour repartir sur une base propre."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    deleted = db.query(PushSubscription).filter(
+        PushSubscription.client_id == client_id
+    ).delete(synchronize_session=False)
+    db.commit()
+    return {"status": "ok", "deleted": deleted}
+
+
 @app.post("/api/push/test/{client_id}")
 async def test_push_notification(
     client_id: int,
