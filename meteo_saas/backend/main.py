@@ -2076,6 +2076,27 @@ async def clear_push_subscriptions(
     return {"status": "ok", "deleted": deleted}
 
 
+@app.delete("/api/push/subscriptions/{client_id}/{subscription_id}")
+async def delete_one_push_subscription(
+    client_id: int,
+    subscription_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Supprime un seul abonnement push (par id), pour retirer un appareil cassé sans toucher aux autres."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    deleted = db.query(PushSubscription).filter(
+        PushSubscription.id == subscription_id,
+        PushSubscription.client_id == client_id,
+    ).delete(synchronize_session=False)
+    db.commit()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Abonnement introuvable")
+    return {"status": "ok", "deleted": deleted}
+
+
 @app.post("/api/push/test/{client_id}")
 async def test_push_notification(
     client_id: int,

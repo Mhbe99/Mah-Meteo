@@ -150,15 +150,25 @@ def envoyer_push_notification(
             # VapidPkHashMismatch = abonnement créé avec une ancienne clé publique VAPID,
             # ne fonctionnera plus jamais tant que l'appareil ne se réabonne pas.
             body_text = ""
+            headers_utiles = {}
             try:
-                body_text = e.response.text if e.response is not None else ""
+                if e.response is not None:
+                    body_text = e.response.text
+                    # WNS (Microsoft/Edge) renvoie souvent un corps vide mais détaille
+                    # la raison du rejet dans des en-têtes X-WNS-* — sinon invisibles.
+                    headers_utiles = {
+                        k: v for k, v in e.response.headers.items()
+                        if k.lower().startswith("x-wns") or k.lower() in ("www-authenticate", "link")
+                    }
             except Exception:
-                body_text = ""
+                pass
             if code in (404, 410) or "VapidPkHashMismatch" in body_text:
                 print(f"[PUSH] Souscription expirée/obsolète (code={code}) → suppression")
                 a_supprimer.append(sub.id)
             else:
                 print(f"[PUSH] Erreur envoi: {e}")
+                if headers_utiles:
+                    print(f"[PUSH] Détail en-têtes réponse: {headers_utiles}")
 
         except Exception as e:
             print(f"[PUSH] Exception: {e}")
