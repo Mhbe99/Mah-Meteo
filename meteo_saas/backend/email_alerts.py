@@ -140,7 +140,10 @@ def envoyer_push_notification(
                 vapid_private_key=vapid_key_obj,
                 vapid_claims={
                     "sub": vapid_email
-                }
+                },
+                # ttl=0 (défaut pywebpush) est rejeté par Microsoft WNS/Edge :
+                # "Ttl value conflicts with X-WNS-Cache-Policy." (FCM/Chrome tolère 0).
+                ttl=3600
             )
             succes += 1
             print(f"[PUSH] Envoyé : {titre[:40]}")
