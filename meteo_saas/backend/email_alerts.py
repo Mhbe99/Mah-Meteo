@@ -147,8 +147,15 @@ def envoyer_push_notification(
 
         except WebPushException as e:
             code = getattr(e.response, 'status_code', None)
-            if code in (404, 410):
-                print(f"[PUSH] Souscription expirée → suppression")
+            # VapidPkHashMismatch = abonnement créé avec une ancienne clé publique VAPID,
+            # ne fonctionnera plus jamais tant que l'appareil ne se réabonne pas.
+            body_text = ""
+            try:
+                body_text = e.response.text if e.response is not None else ""
+            except Exception:
+                body_text = ""
+            if code in (404, 410) or "VapidPkHashMismatch" in body_text:
+                print(f"[PUSH] Souscription expirée/obsolète (code={code}) → suppression")
                 a_supprimer.append(sub.id)
             else:
                 print(f"[PUSH] Erreur envoi: {e}")
