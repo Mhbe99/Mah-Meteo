@@ -96,21 +96,18 @@ def get_icon(category: int) -> str:
     return icons.get(category, "[OTHER]")
 
 
-def send_email_trafic_batch(incidents: list):
+def send_email_trafic_batch(incidents: list, client_id: int | None = None):
     """
-    Envoie UN SEUL email récapitulatif groupé par type (accidents, bouchons, travaux, etc.).
+    Envoie UNE SEULE notification push récapitulative (accidents, bouchons, travaux, etc.).
     Cooldown global de 1h stocké en base PostgreSQL (survit aux redémarrages Render).
-    Filtre : seulement les incidents HIGH et MED — les LOW sont exclus de l'email.
+    Filtre : seulement les incidents HIGH et MED — les LOW sont exclus.
     """
-    receivers_str = os.getenv("RECEIVER_EMAILS", "")
-    receivers = [r.strip() for r in receivers_str.split(",") if r.strip()]
-
-    if not receivers:
-        print("[TRAFIC] RECEIVER_EMAILS vide — email non envoyé")
-        return
-
     if not incidents:
         print("[TRAFIC] Aucun incident à notifier")
+        return
+
+    if client_id is None:
+        print("[TRAFIC] client_id manquant — push non envoyé")
         return
 
     # Tous les niveaux inclus (HIGH, MED, LOW/bouchons) — les bouchons impactent les tournées GEODIS
@@ -134,7 +131,7 @@ def send_email_trafic_batch(incidents: list):
             if last_entry:
                 delta_sec = (datetime.datetime.utcnow() - last_entry.timestamp).total_seconds()
                 if delta_sec < COOLDOWN_SECONDS:
-                    print(f"[TRAFIC] Cooldown email actif ({int(delta_sec)}s/{COOLDOWN_SECONDS}s) — email ignoré")
+                    print(f"[TRAFIC] Cooldown push actif ({int(delta_sec)}s/{COOLDOWN_SECONDS}s) — push ignoré")
                     return
         finally:
             db.close()
@@ -156,113 +153,41 @@ def send_email_trafic_batch(incidents: list):
         except Exception:
             pass
 
-    now_str = datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')
-
-    # --- Grouper par type ---
-    from collections import defaultdict
-    groups = defaultdict(list)
-    type_labels = {
-        "[CRASH]": ("Accidents", "#e53e3e", "🚗"),
-        "[TRAFFIC]": ("Congestion", "#dd6b20", "🚦"),
-        "[WORK]": ("Travaux", "#3182ce", "🚧"),
-        "[CLOSED]": ("Routes fermées", "#6b21a8", "⛔"),
-        "[HAZARD]": ("Dangers", "#b45309", "⚠️"),
-        "[OTHER]": ("Autres", "#718096", "📌"),
-    }
-    for inc in incidents:
-        groups[inc.get("icon", "[OTHER]")].append(inc)
-
     total = len(incidents)
     high_count = sum(1 for i in incidents if i["severity"] == "high")
-    med_count = sum(1 for i in incidents if i["severity"] == "med")
     retard_max = max((i["delay_minutes"] for i in incidents), default=0)
 
-    sev_dot = {"high": "🔴", "med": "🟠", "low": "🟡"}
+    titre = f"[Mah Météo] {high_count} incident(s) sévère(s) trafic" if high_count else f"[Mah Météo] {total} incident(s) trafic"
+    corps = f"{total} incident(s) signalé(s) — retard max +{retard_max} min"
 
-    # --- Construire les cartes par incident ---
-    sections_html = ""
-    for icon_key, (label, color, emoji) in type_labels.items():
-        inc_list = groups.get(icon_key)
-        if not inc_list:
-            continue
-
-        cards = ""
-        for inc in inc_list:
-            dot = sev_dot.get(inc["severity"], "⚪")
-            delay_txt = f"+{inc['delay_minutes']} min" if inc["delay_minutes"] > 0 else "—"
-            cards += f"""
-            <div style="padding:12px 16px;border-bottom:1px solid #edf2f7;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <div style="font-size:13px;font-weight:600;color:#1a202c;">{inc['route']}</div>
-                  <div style="font-size:12px;color:#4a5568;margin-top:3px;">{inc['description']}</div>
-                </div>
-                <div style="text-align:right;white-space:nowrap;margin-left:12px;">
-                  <div style="font-size:13px;font-weight:700;color:#e53e3e;">{delay_txt}</div>
-                  <div style="font-size:11px;color:#718096;">{dot} {inc.get('zone_source','')}</div>
-                </div>
-              </div>
-            </div>"""
-
-        sections_html += f"""
-        <div style="margin-bottom:16px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
-          <div style="background:{color};padding:8px 16px;color:#fff;font-size:13px;font-weight:600;">
-            {emoji} {label} ({len(inc_list)})
-          </div>
-          {cards}
-        </div>"""
-
-    subject = f"Trafic — {total} incident(s)"
-    if high_count:
-        subject = f"Trafic — {high_count} incident(s) sévère(s) / {total} au total"
-
-    content_html = f"""
-        <div style="padding:2px 0 10px 0;display:flex;gap:8px;border-bottom:1px solid #edf2f7;">
-            <div style="flex:1;text-align:center;padding:10px 0;">
-                <div style="font-size:24px;font-weight:700;color:#2d3748;">{total}</div>
-                <div style="font-size:10px;color:#718096;text-transform:uppercase;">incidents</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:10px 0;border-left:1px solid #edf2f7;border-right:1px solid #edf2f7;">
-                <div style="font-size:24px;font-weight:700;color:#e53e3e;">{high_count}</div>
-                <div style="font-size:10px;color:#718096;text-transform:uppercase;">sévères</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:10px 0;">
-                <div style="font-size:24px;font-weight:700;color:#dd6b20;">+{retard_max}<span style="font-size:12px;"> min</span></div>
-                <div style="font-size:10px;color:#718096;text-transform:uppercase;">retard max</div>
-            </div>
-        </div>
-        <div style="padding-top:14px;">{sections_html}</div>
-        """
-    body = f"""<!DOCTYPE html>
-<html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>
-<body style=\"margin:0;padding:0;background:#eef1f5;font-family:'Segoe UI',Arial,sans-serif;\">
-    <div style=\"max-width:680px;margin:24px auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;\">
-        <div style=\"background:#2c3e50;padding:16px 20px;\">
-            <div style=\"font-size:11px;color:#cbd5e0;text-transform:uppercase;letter-spacing:1px;\">Mah Météo</div>
-            <div style=\"font-size:18px;color:#fff;font-weight:700;margin-top:4px;\">Alerte trafic</div>
-            <div style=\"font-size:12px;color:#e2e8f0;margin-top:2px;\">Synthèse du {now_str}</div>
-        </div>
-        <div style=\"padding:18px 20px;color:#2d3748;font-size:13px;line-height:1.55;\">{content_html}</div>
-        <div style=\"padding:12px 20px;background:#f7fafc;border-top:1px solid #e2e8f0;color:#718096;font-size:11px;\">
-            Mah Météo GEODIS · Généré automatiquement · {now_str}
-        </div>
-    </div>
-</body></html>"""
-
-    # Envoi via Brevo API (ou SMTP fallback) — même canal que les alertes météo
-    from meteo_saas.backend.email_alerts import _envoyer_email
-    sent = _envoyer_email(subject, body, receivers)
-    if not sent:
-        print(f"[TRAFIC] ❌ Email trafic non envoyé (voir logs email_alerts)")
+    try:
+        from meteo_saas.backend.email_alerts import envoyer_push_notification
+        from meteo_saas.backend.database import SessionLocal
+        db_push = SessionLocal()
+        nb_push = envoyer_push_notification(
+            db_session=db_push,
+            client_id=client_id,
+            titre=titre,
+            corps=corps,
+            type_alerte="trafic",
+            url="/?tab=2"
+        )
+        db_push.close()
+    except Exception as e:
+        print(f"[TRAFIC] Erreur envoi push: {e}")
         return
 
-    # Si on arrive ici, l'email a été envoyé avec succès — enregistrer le cooldown
+    if not nb_push:
+        print("[TRAFIC] ❌ Push trafic non envoyé (voir logs email_alerts)")
+        return
+
+    # Si on arrive ici, le push a été envoyé avec succès — enregistrer le cooldown
     try:
         from meteo_saas.backend.database import SessionLocal, AlerteLog
         db = SessionLocal()
         try:
             entry = AlerteLog(
-                client_id=1,
+                client_id=client_id,
                 zone_name="_system",
                 type_alerte="trafic_batch_email",
                 valeur=str(total),
@@ -329,7 +254,7 @@ def archiver_incidents(incidents: list):
         print(f"[TRAFIC] Erreur archivage incidents : {e}")
 
 
-def get_incidents(zones: list, test_mode: bool = False) -> dict:
+def get_incidents(zones: list, test_mode: bool = False, client_id: int | None = None) -> dict:
     """
     Récupère les incidents trafic TomTom pour chaque zone individuellement.
     Boucle sur chaque zone avec rayon 30km, déduplique les incidents,
@@ -359,10 +284,10 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
     if cache_valid and cached_incidents is not None:
         # Cache valide (< 30min) — utiliser les données
         # MAIS: appeler send_email_trafic_batch() avec son propre cooldown 1h
-        # (le cache n'empêche PAS l'email, juste l'API TomTom)
+        # (le cache n'empêche PAS le push, juste l'API TomTom)
         _smtp_unreachable = False
         if cached_incidents and not _smtp_unreachable:
-            send_email_trafic_batch(cached_incidents)
+            send_email_trafic_batch(cached_incidents, client_id=client_id)
         
         retard_max = max([inc["delay_minutes"] for inc in cached_incidents], default=0) if cached_incidents else 0
         return {
@@ -566,10 +491,10 @@ def get_incidents(zones: list, test_mode: bool = False) -> dict:
             key=lambda x: order.get(x["severity"], 3)
         )
 
-        # Envoyer UN email synthèse avec TOUS les incidents
+        # Envoyer UNE notification push synthèse avec TOUS les incidents
         _smtp_unreachable = False  # Reset pour ce cycle
         if incidents_list and not _smtp_unreachable:
-            send_email_trafic_batch(incidents_list)
+            send_email_trafic_batch(incidents_list, client_id=client_id)
 
         # Archiver incidents dans JSON historique
         if incidents_list:

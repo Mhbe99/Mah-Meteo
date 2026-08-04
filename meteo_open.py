@@ -489,17 +489,17 @@ def fetch_aqi_batch(zone_names: list, zone_coords: list) -> list:
         return [{"aqi": None, "label": "Inconnu", "pm25": None, "pm10": None}] * len(zone_coords)
 
 
-def send_email_pollution(zones_alertes: list):
+def send_email_pollution(zones_alertes: list, client_id: int = 1):
     """
-    Envoie une alerte email pollution quand AQI >= 40 (3 seuils).
+    Envoie une notification push pollution quand AQI >= 40 (3 seuils).
     zones_alertes = [{"zone": str, "aqi": float, "label": str, "pm25": float}, ...]
-    
+
     Seuils et cooldowns:
     - AQI 40-59: Modéré (🟠 orange) — cooldown 6h
-    - AQI 60-79: Mauvais (🔴 rouge) — cooldown 3h  
+    - AQI 60-79: Mauvais (🔴 rouge) — cooldown 3h
     - AQI 80+: Très mauvais (🔴⛔ bordeaux) — cooldown 1h
     """
-    if not zones_alertes or not RECEIVER_EMAILS:
+    if not zones_alertes:
         return
     try:
         sent = send_pollution_alert(
@@ -507,13 +507,14 @@ def send_email_pollution(zones_alertes: list):
             company_name="GEODIS",
             zones_alertes=zones_alertes,
             state_file="exports/last_pollution_alert.json",
+            client_id=client_id,
         )
         if sent:
-            print(f"[POLLUTION] Alerte pollution envoyée -> {len(RECEIVER_EMAILS)} destinataires")
+            print(f"[POLLUTION] Alerte pollution envoyée en push (client {client_id})")
         else:
             print("[POLLUTION] Alerte pollution non envoyée (cooldown/config)")
     except Exception as e:
-        print(f"[POLLUTION] Erreur email: {e}")
+        print(f"[POLLUTION] Erreur push: {e}")
 
 
 def _executer_pour_client(client):
@@ -622,7 +623,7 @@ def _executer_pour_client(client):
         max_aqi = max([z["aqi"] for z in sites_pollution])
         alert_lvl = "Très mauvais (80+)" if max_aqi >= 80 else ("Mauvais (60-79)" if max_aqi >= 60 else "Modéré (40-59)")
         print(f"[POLLUTION] ⚠️ {len(sites_pollution)} site(s) en alerte ({alert_lvl}) — envoi email")
-        send_email_pollution(sites_pollution)
+        send_email_pollution(sites_pollution, client_id=client_id)
     else:
         print(f"[POLLUTION] ✅ Qualité de l'air correcte sur tous les sites (AQI < 40)")
 

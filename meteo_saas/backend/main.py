@@ -824,7 +824,7 @@ def get_trafic_route(client_id: int, current_client: int = Depends(get_current_c
 
     # Récupérer les incidents TomTom — passage en mode RÉEL (test_mode=False)
     from .trafic import get_incidents, get_alerte_combinee
-    trafic_response = get_incidents(zones_list, test_mode=False)
+    trafic_response = get_incidents(zones_list, test_mode=False, client_id=client_id)
     incidents_list = trafic_response.get("incidents", [])
 
     # Récupérer les risques météo actifs pour alerte combinée
@@ -1006,7 +1006,7 @@ def _try_send_bulletin_with_current_data(client_id: int, db: Session) -> None:
                 {"name": z.name, "lat": z.lat, "lon": z.lon, "type": z.type}
                 for z in zones
             ]
-            trafic_data = get_incidents(zones_list, test_mode=False)
+            trafic_data = get_incidents(zones_list, test_mode=False, client_id=client_id)
             incidents = trafic_data.get("incidents", [])
         except Exception:
             incidents = []
