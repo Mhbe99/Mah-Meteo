@@ -589,7 +589,7 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id:
         nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
-            titre="[Mah Météo] Alerte météo",
+            titre="Alerte météo",
             corps=risques_detectes,
             type_alerte="meteo",
             url="/?tab=2"
@@ -642,7 +642,7 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_
         nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
-            titre="[Mah Météo] Incident trafic grave",
+            titre="Incident trafic grave",
             corps=f"Retard +{retard_max} min détecté",
             type_alerte="trafic",
             url="/?tab=2"
@@ -696,7 +696,7 @@ def send_combined_alert(to_email: str, company_name: str, message: str, client_i
         nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
-            titre="[Mah Météo] Alerte combinée",
+            titre="Alerte combinée",
             corps=alerte.get("message") or str(message),
             type_alerte="danger",
             url="/?tab=2"
@@ -760,7 +760,7 @@ def send_pollution_alert(to_email: str, company_name: str, zones_alertes: list, 
             pass
 
     zones_txt = ", ".join(f"{z.get('zone','?')} ({round(z.get('aqi', 0))})" for z in zones_alertes)
-    titre = f"[Mah Météo] Alerte pollution — {max_level}"
+    titre = f"Alerte pollution — {max_level}"
     corps = f"{len(zones_alertes)} site(s) concerné(s) : {zones_txt}"
 
     try:

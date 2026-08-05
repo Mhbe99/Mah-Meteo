@@ -157,7 +157,7 @@ def send_email_trafic_batch(incidents: list, client_id: int | None = None):
     high_count = sum(1 for i in incidents if i["severity"] == "high")
     retard_max = max((i["delay_minutes"] for i in incidents), default=0)
 
-    titre = f"[Mah Météo] {high_count} incident(s) sévère(s) trafic" if high_count else f"[Mah Météo] {total} incident(s) trafic"
+    titre = f"{high_count} incident(s) sévère(s) trafic" if high_count else f"{total} incident(s) trafic"
     corps = f"{total} incident(s) signalé(s) — retard max +{retard_max} min"
 
     try:
