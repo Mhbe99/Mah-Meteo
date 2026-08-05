@@ -2161,6 +2161,34 @@ async def test_push_notification(
     }
 
 
+@limiter.limit("5/minute")
+@app.post("/api/email/test/{client_id}")
+async def test_email_notification(
+    request: Request,
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Envoie un email de test pur (sans logique d'alerte) pour valider Brevo/SMTP."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.email:
+        raise HTTPException(status_code=404, detail="Client introuvable ou sans email")
+
+    from .email_alerts import _envoyer_email
+    ok = _envoyer_email(
+        subject="[Mah Météo] Test envoi email",
+        html_content="<p>Ceci est un email de test pour valider la configuration Brevo/SMTP.</p>",
+        to_emails=[client.email],
+    )
+    return {
+        "status": "ok" if ok else "echec",
+        "email_envoye": ok
+    }
+
+
 @app.head("/")
 async def head_root():
     """FIX: Répond aux HEAD requests pour health checks UptimeRobot/Render"""
