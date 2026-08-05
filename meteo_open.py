@@ -386,6 +386,11 @@ def get_risk_icons(temp, wind, rain, uv, test_mode=False):
         u = float(uv)
         if t < 1 and r > 0 and datetime.datetime.now().month in [11, 12, 1, 2]:
             risk.append("❄️ Verglas")
+        # Aligné avec le backend SaaS (main.py _risk_text): aucune détection canicule
+        # n'existait ici avant — confirmé absent depuis toujours (aucune trace en historique
+        # Git ni dans les emails reçus), malgré des pics réels à 35-36°C non détectés.
+        if t >= 35:
+            risk.append("🔴 Canicule")
     except:
         w = wind
         r = rain
