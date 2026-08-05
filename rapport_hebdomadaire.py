@@ -157,6 +157,7 @@ def _collect_alertes_direct_jwt_scan(max_client_id):
     """Fallback Render: scan des client_id actifs en JWT local quand /api/service/* renvoie 403."""
     alertes = []
     active_client_ids = []
+    nb_401 = 0  # Token local rejeté — signe probable d'un JWT_SECRET différent de celui de Render.
 
     for cid in range(1, max_client_id + 1):
         token_c = _build_local_client_token(cid)
@@ -186,10 +187,20 @@ def _collect_alertes_direct_jwt_scan(max_client_id):
                 })
             continue
 
-        if ra.status_code in (401, 403, 404):
+        if ra.status_code == 401:
+            nb_401 += 1
+            continue
+
+        if ra.status_code in (403, 404):
             continue
 
         print(f"⚠️ Alertes client {cid} indisponibles: HTTP {ra.status_code}")
+
+    if not active_client_ids and nb_401 > 0:
+        print(
+            f"⚠️ {nb_401} client(s) rejeté(s) en 401 — vérifier que JWT_SECRET "
+            "(GitHub Actions) correspond exactement à JWT_SECRET/SECRET_KEY sur Render."
+        )
 
     return alertes, active_client_ids
 
@@ -729,6 +740,13 @@ def generer_excel(alertes_semaine, stats):
             cell_value.alignment = Alignment(horizontal="center")
             
             row += 1
+
+        if stats['total_alertes'] == 0:
+            ws_synthese.merge_cells('A10:F10')
+            ws_synthese['A10'] = "Aucune alerte détectée sur la période. Le rapport est généré avec les données météo et le suivi des zones, mais sans historique d'alertes à afficher."
+            ws_synthese['A10'].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            ws_synthese['A10'].font = Font(bold=True, color="7b341e")
+            ws_synthese['A10'].fill = PatternFill(start_color="fffaf0", end_color="fffaf0", fill_type="solid")
         
         # Risques
         ws_synthese['A11'] = "RISQUES DETECTES"
@@ -952,18 +970,25 @@ def generer_excel(alertes_semaine, stats):
             ws_historique[f'{col}1'].fill = PatternFill(start_color="34495e", end_color="34495e", fill_type="solid")
         
         hist_row = 2
-        for alerte in sorted(alertes_semaine, key=lambda x: x.get("timestamp", ""), reverse=True):
-            ws_historique[f'A{hist_row}'] = alerte.get("date", "")
-            ws_historique[f'B{hist_row}'] = alerte.get("heure", "")
-            ws_historique[f'C{hist_row}'] = _strip_report_emojis(alerte.get("zone", ""))
-            ws_historique[f'D{hist_row}'] = _strip_report_emojis(alerte.get("risques", ""))
-            ws_historique[f'E{hist_row}'] = f"T:{alerte.get('temp','?')} V:{alerte.get('wind','?')} P:{alerte.get('rain','?')}"
-            
-            if hist_row % 2 == 0:
-                for col in ['A', 'B', 'C', 'D', 'E']:
-                    ws_historique[f'{col}{hist_row}'].fill = PatternFill(start_color="f0f0f0", end_color="f0f0f0", fill_type="solid")
-            
-            hist_row += 1
+        if alertes_semaine:
+            for alerte in sorted(alertes_semaine, key=lambda x: x.get("timestamp", ""), reverse=True):
+                ws_historique[f'A{hist_row}'] = alerte.get("date", "")
+                ws_historique[f'B{hist_row}'] = alerte.get("heure", "")
+                ws_historique[f'C{hist_row}'] = _strip_report_emojis(alerte.get("zone", ""))
+                ws_historique[f'D{hist_row}'] = _strip_report_emojis(alerte.get("risques", ""))
+                ws_historique[f'E{hist_row}'] = f"T:{alerte.get('temp','?')} V:{alerte.get('wind','?')} P:{alerte.get('rain','?')}"
+                
+                if hist_row % 2 == 0:
+                    for col in ['A', 'B', 'C', 'D', 'E']:
+                        ws_historique[f'{col}{hist_row}'].fill = PatternFill(start_color="f0f0f0", end_color="f0f0f0", fill_type="solid")
+                
+                hist_row += 1
+        else:
+            ws_historique.merge_cells('A2:E2')
+            ws_historique['A2'] = "Aucune alerte enregistrée sur la période sélectionnée."
+            ws_historique['A2'].alignment = Alignment(horizontal="center", vertical="center")
+            ws_historique['A2'].font = Font(bold=True, color="7b341e")
+            ws_historique['A2'].fill = PatternFill(start_color="fffaf0", end_color="fffaf0", fill_type="solid")
         
         ws_historique.column_dimensions['A'].width = 12
         ws_historique.column_dimensions['B'].width = 8
@@ -1030,8 +1055,7 @@ def main(dry_run=False, force_send=False):
     
     if len(alertes_semaine) == 0:
         print("✅ Aucune alerte cette semaine!")
-        if not dry_run and not force_send:
-            return True
+        print("ℹ️ Le rapport sera quand même généré avec un encart explicatif pour éviter un fichier Excel vide.")
     
     # Générer statistiques
     stats = generer_statistiques(alertes_semaine)
