@@ -143,7 +143,10 @@ def envoyer_push_notification(
                 },
                 # ttl=0 (défaut pywebpush) est rejeté par Microsoft WNS/Edge :
                 # "Ttl value conflicts with X-WNS-Cache-Policy." (FCM/Chrome tolère 0).
-                ttl=3600
+                ttl=3600,
+                # Timeout explicite : évite de bloquer indéfiniment si un service
+                # de push ne répond pas (pas de valeur par défaut dans pywebpush).
+                timeout=10
             )
             succes += 1
             print(f"[PUSH] Envoyé : {titre[:40]}")

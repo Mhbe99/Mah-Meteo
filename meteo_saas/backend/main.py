@@ -17,6 +17,7 @@ import pytz
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, Response, JSONResponse
@@ -1943,8 +1944,34 @@ def get_dashboard():
         return HTMLResponse("<h1>Dashboard introuvable</h1>", status_code=404)
 
 
+def _endpoint_push_sans_risque_ssrf(endpoint: str) -> bool:
+    """
+    Vérifie que l'URL d'un endpoint push est sûre avant de l'enregistrer :
+    le serveur enverra plus tard des requêtes HTTP signées vers cette URL
+    (webpush), donc un endpoint arbitraire fourni par le client pourrait
+    servir à faire pointer le serveur vers une adresse interne (SSRF).
+    """
+    try:
+        parsed = urlparse(endpoint)
+        if parsed.scheme != "https" or not parsed.hostname:
+            return False
+        host = parsed.hostname
+        try:
+            ip = ipaddress.ip_address(host)
+            # Host litéral en IP : rejeter tout ce qui n'est pas une IP publique.
+            if not ip.is_global:
+                return False
+        except ValueError:
+            pass  # Nom de domaine (cas normal des services push) — OK
+        return True
+    except Exception:
+        return False
+
+
+@limiter.limit("15/minute")
 @app.post("/api/push/subscribe")
 async def push_subscribe(
+    request: Request,
     data: PushSubscriptionModel,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
@@ -1962,6 +1989,12 @@ async def push_subscribe(
             raise HTTPException(
                 status_code=400,
                 detail="endpoint et keys requis"
+            )
+
+        if not _endpoint_push_sans_risque_ssrf(endpoint):
+            raise HTTPException(
+                status_code=400,
+                detail="endpoint invalide (doit être une URL https publique)"
             )
 
         existing = db.query(PushSubscription).filter(
@@ -1997,8 +2030,10 @@ async def push_subscribe(
         )
 
 
+@limiter.limit("15/minute")
 @app.post("/api/push/unsubscribe")
 async def push_unsubscribe(
+    request: Request,
     data: dict,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
@@ -2044,7 +2079,6 @@ async def list_push_subscriptions(
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
-    from urllib.parse import urlparse
     subs = db.query(PushSubscription).filter(PushSubscription.client_id == client_id).all()
     return {
         "total": len(subs),
@@ -2059,8 +2093,10 @@ async def list_push_subscriptions(
     }
 
 
+@limiter.limit("10/minute")
 @app.delete("/api/push/subscriptions/{client_id}")
 async def clear_push_subscriptions(
+    request: Request,
     client_id: int,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
@@ -2076,8 +2112,10 @@ async def clear_push_subscriptions(
     return {"status": "ok", "deleted": deleted}
 
 
+@limiter.limit("10/minute")
 @app.delete("/api/push/subscriptions/{client_id}/{subscription_id}")
 async def delete_one_push_subscription(
+    request: Request,
     client_id: int,
     subscription_id: int,
     current_client: int = Depends(get_current_client),
@@ -2097,8 +2135,10 @@ async def delete_one_push_subscription(
     return {"status": "ok", "deleted": deleted}
 
 
+@limiter.limit("5/minute")
 @app.post("/api/push/test/{client_id}")
 async def test_push_notification(
+    request: Request,
     client_id: int,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
