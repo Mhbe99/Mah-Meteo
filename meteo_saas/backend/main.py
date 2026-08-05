@@ -2166,25 +2166,30 @@ async def test_push_notification(
 async def test_email_notification(
     request: Request,
     client_id: int,
+    to_email: Optional[str] = None,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
 ):
-    """Envoie un email de test pur (sans logique d'alerte) pour valider Brevo/SMTP."""
+    """Envoie un email de test pur (sans logique d'alerte) pour valider Brevo/SMTP.
+    to_email (optionnel) permet de cibler une adresse précise pour isoler un souci
+    de filtrage propre à un domaine (ex: comparer Gmail perso vs boîte pro)."""
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
     client = db.query(Client).filter(Client.id == client_id).first()
-    if not client or not client.email:
+    destinataire = to_email or (client.email if client else None)
+    if not client or not destinataire:
         raise HTTPException(status_code=404, detail="Client introuvable ou sans email")
 
     from .email_alerts import _envoyer_email
     ok = _envoyer_email(
         subject="[Mah Météo] Test envoi email",
         html_content="<p>Ceci est un email de test pour valider la configuration Brevo/SMTP.</p>",
-        to_emails=[client.email],
+        to_emails=[destinataire],
     )
     return {
         "status": "ok" if ok else "echec",
+        "destinataire": destinataire,
         "email_envoye": ok
     }
 
