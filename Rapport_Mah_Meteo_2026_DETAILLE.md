@@ -26,14 +26,14 @@ Application **SaaS multi-tenant** personnalisée pour GEODIS, combinant :
 | Composant | Technologie | Détail |
 |-----------|------------|--------|
 | **Backend** | FastAPI (Python) | API REST asynchrone, ~1300 lignes (main.py), 25+ endpoints |
-| **Base de données** | PostgreSQL | Production (Render) ; SQLite fallback local |
+| **Base de données** | PostgreSQL | Production (Supabase Free) ; SQLite fallback local |
 | **ORM** | SQLAlchemy | Modèles clients, zones, snapshots, alertes, tournées |
 | **Authentification** | JWT + Rate-limiting | 24h tokens, protection brute-force /auth/login (10 req/min/IP) |
 | **Frontend** | HTML/JS vanilla | 3988 lignes, 5 onglets, ApexCharts, Leaflet |
 | **Automatisation** | GitHub Actions + cron-job.org | cron-job.org déclenche workflow_dispatch toutes les heures (fiable), rapport chaque lundi 8h |
 | **Données météo** | Open-Meteo API | Gratuite, 10 000 req/jour, historique + prévisions |
 | **Email** | Brevo API + fallback SMTP | Multi-destinataires, HTML enrichi, attachements Excel, contournement des blocages SMTP Render |
-| **Déploiement** | Render.com | PostgreSQL managed, auto-redémarrage, logs streaming |
+| **Déploiement** | Render.com | Héberge l'API et le dashboard, logs streaming |
 
 ### 2.2 Modèles de données
 
@@ -641,7 +641,7 @@ cron-job.org (0 * * * *)  →  POST GitHub API workflow_dispatch  →  meteo-cro
 **État après correction :**
 - Le bulletin de créneau est évalué même sans refresh complet des zones.
 - Le statut "envoyé" reflète mieux la réalité de transport email.
-- Réduction du risque de perte silencieuse sur créneaux 06h30 / 10h30 / 12h00 / 15h00 / 17h30.
+- Réduction du risque de perte silencieuse sur créneaux 06h00 / 10h30 / 12h00 / 15h00 / 17h30.
 
 **Points de vigilance restant à partager avec l'agent externe :**
 1. `_last_bulletin_sent` est actuellement en mémoire process (non persistant entre redémarrages Render).
@@ -683,6 +683,49 @@ cron-job.org (0 * * * *)  →  POST GitHub API workflow_dispatch  →  meteo-cro
 - `96542e5` — Fallback sur historique plus large (première étape)
 - `5db68f2` — Ajustement fallback final sur 7 jours
 - `092bfef` — Message UX explicite en absence d'alertes
+
+### 13.9 Incident hébergement données — Migration Render → Supabase (Juin 2026)
+
+**Contexte observé :** un problème de disponibilité / fiabilité de la base de données liée à Render a provoqué des blocages applicatifs et des retours incomplets côté données. Concrètement, l'application pouvait démarrer, mais les écrans métier, les bulletins et certains tableaux renvoyaient des valeurs manquantes, des `?` ou des listes vides.
+
+**Symptômes constatés côté exploitation :**
+- impossibilité de se reconnecter correctement après changement de `DATABASE_URL` ;
+- données météo incomplètes ou absentes sur le dashboard ;
+- rapports hebdomadaires vides ou peu exploitables quand l'historique d'alertes n'était plus accessible ;
+- besoin de recréer manuellement le client principal et de restaurer les zones après migration.
+
+**Cause racine identifiée :**
+- la base de données précédente n'était plus suffisamment fiable pour l'usage de production ;
+- le changement de base a laissé apparaître une base cible initialement vide ou incomplète ;
+- les routes applicatives dépendant des clients / zones / alertes ne pouvaient plus produire de contenu métier normal tant que la base n'était pas reseedée.
+
+**Action menée pour corriger :**
+- migration de la base PostgreSQL vers **Supabase Free** ;
+- mise à jour des variables de connexion côté environnement Render, workflows GitHub Actions et scripts locaux ;
+- validation de la nouvelle connexion DB après redémarrage de l'application ;
+- recréation du client principal GEODIS dans Supabase ;
+- restauration des zones métier et vérification du bon retour des données au dashboard ;
+- contrôle des logs et des endpoints pour confirmer que la nouvelle base répondait correctement.
+
+**Mesures de secours et de remise en état appliquées :**
+- reseed des données essentielles pour relancer l'exploitation rapidement ;
+- validation des accès utilisateur après réinitialisation de la base ;
+- vérification des exports et des caches pour éviter les effets de bord sur les rapports ;
+- reprise progressive des flux météo, trafic et reporting après stabilisation.
+
+**Résultat obtenu :**
+- la connexion base de données est redevenue stable ;
+- les accès au dashboard et aux APIs ont été rétablis ;
+- les bulletins et les rapports ont pu repartir avec des données cohérentes ;
+- la plateforme a pu reprendre son fonctionnement normal sur une base gratuite plus fiable pour cet usage.
+
+**Disponibilité de l'hébergement Render :**
+- Render en mode gratuit peut se mettre en veille automatiquement après une période d'inactivité d'environ 15 minutes ;
+- pour éviter ce comportement et garder l'API disponible, un ping de supervision externe via **UptimeRobot** a été mis en place ;
+- ce maintien en éveil réduit les temps de réveil et limite les interruptions visibles par les utilisateurs ;
+- sans ce ping, l'application pouvait sembler indisponible au premier accès après une période calme.
+
+**Conclusion opérationnelle :** Render reste l'hébergeur de l'application, mais la base de données de production est désormais externalisée sur Supabase, ce qui a supprimé le blocage rencontré sur l'hébergement DB précédent.
 
 ---
 
@@ -924,6 +967,8 @@ Création de `generer_guide.py` : script Python (`python-pptx` + `python-docx`) 
 
 **Conclusion :** pas de double cron, source de données fallback locale potentiellement obsolète identifiée comme cause.
 
+**Mise à jour juillet 2026 :** le fallback hebdomadaire embarqué dans `meteo-cron.yml` a été supprimé pour éviter un second envoi possible. Le rapport hebdomadaire ne part plus que depuis le workflow dédié `rapport-hebdo.yml`.
+
 ---
 
 ## 15. Évolutions Juin 2026 — Bulletins horaires, alertes immédiates, sécurité repo
@@ -1030,9 +1075,9 @@ exports/
 | Alerte météo (verglas, vent, pluie, UV) | ✅ Opérationnel | Cooldown 1h, Brevo production |
 | Alerte trafic immédiate ≥ 30 min | ✅ Opérationnel | Standalone sans attendre un créneau |
 | Alerte combinée météo + trafic | ✅ Opérationnel | `COMBINED_ALERT_AUTO_ENABLED=true` |
-| Rapport hebdomadaire lundi 8h | ✅ Opérationnel | Excel + HTML + Brevo |
+| Rapport hebdomadaire lundi 8h | ✅ Opérationnel | Excel + HTML, envoi unique via workflow dédié |
 | Dashboard frontend | ✅ Opérationnel | 5 onglets, 3988+ lignes |
-| API Render (FastAPI + PostgreSQL) | ✅ Opérationnel | 25+ endpoints, JWT, rate-limiting |
+| API Render (FastAPI + PostgreSQL Supabase) | ✅ Opérationnel | 25+ endpoints, JWT, rate-limiting |
 | Sécurité repo | ✅ Prêt à passer en public | Historique propre, données retirées |
 
 **Recommandation de correction :**
@@ -1040,6 +1085,11 @@ exports/
 - faire échouer explicitement le job si l'API Render ne fournit pas les données attendues ;
 - supprimer ou archiver `run_meteo.yml` pour réduire les ambiguïtés ;
 - journaliser dans l'email ou dans les logs la source réellement utilisée : `API Render` ou `fallback local`.
+
+**Test reproductible sans envoi :**
+- `.
+un_report_dry_run.ps1`
+- ou `python rapport_hebdomadaire.py --dry-run`
 
 ### 15.6 Validation post-correctifs audit (04 juin 2026)
 
@@ -1075,3 +1125,30 @@ exports/
 ## 16. Contacts & Accès
 
 **Palette fidèle au dashboard réel :** fond `#eef1f5`, header `#2c3e50`, accents bleu `#3498db`, vert `#38a169`, rouge `#c53030`.
+
+---
+
+## 17. Addendum Avant / Après — Mails & Notifications (Août 2026)
+
+### 17.1 Chaîne Email (backend)
+
+| Sujet | Avant | Après |
+|---|---|---|
+| Transport email | Envois hétérogènes selon contexte et diagnostics plus difficiles | Pipeline unifié via `email_alerts.py` (provider + fallback) avec logs normalisés |
+| Destinataires | Une adresse ou format non homogène selon la source | Normalisation multi-destinataires (séparateurs `,`, `;`, retours ligne) et déduplication stable |
+| Observabilité | Visibilité partielle sur les causes d'échec | Traces explicites côté logs (`provider`, erreurs API, fallback SMTP) |
+
+### 17.2 Notifications Push (PWA)
+
+| Sujet | Avant | Après |
+|---|---|---|
+| État bouton push | Le bouton pouvait afficher un état incohérent selon les tentatives automatiques | État rendu plus fiable, avec mise à jour après tentative utilisateur |
+| Erreurs d'abonnement | Message parfois ambigu pendant les essais en arrière-plan | Erreurs de souscription remontées proprement lors des actions explicites utilisateur |
+| Endpoints PWA | Ressources incomplètes selon les environnements | Endpoints vérifiés et servis en production (`manifest`, `service-worker`, icônes static) |
+| iOS icon request | `GET /apple-touch-icon-120x120.png` pouvait retourner 404 | Route dédiée en place pour servir l'icône iOS et supprimer le 404 |
+
+### 17.3 Validation opérationnelle (résumé)
+
+- Pré-requis push en production accessibles (`/api/push/vapid-public-key`, `service-worker`, icônes).
+- Flux d'activation push fiabilisé côté interface utilisateur.
+- Point de vigilance restant côté exploitation : distinguer clairement incidents transport email (provider/réseau) et flux push (souscription active + déclencheur d'alerte).
