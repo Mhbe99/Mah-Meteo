@@ -2209,6 +2209,56 @@ async def test_email_notification(
     }
 
 
+@limiter.limit("5/minute")
+@app.post("/api/pollution/test/{client_id}")
+async def test_pollution_alert(
+    request: Request,
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Déclenche une fausse alerte pollution (AQI 85, seuil 'Très mauvais') pour valider le canal."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client introuvable")
+
+    from .email_alerts import send_pollution_alert
+    envoye = send_pollution_alert(
+        to_email=client.email or "",
+        company_name=client.company_name or client.username,
+        zones_alertes=[{"zone": "Test — Zone fictive", "aqi": 85, "label": "Très mauvais", "pm25": 42.0}],
+        state_file="exports/last_pollution_alert_test.json",
+        client_id=client_id,
+    )
+    return {"status": "ok" if envoye else "echec", "envoye": envoye}
+
+
+@limiter.limit("5/minute")
+@app.post("/api/bulletin/test-fail/{client_id}")
+async def test_bulletin_fail_signal(
+    request: Request,
+    client_id: int,
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Simule le signal de secours envoyé quand le bulletin échoue par email (sans vraiment casser l'email)."""
+    if client_id != current_client:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    nb = envoyer_push_notification(
+        db_session=db,
+        client_id=client_id,
+        titre="Bulletin TEST non envoyé",
+        corps="Simulation : échec de l'envoi email du bulletin — vérifier la configuration email.",
+        type_alerte="system",
+        url="/"
+    )
+    return {"status": "ok", "notifications_envoyees": nb}
+
+
 @app.head("/")
 async def head_root():
     """FIX: Répond aux HEAD requests pour health checks UptimeRobot/Render"""
