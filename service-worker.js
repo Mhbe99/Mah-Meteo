@@ -44,6 +44,12 @@ self.addEventListener('fetch', function(event) {
 
   const url = new URL(event.request.url);
 
+  /* Ouverture/rechargement de la page de l'app → vider le badge.
+     Détecté ici (pas dans dashboard.html) car ce fichier ne doit pas être modifié. */
+  if (event.request.mode === 'navigate' && 'clearAppBadge' in self.navigator) {
+    self.navigator.clearAppBadge().catch(function() {});
+  }
+
   /* API → jamais en cache */
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/auth/')) return;
