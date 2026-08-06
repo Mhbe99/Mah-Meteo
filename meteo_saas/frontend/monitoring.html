@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mah Météo — Monitoring</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+    background: #f1f3f5;
+    color: #1a202c;
+  }
+  header {
+    background: #2c3e50;
+    color: #fff;
+    padding: 16px 24px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  main {
+    max-width: 960px;
+    margin: 24px auto;
+    padding: 0 16px 48px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    padding: 16px 18px;
+  }
+  .card .label {
+    font-size: 12px;
+    color: #718096;
+    margin: 0 0 6px;
+  }
+  .card .valeur {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+  .badge.ok { background: #eafaf1; color: #1d9e75; }
+  .badge.warn { background: #fdf6e3; color: #b45309; }
+  .section {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .section h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td { padding: 6px 0; border-bottom: 1px solid #f1f3f5; }
+  .creneau {
+    display: inline-block;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin: 2px 4px 2px 0;
+  }
+  .creneau.envoye { background: #eafaf1; color: #1d9e75; }
+  .creneau.attente { background: #f1f3f5; color: #718096; }
+  #erreur { color: #c53030; padding: 24px; }
+  .refresh-btn {
+    background: none;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #2c3e50;
+  }
+</style>
+</head>
+<body>
+
+<header style="display:flex;justify-content:space-between;align-items:center;">
+  <h1>Mah Météo — Monitoring</h1>
+  <button class="refresh-btn" onclick="charger()">Actualiser</button>
+</header>
+
+<main id="contenu">
+  <p style="color:#718096;">Chargement...</p>
+</main>
+
+<script>
+function ilYA(obj) {
+  if (!obj) return { texte: 'Aucune donnée', badge: 'warn' };
+  return { texte: obj.il_y_a || obj.timestamp, badge: 'ok' };
+}
+
+async function charger() {
+  const token = localStorage.getItem('token');
+  const contenu = document.getElementById('contenu');
+
+  if (!token) {
+    contenu.innerHTML = '<div id="erreur">Non connecté — ouvrez d\'abord le dashboard principal et reconnectez-vous, puis revenez sur cette page.</div>';
+    return;
+  }
+
+  contenu.innerHTML = '<p style="color:#718096;">Chargement...</p>';
+
+  try {
+    const resp = await fetch('/api/admin/monitoring', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+
+    if (resp.status === 403) {
+      contenu.innerHTML = '<div id="erreur">Accès refusé — cette page nécessite un compte administrateur.</div>';
+      return;
+    }
+    if (!resp.ok) {
+      contenu.innerHTML = '<div id="erreur">Erreur de chargement (HTTP ' + resp.status + ')</div>';
+      return;
+    }
+
+    const data = await resp.json();
+    const push = ilYA(data.derniers_succes.push);
+    const email = ilYA(data.derniers_succes.email);
+    const rapport = ilYA(data.derniers_succes.rapport_hebdo);
+    const cron = ilYA(data.cron_meteo.dernier_passage);
+
+    let html = '<div class="grid">';
+    html += carte('Dernier push réussi', push);
+    html += carte('Dernier email réussi', email);
+    html += carte('Dernier passage cron', cron);
+    html += carte('Dernier rapport hebdo', rapport);
+    html += '</div>';
+
+    html += '<div class="section"><h2>Abonnements push par client</h2>';
+    if (data.abonnements_push.length === 0) {
+      html += '<p style="color:#718096;font-size:13px;">Aucun abonnement actif.</p>';
+    } else {
+      html += '<table>';
+      data.abonnements_push.forEach(function(a) {
+        const navigateurs = Object.entries(a.par_navigateur)
+          .map(function(e) { return e[0] + ' (' + e[1] + ')'; })
+          .join(', ');
+        html += '<tr><td>' + a.company_name + '</td><td>' + a.total + ' actif(s)</td><td style="color:#718096;">' + navigateurs + '</td></tr>';
+      });
+      html += '</table>';
+    }
+    html += '</div>';
+
+    html += '<div class="section"><h2>Bulletin d\'aujourd\'hui</h2>';
+    data.bulletin_du_jour.creneaux_prevus.forEach(function(c) {
+      const envoye = data.bulletin_du_jour.creneaux_envoyes.includes(c);
+      html += '<span class="creneau ' + (envoye ? 'envoye' : 'attente') + '">' + c + (envoye ? ' ✓' : '') + '</span>';
+    });
+    html += '</div>';
+
+    contenu.innerHTML = html;
+  } catch (e) {
+    contenu.innerHTML = '<div id="erreur">Erreur : ' + e.message + '</div>';
+  }
+}
+
+function carte(label, info) {
+  return '<div class="card">' +
+    '<p class="label">' + label + '</p>' +
+    '<p class="valeur">' + info.texte + '</p>' +
+    '<span class="badge ' + info.badge + '">' + (info.badge === 'ok' ? 'OK' : 'À vérifier') + '</span>' +
+    '</div>';
+}
+
+charger();
+</script>
+
+</body>
+</html>

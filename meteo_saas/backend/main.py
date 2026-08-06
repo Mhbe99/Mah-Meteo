@@ -1946,6 +1946,17 @@ async def get_apple_touch_icon_120():
         )
     return FileResponse(icon_path, media_type="image/png")
 
+@app.get("/admin/monitoring", response_class=HTMLResponse)
+def get_admin_monitoring_page():
+    """Page de monitoring admin (données via /api/admin/monitoring, protégé is_admin)."""
+    try:
+        with open("meteo_saas/frontend/monitoring.html", "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    except FileNotFoundError:
+        return HTMLResponse("<h1>Page monitoring introuvable</h1>", status_code=404)
+
+
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
     """
@@ -2257,6 +2268,95 @@ async def test_bulletin_fail_signal(
         url="/"
     )
     return {"status": "ok", "notifications_envoyees": nb}
+
+
+def _humaniser_delai(iso_ts: Optional[str]) -> Optional[dict]:
+    """Convertit un timestamp ISO en {timestamp, il_y_a} pour l'affichage monitoring."""
+    if not iso_ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(iso_ts)
+        delta = datetime.utcnow() - dt
+        minutes = int(delta.total_seconds() // 60)
+        if minutes < 60:
+            il_y_a = f"il y a {minutes} min"
+        elif minutes < 1440:
+            il_y_a = f"il y a {minutes // 60} h"
+        else:
+            il_y_a = f"il y a {minutes // 1440} j"
+        return {"timestamp": iso_ts, "il_y_a": il_y_a}
+    except Exception:
+        return {"timestamp": iso_ts, "il_y_a": None}
+
+
+@app.get("/api/admin/monitoring")
+async def get_admin_monitoring(
+    admin_client_id: int = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Vue d'ensemble opérationnelle : derniers succès push/email/rapport,
+    abonnements actifs par client, activité du cron, bulletin du jour."""
+    from urllib.parse import urlparse
+
+    # Derniers succès tracés par _maj_status_systeme (email_alerts.py / rapport_hebdomadaire.py)
+    status = {}
+    status_file = "exports/system_status.json"
+    try:
+        if os.path.exists(status_file):
+            with open(status_file, "r", encoding="utf-8") as f:
+                status = _json_push.load(f)
+    except Exception:
+        status = {}
+
+    # Abonnements push actifs, groupés par client
+    subs = db.query(PushSubscription).all()
+    abonnements_par_client = {}
+    for s in subs:
+        entry = abonnements_par_client.setdefault(s.client_id, {"total": 0, "hosts": {}})
+        entry["total"] += 1
+        host = urlparse(s.endpoint).netloc or "?"
+        entry["hosts"][host] = entry["hosts"].get(host, 0) + 1
+
+    clients = db.query(Client).filter(Client.id.in_(list(abonnements_par_client.keys()) or [-1])).all()
+    clients_par_id = {c.id: c for c in clients}
+    abonnements_liste = [
+        {
+            "client_id": cid,
+            "company_name": clients_par_id[cid].company_name if cid in clients_par_id else f"Client {cid}",
+            "total": data["total"],
+            "par_navigateur": data["hosts"],
+        }
+        for cid, data in abonnements_par_client.items()
+    ]
+
+    # Dernière activité cron : zone la plus récemment mise à jour (approximation,
+    # le cron GitHub Actions lui-même n'est pas tracé côté DB).
+    derniere_zone = db.query(Zone).order_by(Zone.updated_at.desc()).first()
+    dernier_cron = _humaniser_delai(derniere_zone.updated_at.isoformat()) if derniere_zone and derniere_zone.updated_at else None
+
+    # Bulletin du jour (créneaux envoyés vs prévus)
+    paris = pytz.timezone("Europe/Paris")
+    aujourd_hui = datetime.now(paris).strftime("%Y-%m-%d")
+    creneaux_envoyes = {
+        b.creneau for b in db.query(BulletinLog).filter(BulletinLog.date_jour == aujourd_hui).all()
+    }
+    creneaux_prevus = [f"{h:02d}h{m:02d}" for h, m in _BULLETIN_WINDOWS]
+
+    return {
+        "derniers_succes": {
+            "push": _humaniser_delai(status.get("last_push_success")),
+            "email": _humaniser_delai(status.get("last_email_success")),
+            "rapport_hebdo": _humaniser_delai(status.get("last_rapport_hebdo_success")),
+        },
+        "cron_meteo": {
+            "dernier_passage": dernier_cron,
+        },
+        "abonnements_push": abonnements_liste,
+        "bulletin_du_jour": {
+            "creneaux_prevus": creneaux_prevus,
+            "creneaux_envoyes": sorted(creneaux_envoyes),
+        },
+    }
 
 
 @app.head("/")

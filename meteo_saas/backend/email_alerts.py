@@ -187,11 +187,32 @@ def envoyer_push_notification(
         except Exception as e:
             print(f"[PUSH] Erreur nettoyage: {e}")
 
+    if succes > 0:
+        _maj_status_systeme("last_push_success")
+
     return succes
 
 
 def _paris_now() -> datetime:
     return datetime.now(PARIS_TZ)
+
+
+_STATUS_FILE = "exports/system_status.json"
+
+
+def _maj_status_systeme(cle: str) -> None:
+    """Trace le dernier succès d'un canal (push/email) pour la page de monitoring admin."""
+    try:
+        state = {}
+        if os.path.exists(_STATUS_FILE):
+            with open(_STATUS_FILE, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        state[cle] = datetime.utcnow().isoformat()
+        os.makedirs(os.path.dirname(_STATUS_FILE), exist_ok=True)
+        with open(_STATUS_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[STATUS] Erreur écriture statut système: {e}")
 
 # Cooldown push (5 min par défaut) pour ne pas spammer les notifications mobiles.
 _PUSH_COOLDOWN_SECONDS = int(os.getenv("PUSH_COOLDOWN_SECONDS", "300"))
@@ -398,6 +419,8 @@ def _envoyer_email(
     )
     if not ok_brevo:
         print(f"[EMAIL] Brevo échec ({brevo_reason})")
+    else:
+        _maj_status_systeme("last_email_success")
     return ok_brevo
 
 

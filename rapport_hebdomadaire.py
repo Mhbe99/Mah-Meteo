@@ -15,7 +15,7 @@ from collections import defaultdict
 import requests
 from jose import jwt
 from dotenv import load_dotenv
-from meteo_saas.backend.email_alerts import _envoyer_email, envoyer_push_notification
+from meteo_saas.backend.email_alerts import _envoyer_email, envoyer_push_notification, _maj_status_systeme
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -1104,7 +1104,9 @@ def main(dry_run=False, force_send=False):
         except Exception as e:
             print(f"[RAPPORT] Erreur notification secours: {e}")
         raise RuntimeError("Echec envoi rapport hebdomadaire (provider/fallback)")
-    
+
+    _maj_status_systeme("last_rapport_hebdo_success")
+
     print("\n" + "=" * 60)
     print("✅ Rapport hebdomadaire terminé")
     print("=" * 60)
