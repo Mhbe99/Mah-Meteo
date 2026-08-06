@@ -59,52 +59,88 @@ self.addEventListener('fetch', function(event) {
 self.addEventListener('push', function(event) {
   console.log('[SW] Push reçu');
 
-  let data = {
-    title: 'Mah Météo',
-    body: 'Nouvelle alerte',
-    type: 'alerte',
-    icon: '/static/icon-192.png',
-    badge: '/static/icon-192.png',
-    url: '/'
-  };
+  event.waitUntil((async function() {
+    let data = {
+      title: 'Mah Météo',
+      body: 'Nouvelle alerte',
+      type: 'alerte',
+      icon: '/static/icon-192.png',
+      badge: '/static/icon-192.png',
+      url: '/'
+    };
 
-  try {
-    if (event.data) {
-      data = Object.assign(data, event.data.json());
-    }
-  } catch(e) {
-    console.error('[SW] Erreur parsing push:', e);
-  }
-
-  /* Couleur badge selon type */
-  const options = {
-    body: data.body,
-    icon: data.icon || '/static/icon-192.png',
-    badge: data.badge || '/static/icon-192.png',
-    tag: data.type || 'alerte',
-    renotify: true,
-    requireInteraction: data.type === 'danger',
-    data: { url: data.url || '/' },
-    actions: [
-      {
-        action: 'voir',
-        title: 'Voir le dashboard'
-      },
-      {
-        action: 'fermer',
-        title: 'Fermer'
+    try {
+      if (event.data) {
+        data = Object.assign(data, event.data.json());
       }
-    ]
-  };
+    } catch(e) {
+      console.error('[SW] Erreur parsing push:', e);
+    }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+    const tag = data.type || 'alerte';
+    let title = data.title;
+    let body = data.body;
+    let compteur = 1;
+
+    /* Regroupement : si une notification du même type est déjà affichée et pas
+       encore consultée, on combine au lieu de la remplacer silencieusement. */
+    try {
+      const existantes = await self.registration.getNotifications({ tag });
+      if (existantes.length > 0) {
+        const precedente = existantes[0];
+        compteur = ((precedente.data && precedente.data.compteur) || 1) + 1;
+        title = `${data.title} (${compteur})`;
+        body = `${data.body}\n+ ${compteur - 1} alerte(s) précédente(s) non consultée(s)`;
+      }
+    } catch(e) {
+      console.error('[SW] Erreur regroupement:', e);
+    }
+
+    /* Badge PWA : nombre de types d'alertes distincts actuellement non consultés
+       (icône app — Chrome/Edge desktop + Android, sans effet sur iOS/Safari). */
+    try {
+      if ('setAppBadge' in self.navigator) {
+        const toutes = await self.registration.getNotifications();
+        self.navigator.setAppBadge(toutes.length + 1);
+      }
+    } catch(e) {
+      console.error('[SW] Erreur badge:', e);
+    }
+
+    const options = {
+      body: body,
+      icon: data.icon || '/static/icon-192.png',
+      badge: data.badge || '/static/icon-192.png',
+      tag: tag,
+      renotify: true,
+      requireInteraction: data.type === 'danger',
+      data: { url: data.url || '/', compteur: compteur },
+      actions: [
+        {
+          action: 'voir',
+          title: 'Voir le dashboard'
+        },
+        {
+          action: 'fermer',
+          title: 'Fermer'
+        }
+      ]
+    };
+
+    await self.registration.showNotification(title, options);
+  })());
 });
 
 /* ── CLIC SUR NOTIFICATION ────────────────── */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+
+  /* L'utilisateur a consulté au moins une alerte → on vide le badge.
+     Approximatif (ne distingue pas les autres alertes encore en attente),
+     mais évite un badge qui reste bloqué après consultation. */
+  if ('clearAppBadge' in self.navigator) {
+    self.navigator.clearAppBadge().catch(function() {});
+  }
 
   if (event.action === 'fermer') return;
 
