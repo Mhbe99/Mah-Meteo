@@ -1855,9 +1855,11 @@ def get_all_connections(
 
     grouped_rows = {}
     for l, client in rows:
+        # IP volontairement absente de la clé de regroupement : IP dynamique (box/4G)
+        # qui change presque à chaque connexion, ce qui empêchait toute fusion réelle.
+        # L'IP la plus récente reste affichée (première ligne rencontrée, tri desc).
         key = (
             l.client_id,
-            l.ip_address or "",
             l.browser or "",
             l.os_info or "",
             l.device_type or "",
