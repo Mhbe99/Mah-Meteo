@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 email_alerts.py — Envoi d'alertes par email (météo, trafic, alerte combinée)
-Utilise SMTP configurable via variables d'environnement.
+Envoi via l'API Brevo — le SMTP sortant est bloqué au niveau réseau sur Render
+(confirmé par diagnostic), donc plus de fallback SMTP : Brevo est l'unique canal.
 """
 
 import os
 import json
-import smtplib
 import base64
 from zoneinfo import ZoneInfo
-from email.mime.application import MIMEApplication
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
 import requests
@@ -19,19 +16,12 @@ import requests
 load_dotenv()
 
 
-# ============ CONFIG SMTP ============
+# ============ CONFIG EMAIL ============
 
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "") or os.getenv("SENDER_EMAIL", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") or os.getenv("GMAIL_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "") or os.getenv("SENDER_EMAIL", "")
 RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS", "")
 ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
-EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").strip().lower()
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
-BREVO_SMTP_FALLBACK = os.getenv("BREVO_SMTP_FALLBACK", "true").strip().lower() == "true"
-BREVO_SMTP_FALLBACK_ON_TIMEOUT = os.getenv("BREVO_SMTP_FALLBACK_ON_TIMEOUT", "false").strip().lower() == "true"
 DISABLE_EMAIL_WEEKENDS = os.getenv("DISABLE_EMAIL_WEEKENDS", "false").strip().lower() == "true"
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
@@ -243,25 +233,6 @@ def _mask_email(email: str) -> str:
         return "***"
 
 
-def _build_smtp_message(subject: str, html_content: str, to_emails: list, from_name: str, sender_email: str, attachments=None):
-    """Construit le MIME SMTP local en gardant le même rendu HTML."""
-    msg = MIMEMultipart("mixed")
-    msg["Subject"] = subject
-    msg["From"] = f"{from_name} <{sender_email}>"
-    msg["To"] = ", ".join(to_emails)
-
-    alt = MIMEMultipart("alternative")
-    alt.attach(MIMEText(html_content, "html", "utf-8"))
-    msg.attach(alt)
-
-    for attachment in attachments or []:
-        part = MIMEApplication(attachment["content"], Name=attachment["name"])
-        part["Content-Disposition"] = f'attachment; filename="{attachment["name"]}"'
-        msg.attach(part)
-
-    return msg
-
-
 def _normalize_attachments(attachments=None, attachment_base64=None, attachment_name=None):
     """Normalise les PJ pour supporter à la fois l'API legacy et la version base64."""
     normalized = []
@@ -364,45 +335,6 @@ def _envoyer_via_brevo(subject: str, html_content: str, recipients: list, from_n
     return False, f"HTTP {resp.status_code}: {body_preview}"
 
 
-def _envoyer_via_smtp(subject: str, html_content: str, recipients: list, from_name: str, sender_email: str, attachments=None) -> bool:
-    """Envoi SMTP sécurisé STARTTLS uniquement (port 587)."""
-    smtp_host = (os.getenv("SMTP_HOST") or SMTP_HOST).strip()
-    smtp_port = 587
-    smtp_user = (os.getenv("SMTP_USER") or sender_email).strip()
-    smtp_password = (
-        os.getenv("SMTP_PASSWORD")
-        or os.getenv("SMTP_PASS")
-        or os.getenv("GMAIL_PASSWORD", "")
-    ).strip()
-
-    if not smtp_user or not smtp_password:
-        print(f"[EMAIL] SMTP non configuré — sujet: {subject}")
-        return False
-
-    try:
-        msg = _build_smtp_message(
-            subject,
-            html_content,
-            recipients,
-            from_name,
-            sender_email,
-            attachments=attachments,
-        )
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(sender_email, recipients, msg.as_string())
-        print(f"[EMAIL] SMTP OK : {subject[:50]}")
-        return True
-    except smtplib.SMTPAuthenticationError as exc:
-        print(f"[EMAIL] SMTP auth erreur : {exc}")
-        return False
-    except Exception as exc:
-        print(f"[EMAIL] SMTP erreur : {exc}")
-        return False
-
-
 def _envoyer_email(
     subject: str,
     html_content: str,
@@ -413,9 +345,9 @@ def _envoyer_email(
     attachment_name: str | None = None,
 ) -> bool:
     """
-    Fonction centrale unique d'envoi email.
-    Brevo uniquement si EMAIL_PROVIDER=brevo.
-    SMTP reste un fallback local si aucun provider n'est imposé.
+    Fonction centrale unique d'envoi email — via l'API Brevo uniquement.
+    (Le SMTP sortant est bloqué au niveau réseau sur Render, confirmé par
+    diagnostic — inutile de le garder comme fallback, il échoue toujours.)
     """
     if not ALERT_ENABLED:
         print(f"[EMAIL] Désactivé — sujet: {subject}")
@@ -431,11 +363,9 @@ def _envoyer_email(
         print(f"[EMAIL] Aucun destinataire — sujet: {subject}")
         return False
 
-    provider = os.getenv("EMAIL_PROVIDER", EMAIL_PROVIDER).strip().lower()
     sender_email = (
         os.getenv("SMTP_FROM")
         or os.getenv("SENDER_EMAIL")
-        or os.getenv("SMTP_USER")
         or SMTP_FROM
     ).strip()
     normalized_attachments = _normalize_attachments(
@@ -445,21 +375,11 @@ def _envoyer_email(
     )
 
     recipients_masked = ", ".join(_mask_email(r) for r in recipients)
-    print(f"[EMAIL] Tentative provider={provider or 'brevo'} recipients={len(recipients)} [{recipients_masked}]")
+    print(f"[EMAIL] Tentative Brevo recipients={len(recipients)} [{recipients_masked}]")
 
     if not sender_email:
         print("[EMAIL] SMTP_FROM/SENDER_EMAIL absent")
         return False
-
-    if provider == "smtp":
-        return _envoyer_via_smtp(
-            subject,
-            html_content,
-            recipients,
-            from_name,
-            sender_email,
-            attachments=normalized_attachments,
-        )
 
     ok_brevo, brevo_reason = _envoyer_via_brevo(
         subject,
@@ -469,30 +389,9 @@ def _envoyer_email(
         sender_email,
         attachments=normalized_attachments,
     )
-    if ok_brevo:
-        return True
-
-    if not BREVO_SMTP_FALLBACK:
-        print(f"[EMAIL] Brevo échec sans fallback SMTP ({brevo_reason})")
-        return False
-
-    brevo_timeout = brevo_reason.startswith("timeout:")
-    if brevo_timeout and not BREVO_SMTP_FALLBACK_ON_TIMEOUT:
-        print(
-            "[EMAIL] Brevo timeout: fallback SMTP ignoré pour éviter doublon "
-            f"({brevo_reason})"
-        )
-        return False
-
-    print(f"[EMAIL] Brevo échec, tentative SMTP fallback ({brevo_reason})")
-    return _envoyer_via_smtp(
-        subject,
-        html_content,
-        recipients,
-        from_name,
-        sender_email,
-        attachments=normalized_attachments,
-    )
+    if not ok_brevo:
+        print(f"[EMAIL] Brevo échec ({brevo_reason})")
+    return ok_brevo
 
 
 def _send_email(to_emails, subject: str, html_body: str):
