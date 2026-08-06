@@ -1946,17 +1946,6 @@ async def get_apple_touch_icon_120():
         )
     return FileResponse(icon_path, media_type="image/png")
 
-@app.get("/admin/monitoring", response_class=HTMLResponse)
-def get_admin_monitoring_page():
-    """Page de monitoring admin (données via /api/admin/monitoring, protégé is_admin)."""
-    try:
-        with open("meteo_saas/frontend/monitoring.html", "r", encoding="utf-8") as f:
-            content = f.read()
-        return HTMLResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
-    except FileNotFoundError:
-        return HTMLResponse("<h1>Page monitoring introuvable</h1>", status_code=404)
-
-
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
     """

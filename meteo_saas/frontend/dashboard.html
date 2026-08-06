@@ -2119,6 +2119,13 @@
                     <div id="connections-table" style="overflow-x:auto">
                         <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px">Chargement...</div>
                     </div>
+                    <!-- Monitoring système (push/email/cron/bulletin) -->
+                    <h4 style="font-size:15px;font-weight:700;color:#2c5282;margin:28px 0 12px">🩺 Monitoring système</h4>
+                    <div id="monitoring-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+                        <div style="text-align:center;color:#a0aec0;padding:20px;font-size:13px;grid-column:1/-1">Chargement...</div>
+                    </div>
+                    <div id="monitoring-subs" style="margin-bottom:20px"></div>
+                    <div id="monitoring-bulletin"></div>
                 </div>
             </div>
         </div>
@@ -3362,6 +3369,7 @@
         if (index === 5 && _adminUnlocked) {
             loadConnections();
             loadPendingUsers();
+            loadMonitoring();
         }
     }
 
@@ -3386,6 +3394,7 @@
                 document.getElementById('admin-pin').value = '';
                 loadConnections();
                 loadPendingUsers();
+                loadMonitoring();
             } else {
                 document.getElementById('admin-error').style.display = 'block';
                 document.getElementById('admin-pin').value = '';
@@ -3586,6 +3595,65 @@
                     <tbody>${rows}</tbody>
                 </table>`;
         } catch (e) { console.error('Erreur chargement connexions:', e); container.innerHTML = '<div style="color:#e53e3e;padding:10px">Erreur</div>'; }
+    }
+
+    // ============ ADMINISTRATION — MONITORING SYSTÈME ============
+    async function loadMonitoring() {
+        const kpisEl = document.getElementById('monitoring-kpis');
+        const subsEl = document.getElementById('monitoring-subs');
+        const bulletinEl = document.getElementById('monitoring-bulletin');
+        if (!TOKEN || !kpisEl) return;
+        try {
+            const resp = await fetch(`${API_URL}/api/admin/monitoring`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+            if (!resp.ok) { kpisEl.innerHTML = '<div style="color:#e53e3e;padding:10px;grid-column:1/-1">Erreur chargement</div>'; return; }
+            const data = await resp.json();
+
+            const carte = (label, info, color) => `
+                <div style="background:linear-gradient(135deg,#f7fafc,${color}22);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;color:${color};font-weight:700;text-transform:uppercase;letter-spacing:0.5px">${label}</div>
+                    <div style="font-size:16px;font-weight:800;color:#2d3748;margin-top:6px">${info ? info.il_y_a : 'Aucune donnée'}</div>
+                </div>`;
+
+            kpisEl.innerHTML =
+                carte('📲 Dernier push', data.derniers_succes.push, '#2b6cb0') +
+                carte('📧 Dernier email', data.derniers_succes.email, '#38a169') +
+                carte('📄 Dernier rapport hebdo', data.derniers_succes.rapport_hebdo, '#805ad5') +
+                carte('🔄 Dernier passage cron', data.cron_meteo.dernier_passage, '#dd6b20');
+
+            if (!data.abonnements_push.length) {
+                subsEl.innerHTML = '<h4 style="font-size:14px;font-weight:700;color:#2c5282;margin:0 0 8px">Abonnements push</h4><div style="color:#a0aec0;font-size:13px">Aucun abonnement actif</div>';
+            } else {
+                const subsRows = data.abonnements_push.map(a => {
+                    const navs = Object.entries(a.par_navigateur).map(([h, n]) => `${_esc(h)} (${n})`).join(', ');
+                    return `<tr style="border-bottom:1px solid #edf2f7">
+                        <td style="padding:8px 12px;font-size:12px;font-weight:600">${_esc(a.company_name)}</td>
+                        <td style="padding:8px 12px;font-size:12px">${a.total} actif(s)</td>
+                        <td style="padding:8px 12px;font-size:12px;color:#718096">${navs}</td>
+                    </tr>`;
+                }).join('');
+                subsEl.innerHTML = `<h4 style="font-size:14px;font-weight:700;color:#2c5282;margin:0 0 8px">Abonnements push par client</h4>
+                    <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06)">
+                        <thead><tr style="background:#f7fafc;border-bottom:2px solid #e2e8f0">
+                            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Client</th>
+                            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Total</th>
+                            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#4a5568;text-transform:uppercase">Détail navigateurs</th>
+                        </tr></thead>
+                        <tbody>${subsRows}</tbody>
+                    </table>`;
+            }
+
+            const creneauxHtml = data.bulletin_du_jour.creneaux_prevus.map(c => {
+                const envoye = data.bulletin_du_jour.creneaux_envoyes.includes(c);
+                const style = envoye
+                    ? 'background:#c6f6d5;color:#276749;'
+                    : 'background:#f7fafc;color:#a0aec0;';
+                return `<span style="display:inline-block;${style}padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin:0 6px 6px 0">${c}${envoye ? ' ✓' : ''}</span>`;
+            }).join('');
+            bulletinEl.innerHTML = `<h4 style="font-size:14px;font-weight:700;color:#2c5282;margin:16px 0 8px">Bulletin d'aujourd'hui</h4>${creneauxHtml}`;
+        } catch (e) {
+            console.error('Erreur chargement monitoring:', e);
+            kpisEl.innerHTML = '<div style="color:#e53e3e;padding:10px;grid-column:1/-1">Erreur</div>';
+        }
     }
 
     // ============ ADMINISTRATION — INSCRIPTIONS EN ATTENTE ============
