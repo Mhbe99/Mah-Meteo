@@ -177,11 +177,32 @@ def send_email_trafic_batch(incidents: list, client_id: int | None = None):
         print(f"[TRAFIC] Erreur envoi push: {e}")
         return
 
-    if not nb_push:
-        print("[TRAFIC] ❌ Push trafic non envoyé (voir logs email_alerts)")
+    envoye = bool(nb_push)
+
+    # Filet de secours : si le push échoue totalement, on retombe sur l'email.
+    if not envoye:
+        print("[TRAFIC] ❌ Push trafic non envoyé — fallback email")
+        try:
+            from meteo_saas.backend.email_alerts import _envoyer_email_secours
+            lignes = [
+                f"{i.get('route','?')} — {i.get('description','')} "
+                f"({i.get('severity','?')}, +{i.get('delay_minutes') or 0} min)"
+                for i in incidents[:20]
+            ]
+            _envoyer_email_secours(
+                subject=f"{titre} (secours)",
+                intro=f"{total} incident(s) trafic signalé(s) — push indisponible, notification de secours.",
+                lignes=lignes,
+                to_email="",
+            )
+            envoye = True
+        except Exception as e:
+            print(f"[TRAFIC] Erreur fallback email: {e}")
+
+    if not envoye:
         return
 
-    # Si on arrive ici, le push a été envoyé avec succès — enregistrer le cooldown
+    # Si on arrive ici, le push (ou le secours email) a été envoyé — enregistrer le cooldown
     try:
         from meteo_saas.backend.database import SessionLocal, AlerteLog
         db = SessionLocal()

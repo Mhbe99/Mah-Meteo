@@ -692,6 +692,25 @@ def send_pollution_alert(to_email: str, company_name: str, zones_alertes: list, 
         return False
 
     sent = bool(nb_push)
+
+    # Filet de secours : si le push échoue totalement, on retombe sur l'email.
+    if not sent:
+        print("[EMAIL] Fallback pollution : push indisponible → envoi email de secours")
+        try:
+            lignes = [
+                f"{z.get('zone','?')} — AQI {round(z.get('aqi', 0))} ({z.get('label','?')})"
+                for z in zones_alertes
+            ]
+            _envoyer_email_secours(
+                subject=f"Alerte pollution — {max_level} (secours)",
+                intro=f"Qualité de l'air dégradée sur {len(zones_alertes)} site(s) — push indisponible, notification de secours.",
+                lignes=lignes,
+                to_email=to_email,
+            )
+            sent = True
+        except Exception as e:
+            print(f"[EMAIL] Erreur fallback pollution: {e}")
+
     if sent:
         try:
             state[cooldown_key] = datetime.now().isoformat()
