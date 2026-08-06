@@ -391,14 +391,25 @@ def get_risk_icons(temp, wind, rain, uv, test_mode=False):
         # Git ni dans les emails reçus), malgré des pics réels à 35-36°C non détectés.
         if t >= 35:
             risk.append("🔴 Canicule")
+        elif t <= -5:
+            risk.append("❄️ Gel sévère")
+        elif t <= 0:
+            risk.append("❄️ Gel")
     except:
         w = wind
         r = rain
         u = uv
         pass
-    if test_mode or w > 40:
+    # Seuils vent/pluie alignés sur main.py _risk_text (2 paliers au lieu d'1 seul avant).
+    if test_mode:
         risk.append("💨 Vent fort")
-    if r > 5:
+    elif w >= 80:
+        risk.append("💨 Tempête")
+    elif w >= 50:
+        risk.append("💨 Vent fort")
+    if r >= 10:
+        risk.append("🌧️ Fortes pluies")
+    elif r >= 3:
         risk.append("🌧️ Alerte pluie")
     # Aligné avec le backend SaaS: UV élevé dès 7, extrême dès 10
     if u >= 10:
