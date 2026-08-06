@@ -586,10 +586,18 @@ def send_meteo_alert(to_email: str, company_name: str, alertes: list, client_id:
         from meteo_saas.backend.database import SessionLocal
         db_push = SessionLocal()
         risques_detectes = " | ".join(a.get("message") or a.get("valeur") or a.get("type") or "Alerte météo" for a in alertes_push)
+        # Titre spécifique à la zone quand une seule est concernée (cas courant en production,
+        # une alerte = une zone) — sinon titre générique regroupant le nombre de zones.
+        zones_uniques = sorted({a.get("zone", "?") for a in alertes_push})
+        if len(alertes_push) == 1:
+            a0 = alertes_push[0]
+            titre = f"{a0.get('type') or 'Alerte météo'} — {a0.get('zone', '?')}"
+        else:
+            titre = f"Alerte météo — {len(zones_uniques)} zones"
         nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
-            titre="Alerte météo",
+            titre=titre,
             corps=risques_detectes,
             type_alerte="meteo",
             url="/?tab=2"
@@ -639,10 +647,15 @@ def send_trafic_alert(to_email: str, company_name: str, incidents: list, client_
         from meteo_saas.backend.database import SessionLocal
         db_push = SessionLocal()
         retard_max = max((i.get("delay_minutes") or 0) for i in critical_push)
+        # Titre spécifique à la route quand un seul incident est concerné.
+        if len(critical_push) == 1:
+            titre = f"Incident trafic — {critical_push[0].get('route', '?')}"
+        else:
+            titre = f"Incident trafic grave — {len(critical_push)} routes"
         nb_push = envoyer_push_notification(
             db_session=db_push,
             client_id=client_id,
-            titre="Incident trafic grave",
+            titre=titre,
             corps=f"Retard +{retard_max} min détecté",
             type_alerte="trafic",
             url="/?tab=2"
