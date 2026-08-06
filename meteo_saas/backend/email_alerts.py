@@ -23,6 +23,7 @@ RECEIVER_EMAILS = os.getenv("RECEIVER_EMAILS", "")
 ALERT_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "true").lower() == "true"
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 DISABLE_EMAIL_WEEKENDS = os.getenv("DISABLE_EMAIL_WEEKENDS", "false").strip().lower() == "true"
+DISABLE_PUSH_WEEKENDS = os.getenv("DISABLE_PUSH_WEEKENDS", "false").strip().lower() == "true"
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
 
@@ -39,6 +40,12 @@ def envoyer_push_notification(
     d'un client via l'API Web Push.
     Retourne le nombre d'envois réussis.
     """
+    # Option métier: couper les push le week-end (samedi=5, dimanche=6) heure de
+    # Paris — même comportement que DISABLE_EMAIL_WEEKENDS, activable séparément.
+    if DISABLE_PUSH_WEEKENDS and _paris_now().weekday() >= 5:
+        print(f"[PUSH] Week-end bloqué — titre: {titre}")
+        return 0
+
     vapid_private = os.getenv("VAPID_PRIVATE_KEY", "")
     vapid_public = os.getenv("VAPID_PUBLIC_KEY", "")
 
