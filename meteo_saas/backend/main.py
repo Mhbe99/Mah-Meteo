@@ -1031,6 +1031,21 @@ def _try_send_bulletin_with_current_data(client_id: int, db: Session) -> None:
         else:
             print(f"[BULLETIN] Echec envoi : {creneau} client {client_id}")
             print("[BULLETIN] Non marqué envoyé : email échoué")
+            # Signal de secours par push : l'email réessaiera au prochain refresh de
+            # cette fenêtre, mais on ne veut plus qu'un échec reste invisible pendant
+            # des semaines (cas vécu cette session avec Brevo cassé sans que personne
+            # ne le sache avant d'aller fouiller les logs Render).
+            try:
+                envoyer_push_notification(
+                    db_session=db,
+                    client_id=client_id,
+                    titre=f"Bulletin {creneau} non envoyé",
+                    corps="Échec de l'envoi email du bulletin — vérifier la configuration email.",
+                    type_alerte="system",
+                    url="/"
+                )
+            except Exception as e:
+                print(f"[BULLETIN] Erreur notification secours: {e}")
     except Exception as e:
         print(f"[BULLETIN] Erreur évaluation client {client_id}: {e}")
 

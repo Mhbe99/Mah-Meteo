@@ -15,7 +15,7 @@ from collections import defaultdict
 import requests
 from jose import jwt
 from dotenv import load_dotenv
-from meteo_saas.backend.email_alerts import _envoyer_email
+from meteo_saas.backend.email_alerts import _envoyer_email, envoyer_push_notification
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -1085,6 +1085,24 @@ def main(dry_run=False, force_send=False):
         source_donnees=source_donnees,
     )
     if not sent_ok:
+        # Signal de secours par push : un run CI en échec (RuntimeError) n'est visible
+        # que si quelqu'un va consulter GitHub Actions — on ne veut plus qu'un échec
+        # d'envoi passe totalement inaperçu pendant des semaines (cas vécu cette session).
+        try:
+            from meteo_saas.backend.database import SessionLocal
+            db_push = SessionLocal()
+            # Client unique en production actuellement (GEODIS — Le Meux).
+            envoyer_push_notification(
+                db_session=db_push,
+                client_id=2,
+                titre="Rapport hebdomadaire non envoyé",
+                corps="Échec de l'envoi email du rapport hebdomadaire — vérifier la configuration email.",
+                type_alerte="system",
+                url="/"
+            )
+            db_push.close()
+        except Exception as e:
+            print(f"[RAPPORT] Erreur notification secours: {e}")
         raise RuntimeError("Echec envoi rapport hebdomadaire (provider/fallback)")
     
     print("\n" + "=" * 60)
