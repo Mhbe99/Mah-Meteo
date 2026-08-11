@@ -8,6 +8,7 @@ Envoi via l'API Brevo — le SMTP sortant est bloqué au niveau réseau sur Rend
 import os
 import json
 import base64
+from concurrent.futures import ThreadPoolExecutor
 from zoneinfo import ZoneInfo
 from datetime import datetime
 from dotenv import load_dotenv
@@ -120,10 +121,8 @@ def envoyer_push_notification(
         "icon": "/static/icon-192.png"
     })
 
-    succes = 0
-    a_supprimer = []
-
-    for sub in subs:
+    def _envoyer_a_un_abonne(sub):
+        """Tente l'envoi vers UN appareil. Retourne (succes: bool, id_a_supprimer: int|None)."""
         try:
             webpush(
                 subscription_info={
@@ -145,8 +144,8 @@ def envoyer_push_notification(
                 # de push ne répond pas (pas de valeur par défaut dans pywebpush).
                 timeout=10
             )
-            succes += 1
             print(f"[PUSH] Envoyé : {titre[:40]}")
+            return True, None
 
         except WebPushException as e:
             code = getattr(e.response, 'status_code', None)
@@ -167,14 +166,27 @@ def envoyer_push_notification(
                 pass
             if code in (404, 410) or "VapidPkHashMismatch" in body_text:
                 print(f"[PUSH] Souscription expirée/obsolète (code={code}) → suppression")
-                a_supprimer.append(sub.id)
-            else:
-                print(f"[PUSH] Erreur envoi: {e}")
-                if headers_utiles:
-                    print(f"[PUSH] Détail en-têtes réponse: {headers_utiles}")
+                return False, sub.id
+            print(f"[PUSH] Erreur envoi: {e}")
+            if headers_utiles:
+                print(f"[PUSH] Détail en-têtes réponse: {headers_utiles}")
+            return False, None
 
         except Exception as e:
             print(f"[PUSH] Exception: {e}")
+            return False, None
+
+    # Envoi en parallèle : un appareil obsolète/injoignable (jusqu'à 10s de timeout)
+    # ne doit pas retarder tous les suivants — critique dès qu'il y a plusieurs
+    # appareils (ex: plusieurs personnes sur le même compte client).
+    succes = 0
+    a_supprimer = []
+    with ThreadPoolExecutor(max_workers=min(len(subs), 20)) as executor:
+        for ok, id_a_supprimer in executor.map(_envoyer_a_un_abonne, subs):
+            if ok:
+                succes += 1
+            if id_a_supprimer is not None:
+                a_supprimer.append(id_a_supprimer)
 
     if a_supprimer:
         try:

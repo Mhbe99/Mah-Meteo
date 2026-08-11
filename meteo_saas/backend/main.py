@@ -2154,13 +2154,15 @@ async def delete_one_push_subscription(
 
 @limiter.limit("5/minute")
 @app.post("/api/push/test/{client_id}")
-async def test_push_notification(
+def test_push_notification(
     request: Request,
     client_id: int,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
 ):
-    """Envoie une notification push de test pour valider la configuration VAPID."""
+    """Envoie une notification push de test pour valider la configuration VAPID.
+    Route sync (pas async) : envoyer_push_notification() est bloquante (I/O réseau),
+    FastAPI l'exécute alors dans un threadpool au lieu de geler la boucle asyncio."""
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
@@ -2180,7 +2182,7 @@ async def test_push_notification(
 
 @limiter.limit("5/minute")
 @app.post("/api/email/test/{client_id}")
-async def test_email_notification(
+def test_email_notification(
     request: Request,
     client_id: int,
     to_email: Optional[str] = None,
@@ -2213,7 +2215,7 @@ async def test_email_notification(
 
 @limiter.limit("5/minute")
 @app.post("/api/pollution/test/{client_id}")
-async def test_pollution_alert(
+def test_pollution_alert(
     request: Request,
     client_id: int,
     current_client: int = Depends(get_current_client),
@@ -2240,13 +2242,14 @@ async def test_pollution_alert(
 
 @limiter.limit("5/minute")
 @app.post("/api/bulletin/test-fail/{client_id}")
-async def test_bulletin_fail_signal(
+def test_bulletin_fail_signal(
     request: Request,
     client_id: int,
     current_client: int = Depends(get_current_client),
     db: Session = Depends(get_db)
 ):
-    """Simule le signal de secours envoyé quand le bulletin échoue par email (sans vraiment casser l'email)."""
+    """Simule le signal de secours envoyé quand le bulletin échoue par email (sans vraiment casser l'email).
+    Route sync (pas async) — voir commentaire sur test_push_notification."""
     if client_id != current_client:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
