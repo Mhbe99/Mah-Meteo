@@ -52,8 +52,13 @@ _refresh_locks: dict[int, Lock] = {}
 
 # ── Bulletins horaires ──
 # Créneaux (heure, minute) heure de Paris.
-# Fenêtre 31 min par défaut pour capter le refresh horaire de H+1:00
-# sur les créneaux en H:30 (ex: 10h30 capté à 11h00).
+# Fenêtre 65 min par défaut : le cron GitHub Actions tombe à H:00-H:02 UTC selon
+# les runs observés (démarrage + traitement des 27 zones avant l'appel refresh),
+# donc pour capter un créneau à H:30 il faut le cron de H+1:00 — avec seulement
+# 31 min de fenêtre ça ne laissait qu'1 minute de marge (créneau raté quasi
+# systématiquement, confirmé en prod sur 17h30 : bug réel identifié en session,
+# pas une histoire d'IP Brevo). 65 min garantit qu'un passage horaire tombe
+# toujours dans la fenêtre, sans chevaucher le créneau suivant (écart mini 90 min).
 _BULLETIN_WINDOWS = [
     (6, 0),    # 06h00 brief tournées du matin
     (10, 30),  # 10h30 bilan milieu de matinée
@@ -61,7 +66,7 @@ _BULLETIN_WINDOWS = [
     (15, 0),   # 15h00 bilan milieu d'après-midi
     (17, 30),  # 17h30 fin tournées
 ]
-BULLETIN_WINDOW_MINUTES = int(os.getenv("BULLETIN_WINDOW_MINUTES", "31"))
+BULLETIN_WINDOW_MINUTES = int(os.getenv("BULLETIN_WINDOW_MINUTES", "65"))
 
 
 # ============ DÉPENDANCE ADMIN ============
@@ -912,7 +917,7 @@ def _get_bulletin_window_label(now=None) -> str | None:
     """
     Retourne le label du créneau actuel (heure Paris)
     ou None si hors fenêtre.
-    Tolérance de 30 min par créneau.
+    Tolérance BULLETIN_WINDOW_MINUTES par créneau (65 min par défaut).
     """
     paris = pytz.timezone("Europe/Paris")
     if now is None:
