@@ -643,6 +643,11 @@ def _executer_pour_client(client):
     else:
         print(f"[POLLUTION] ✅ Qualité de l'air correcte sur tous les sites (AQI < 40)")
 
+    # Accumulateur pour un envoi push GROUPÉ en fin de passage (une seule notification
+    # listant toutes les zones à risque, au lieu d'une notification par zone — évitait
+    # jusqu'à 20+ notifications séparées lors d'un événement large type canicule).
+    zones_a_risque_batch = []
+
     for zi, (zone, coord) in enumerate(TOUTES_ZONES.items()):
         lat, lon = coord["lat"], coord["lon"]
         if batch_data and zi < len(batch_data):
@@ -771,18 +776,14 @@ def _executer_pour_client(client):
                         continue
 
                 for risk_item in _split_risk_items(risque):
-                    send_email_alerte_risque(
-                        zone=zone,
-                        risk_item=risk_item,
-                        context={
-                            "temp": temp_now,
-                            "wind": wind_now,
-                            "rain": precip_now,
-                            "uv": uv_today,
-                            "ciel": ciel,
-                        },
-                        client_id=client_id,
-                    )
+                    # Notification (push) désormais groupée en fin de passage, pas
+                    # envoyée ici zone par zone — voir zones_a_risque_batch plus bas.
+                    zones_a_risque_batch.append({
+                        "zone_name": zone,
+                        "type": risk_item,
+                        "valeur": f"{temp_now}°C",
+                        "message": f"Risque detecte: {risk_item}",
+                    })
 
                     new_entry = {
                         "timestamp": now.isoformat(),
@@ -839,6 +840,28 @@ def _executer_pour_client(client):
                     "uv": uv,
                     "risk": risque
                 })
+
+    # 📤 ENVOYER L'ALERTE MÉTÉO GROUPÉE (une seule notification push pour toutes les
+    # zones à risque de ce passage, au lieu d'une par zone)
+    if zones_a_risque_batch:
+        try:
+            token = get_jwt_token(client_id=client_id, username=username)
+            if not token:
+                print("[RENDER SYNC] Alerte groupée non envoyée (auth Render indisponible)")
+            else:
+                headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+                r = requests.post(
+                    f"{RENDER_URL}/api/meteo/alertes-batch/{client_id}",
+                    headers=headers,
+                    json=zones_a_risque_batch,
+                    timeout=30
+                )
+                if r.status_code == 200:
+                    print(f"✅ Alerte groupée envoyée : {len(zones_a_risque_batch)} zone(s) à risque")
+                else:
+                    print(f"⚠️ Erreur envoi alerte groupée: {r.status_code} {r.text[:100]}")
+        except Exception as e:
+            print(f"⚠️ Erreur POST alerte groupée: {e}")
 
     # 📤 ENVOYER LES PRÉVISIONS À RENDER
     def post_previsions_to_render():

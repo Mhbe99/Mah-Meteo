@@ -692,7 +692,6 @@ def add_meteo_snapshot(
     db.commit()
 
     # Alimenter alertes_log pour les graphes "Mon compte" (Top zones / Répartition type)
-    client = db.query(Client).filter(Client.id == client_id).first()
     risques_text = (data.risques or "").strip()
     if risques_text and "RAS" not in risques_text and "✅" not in risques_text:
         now_utc = datetime.utcnow()
@@ -730,36 +729,55 @@ def add_meteo_snapshot(
                 message=risques_text
             ))
             db.commit()
-
-            # Envoi email temps reel: seulement lors d'une nouvelle alerte (dedupe 1h deja appliquee)
-            try:
-                type_labels = {
-                    "verglas": "Verglas",
-                    "vent_fort": "Vent fort",
-                    "pluie": "Alerte pluie",
-                    "uv": "UV eleve",
-                    "trafic": "Trafic",
-                    "meteo": "Alerte meteo",
-                }
-                alert_type = type_labels.get(type_alerte, "Alerte meteo")
-                company_name = (client.company_name if client and client.company_name else (client.username if client else f"Client {client_id}"))
-                recipient = (client.email if client and client.email else "")
-
-                send_meteo_alert(
-                    to_email=recipient,
-                    company_name=company_name,
-                    alertes=[{
-                        "zone": zone.name,
-                        "type": alert_type,
-                        "valeur": risques_text,
-                        "message": f"Risque detecte: {risques_text}",
-                    }],
-                    client_id=client_id,
-                )
-            except Exception as e:
-                print(f"[EMAIL] Erreur envoi alerte meteo client {client_id}: {e}")
+            # Push retiré d'ici : envoyé groupé pour toutes les zones d'un même passage
+            # cron via POST /api/meteo/alertes-batch/{client_id} (voir plus bas) — évite
+            # une notification par zone (ex: 21 notifications séparées lors d'une canicule
+            # touchant 21 zones sur 27, signalé en usage réel).
 
     return {"status": "success", "zone_id": zone.id, "snapshot_id": snapshot.id, "timestamp": snapshot.timestamp}
+
+
+class AlerteBatchItem(BaseModel):
+    zone_name: str
+    type: str
+    valeur: str
+    message: str
+
+
+@limiter.limit("30/minute")
+@app.post("/api/meteo/alertes-batch/{client_id}")
+def add_meteo_alertes_batch(
+    request: Request,
+    client_id: int,
+    data: list[AlerteBatchItem],
+    current_client: int = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    """Reçoit toutes les zones à risque d'un même passage cron et envoie UNE SEULE
+    notification push groupée (au lieu d'une par zone via add_meteo_snapshot,
+    qui pouvait produire 20+ notifications séparées lors d'un événement large
+    comme une canicule touchant de nombreuses zones simultanément)."""
+    if client_id != current_client:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
+    if not data:
+        return {"status": "ok", "envoye": False, "nb_zones": 0}
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    company_name = (client.company_name if client and client.company_name else (client.username if client else f"Client {client_id}"))
+    recipient = (client.email if client and client.email else "")
+
+    alertes = [
+        {"zone": a.zone_name, "type": a.type, "valeur": a.valeur, "message": a.message}
+        for a in data
+    ]
+    send_meteo_alert(
+        to_email=recipient,
+        company_name=company_name,
+        alertes=alertes,
+        client_id=client_id,
+    )
+    return {"status": "ok", "envoye": True, "nb_zones": len(alertes)}
 
 
 class PrevisionAdd(BaseModel):

@@ -226,8 +226,10 @@ def _maj_status_systeme(cle: str) -> None:
     except Exception as e:
         print(f"[STATUS] Erreur écriture statut système: {e}")
 
-# Cooldown push (5 min par défaut) pour ne pas spammer les notifications mobiles.
-_PUSH_COOLDOWN_SECONDS = int(os.getenv("PUSH_COOLDOWN_SECONDS", "300"))
+# Cooldown push (1h par défaut, comme l'ancien cooldown email) — le push est
+# désormais le seul canal temps réel, 5 min faisait se répéter une même alerte
+# toutes les 5 min tant que la condition reste vraie (spam signalé en usage réel).
+_PUSH_COOLDOWN_SECONDS = int(os.getenv("PUSH_COOLDOWN_SECONDS", "3600"))
 _last_push_sent = {}
 
 
