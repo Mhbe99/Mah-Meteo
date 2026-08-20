@@ -1075,3 +1075,38 @@ exports/
 ## 16. Contacts & Accès
 
 **Palette fidèle au dashboard réel :** fond `#eef1f5`, header `#2c3e50`, accents bleu `#3498db`, vert `#38a169`, rouge `#c53030`.
+
+---
+
+## 17. Addendum — Mise à jour du 20 août 2026
+
+### 17.1 État GitHub Actions observé
+
+| Workflow | État au 20/08/2026 | Détail |
+|---|---|---|
+| `meteo-cron.yml` | ✅ Stable | Runs horaires récents `#3658` à `#3667` tous en `success` (00:00 → 09:00 UTC). |
+| `rapport-hebdo.yml` | ⚠️ Instable récent | Runs `#33` (10/08) et `#34` (17/08) en `failure`; les runs précédents (`#24` à `#32`) sont majoritairement `success`. |
+
+### 17.2 Cause visible des échecs rapport hebdomadaire
+
+Sur le run `#34` (17/08/2026), l’exécution Python génère bien les exports puis échoue à l’envoi email :
+
+- Brevo retourne `HTTP 401` avec IP non reconnue (`authorised_ips`).
+- Le fallback local est désactivé (`ALLOW_LOCAL_REPORT_FALLBACK=false`).
+- Le job se termine par `RuntimeError: Echec envoi rapport hebdomadaire (provider/fallback)`.
+
+### 17.3 Changements fonctionnels récents (branche `main`)
+
+Derniers correctifs applicatifs identifiés dans les commits d’août 2026 :
+
+- 06/08 : intégration monitoring dans l’onglet Admin existant.
+- 06/08 : regroupement historique connexions sans clé IP pour éviter les doublons inutiles.
+- 11/08 : envoi push parallélisé (ThreadPoolExecutor) + sécurisation de routes de test bloquantes.
+- 13/08 : élargissement de fenêtre bulletin (`31` → `65` min) pour fiabiliser les créneaux `10h30` et `17h30`.
+- 14/08 : envoi alertes météo en lot + cooldown allongé (`5 min` → `1 h`) pour réduire le spam.
+
+### 17.4 Statut global mis à jour
+
+- ✅ Collecte météo et pipeline principal : opérationnels et stables.
+- ⚠️ Rapport hebdomadaire : génération OK, mais livraison email en échec sur les deux derniers runs planifiés (contrôle IP Brevo).
+- 🎯 Priorité recommandée : autoriser l’IP GitHub Actions côté Brevo (ou adapter la stratégie d’acheminement en CI) pour rétablir l’envoi hebdomadaire automatique.
